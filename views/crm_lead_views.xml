@@ -43,11 +43,6 @@
                     <field name="lead_temperature" string="Status" placeholder="Status" nolabel="1" class="o_field_highlight w-100 mb-0"/>
                 </div>
             </xpath>
-
-            <!-- Hide Expected Revenue -->
-            <xpath expr="//field[@name='expected_revenue']/../.." position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
         </field>
     </record>
 
@@ -62,12 +57,7 @@
                 <attribute name="placeholder">e.g. Full Name</attribute>
             </xpath>
 
-            <!-- Hide Expected Revenue & Probability Header Block -->
-            <xpath expr="//div[hasclass('oe_title')]/h2" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-
-            <!-- Hide Contact Field -->
+            <!-- Hide Contact Field in opportunity_partner -->
             <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -105,11 +95,6 @@
             <xpath expr="//progressbar" position="replace">
                 <progressbar field="activity_state" colors='{"planned": "success", "today": "warning", "overdue": "danger"}'
                     help="This bar allows to filter the opportunities based on scheduled activities."/>
-            </xpath>
-
-            <!-- Hide Expected Revenue in Kanban Cards -->
-            <xpath expr="//div[hasclass('o_kanban_card_crm_lead_revenue')]" position="attributes">
-                <attribute name="invisible">1</attribute>
             </xpath>
 
             <!-- Ensure lead_temperature is loaded -->
