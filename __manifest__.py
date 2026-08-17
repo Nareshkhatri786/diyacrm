@@ -1,6 +1,6 @@
 {
     'name': 'Diya CRM',
-    'version': '19.0.1.0.0',
+    'version': '1.0',
     'category': 'Sales/CRM',
     'summary': 'Custom CRM Enhancements and Tweaks for Diya CRM',
     'description': """
@@ -14,7 +14,6 @@
     'license': 'LGPL-3',
     'depends': ['base', 'crm', 'mail', 'utm', 'calendar'],
     'data': [
-        'security/ir.model.access.csv',
         'data/utm_source_data.xml',
         'data/mail_activity_type_data.xml',
         'views/crm_lead_views.xml',

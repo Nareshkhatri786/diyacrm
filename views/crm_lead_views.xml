@@ -6,12 +6,7 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
         <field name="arch" type="xml">
-            <!-- Hide Company -->
-            <xpath expr="//field[@name='commercial_partner_id']/.." position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-
-            <!-- Hide Contact -->
+            <!-- Hide Contact Field if present -->
             <xpath expr="//field[@name='partner_id']/.." position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
@@ -33,24 +28,16 @@
                 <attribute name="string">Phone</attribute>
             </xpath>
 
-            <!-- Add Area Field -->
+            <!-- Add Area, Source, and Status after Phone -->
             <xpath expr="//field[@name='phone']/.." position="after">
                 <div class="d-flex align-items-center" colspan="2">
                     <i class="fa fa-map-marker" title="Area" aria-label="Area"/>
                     <field name="area" string="Area" placeholder="Area" nolabel="1" class="o_field_highlight w-100 mb-0"/>
                 </div>
-            </xpath>
-
-            <!-- Add Source Field -->
-            <xpath expr="//field[@name='area']/.." position="after">
                 <div class="d-flex align-items-center" colspan="2">
                     <i class="fa fa-bullhorn" title="Source" aria-label="Source"/>
                     <field name="source_id" string="Source" placeholder="Source" nolabel="1" class="o_field_highlight w-100 mb-0" domain="[('name', 'in', ['Walk In', 'WhatsApp', 'Reference', 'Social Media', 'Direct Call', 'AI WhatsApp Agent', 'Website'])]" options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
                 </div>
-            </xpath>
-
-            <!-- Add Status in Quick Create -->
-            <xpath expr="//field[@name='source_id']/.." position="after">
                 <div class="d-flex align-items-center" colspan="2">
                     <i class="fa fa-thermometer-half" title="Status" aria-label="Status"/>
                     <field name="lead_temperature" string="Status" placeholder="Status" nolabel="1" class="o_field_highlight w-100 mb-0"/>
