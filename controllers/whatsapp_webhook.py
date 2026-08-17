@@ -7,6 +7,8 @@ from odoo.http import request, Response
 
 _logger = logging.getLogger(__name__)
 
+# Default Meta Webhook Verify Token
+META_VERIFY_TOKEN = "diyacrm_secret_token"
 
 # Phone Number IDs & Keywords Mapping to Companies & Dedicated Users
 COMPANY_RULES = {
@@ -57,7 +59,6 @@ def clean_phone_number(phone_str):
     if not phone_str:
         return ''
     digits = re.sub(r'\D', '', str(phone_str))
-    # Return last 10 digits for matching
     return digits[-10:] if len(digits) >= 10 else digits
 
 
@@ -67,38 +68,47 @@ class WhatsAppWebhookController(http.Controller):
         '/api/whatsapp/lead',
         '/webhook/whatsapp',
         '/diyacrm/webhook/whatsapp',
+        '/v1/webhook/meta',
+        '/api/v1/webhook/meta',
         '/api/inbound-whatsapp-royal.php',
         '/api/inbound-whatsapp-shreemad.php',
         '/api/inbound-whatsapp-devi.php',
     ], type='http', auth='public', methods=['POST', 'GET'], csrf=False)
     def handle_whatsapp_webhook(self, **kwargs):
         """
-        Universal WhatsApp Webhook:
-        - Detects Project via Meta Phone Number ID / Number / URL / Project Name
-        - Checks for Existing Lead ONLY within that Company
-        - If Active -> Updates Timeline, preserves owner
-        - If Lost -> Re-opens to New Lead, assigns dedicated salesperson
-        - If New -> Creates Lead, assigns dedicated salesperson (Royal->Krushna, Shreemad->Megha, Devi->Hemant)
+        Universal WhatsApp Webhook for:
+        1. Meta Cloud API (GET challenge verification + Standard WhatsApp webhook payload)
+        2. WaMantra / Custom API bot payloads
         """
+        # =========================================================================
+        # 1. META WEBHOOK VERIFICATION (GET REQUEST)
+        # =========================================================================
         if request.httprequest.method == 'GET':
-            hub_challenge = kwargs.get('hub.challenge') or kwargs.get('challenge')
-            if hub_challenge:
-                return Response(hub_challenge, status=200, content_type='text/plain')
+            mode = kwargs.get('hub.mode') or kwargs.get('mode')
+            token = kwargs.get('hub.verify_token') or kwargs.get('verify_token') or kwargs.get('token')
+            challenge = kwargs.get('hub.challenge') or kwargs.get('challenge')
+
+            if mode and challenge:
+                _logger.info("Meta Webhook Verification Request: mode=%s, token=%s", mode, token)
+                return Response(str(challenge), status=200, content_type='text/plain')
+
+            if challenge:
+                return Response(str(challenge), status=200, content_type='text/plain')
+
             return Response(
                 json.dumps({
                     'status': 'online',
-                    'service': 'Diya CRM WhatsApp Webhook Engine',
-                    'version': '2.0',
-                    'rules': {
-                        'Royal Rudraksha': 'Krushna Sing',
-                        'Shreemad Family': 'Megha Trivedi',
-                        'Devi Bungalows': 'Hemant Prajapati'
-                    }
+                    'service': 'Diya CRM Meta Cloud API & WhatsApp Webhook Engine',
+                    'version': '2.5',
+                    'verify_token': META_VERIFY_TOKEN
                 }),
                 status=200,
                 content_type='application/json'
             )
 
+        # =========================================================================
+        # 2. INBOUND WEBHOOK DATA PROCESSING (POST REQUEST)
+        # =========================================================================
         try:
             raw_data = request.httprequest.data
             if raw_data:
@@ -109,11 +119,17 @@ class WhatsAppWebhookController(http.Controller):
             else:
                 payload = kwargs
 
-            # Also pass query params & URL path to assist project detection
+            env = request.env(user=SUPERUSER_ID)
+
+            # Check if this is a standard Meta WhatsApp Cloud API Payload
+            if 'entry' in payload and isinstance(payload['entry'], list):
+                _logger.info("Parsing Meta Cloud API Webhook Format...")
+                results = self._parse_and_process_meta_payload(env, payload)
+                return Response(json.dumps({'status': 'success', 'processed': len(results), 'details': results}), status=200, content_type='application/json')
+
+            # Otherwise handle as Direct / WaMantra / Custom JSON Payload
             payload['_url_path'] = request.httprequest.path
             payload['_url_account'] = kwargs.get('account')
-
-            env = request.env(user=SUPERUSER_ID)
             result = self._process_inbound_lead(env, payload)
             status_code = 200 if result.get('status') == 'success' else 400
             return Response(json.dumps(result), status=status_code, content_type='application/json')
@@ -121,13 +137,66 @@ class WhatsAppWebhookController(http.Controller):
             _logger.exception("Diya CRM Webhook Error: %s", str(e))
             return Response(json.dumps({'status': 'error', 'message': str(e)}), status=500, content_type='application/json')
 
+    def _parse_and_process_meta_payload(self, env, payload):
+        """
+        Parses Meta's standard Webhook schema:
+        entry -> changes -> value -> metadata (phone_number_id) + contacts + messages
+        """
+        results = []
+        for entry in payload.get('entry', []):
+            for change in entry.get('changes', []):
+                value = change.get('value', {})
+                metadata = value.get('metadata', {})
+                phone_number_id = metadata.get('phone_number_id', '')
+                display_phone_number = metadata.get('display_phone_number', '')
+
+                # Contacts mapping (Name & wa_id)
+                contacts_map = {}
+                for c in value.get('contacts', []):
+                    wa_id = c.get('wa_id')
+                    profile_name = c.get('profile', {}).get('name') or "WhatsApp User"
+                    if wa_id:
+                        contacts_map[wa_id] = profile_name
+
+                # Messages
+                messages = value.get('messages', [])
+                for msg in messages:
+                    from_number = msg.get('from', '')
+                    msg_type = msg.get('type', 'text')
+                    
+                    text_body = ""
+                    if msg_type == 'text':
+                        text_body = msg.get('text', {}).get('body', '')
+                    elif msg_type == 'interactive':
+                        interactive = msg.get('interactive', {})
+                        text_body = interactive.get('button_reply', {}).get('title') or interactive.get('list_reply', {}).get('title') or 'Interactive Selection'
+                    elif msg_type == 'button':
+                        text_body = msg.get('button', {}).get('text', '')
+                    elif msg_type in ['image', 'document', 'video', 'audio']:
+                        caption = msg.get(msg_type, {}).get('caption', '')
+                        text_body = f"Sent a {msg_type}: {caption}" if caption else f"Sent a {msg_type}"
+                    elif msg_type == 'location':
+                        loc = msg.get('location', {})
+                        text_body = f"Shared Location: Lat {loc.get('latitude')}, Long {loc.get('longitude')}"
+                    else:
+                        text_body = f"WhatsApp Message ({msg_type})"
+
+                    customer_name = contacts_map.get(from_number) or f"Client ({from_number[-10:]})"
+
+                    lead_payload = {
+                        'recipientPhoneNumberId': phone_number_id,
+                        'display_phone_number': display_phone_number,
+                        'name': customer_name,
+                        'phone': f"+{from_number}" if not from_number.startswith('+') else from_number,
+                        'message': text_body,
+                        'source': 'AI WhatsApp Agent',
+                    }
+
+                    res = self._process_inbound_lead(env, lead_payload)
+                    results.append(res)
+        return results
+
     def _determine_company_and_rule(self, env, data):
-        """
-        Detects Company using:
-        1. Meta recipientPhoneNumberId / phone_number_id
-        2. Account URL param / Endpoint URL
-        3. Project / Company Name in payload
-        """
         url_path = str(data.get('_url_path') or '').lower()
         account_param = str(data.get('_url_account') or data.get('account') or '').lower()
         phone_number_id = str(
@@ -146,7 +215,6 @@ class WhatsAppWebhookController(http.Controller):
 
         matched_key = None
 
-        # Check by URL path
         if 'royal' in url_path or 'royal' in account_param:
             matched_key = 'royal'
         elif 'shreemad' in url_path or 'shreemad' in account_param:
@@ -156,28 +224,24 @@ class WhatsAppWebhookController(http.Controller):
         elif 'signature' in url_path or 'signature' in account_param:
             matched_key = 'signature'
 
-        # Check by Phone Number ID
         if not matched_key and phone_number_id:
             for k, rule in COMPANY_RULES.items():
                 if phone_number_id in rule['phone_number_ids']:
                     matched_key = k
                     break
 
-        # Check by Business Number
         if not matched_key and display_phone:
             for k, rule in COMPANY_RULES.items():
                 if any(num.replace('+', '') in display_phone for num in rule['phone_numbers']):
                     matched_key = k
                     break
 
-        # Check by Project / Company Keyword
         if not matched_key and project_str:
             for k, rule in COMPANY_RULES.items():
                 if any(kw in project_str for kw in rule['keywords']):
                     matched_key = k
                     break
 
-        # Default Fallback to Royal or Shreemad
         if not matched_key:
             matched_key = 'royal'
 
@@ -189,12 +253,6 @@ class WhatsAppWebhookController(http.Controller):
         return company, rule
 
     def _get_or_create_salesperson(self, env, company, rule, direct_param=None):
-        """
-        Gets or creates the dedicated salesperson:
-        - Royal Rudraksha -> Krushna Sing
-        - Shreemad Family -> Megha Trivedi
-        - Devi Bungalows -> Hemant Prajapati
-        """
         target_name = direct_param or rule['default_salesperson']['name']
         target_login = rule['default_salesperson']['login'] if not direct_param else target_name.lower().replace(' ', '.') + '@diyacrm.com'
 
@@ -213,7 +271,6 @@ class WhatsAppWebhookController(http.Controller):
             })
             _logger.info("Auto-created dedicated Salesperson: %s (%s)", user.name, user.login)
         else:
-            # Ensure user has access to this company
             if company.id not in user.company_ids.ids:
                 user.write({
                     'company_ids': [(4, company.id)],
@@ -222,7 +279,7 @@ class WhatsAppWebhookController(http.Controller):
         return user
 
     def _process_inbound_lead(self, env, data):
-        _logger.info("Diya CRM Webhook Payload Received: %s", data)
+        _logger.info("Diya CRM Webhook Payload Processing: %s", data)
 
         # 1. Determine Company & Rule
         company, rule = self._determine_company_and_rule(env, data)
@@ -272,12 +329,11 @@ class WhatsAppWebhookController(http.Controller):
             lead_action = "updated_active"
             _logger.info("Found ACTIVE existing lead ID %s in %s. Updating timeline...", lead.id, company_name)
             
-            # Post WhatsApp Message to Chatter
             if message:
                 body_html = f"""
                 <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 10px; border-radius: 4px;">
                     <p style="margin: 0 0 5px 0; color: #166534; font-weight: bold;">
-                        📱 New WhatsApp Message from Existing Client:
+                        📱 New WhatsApp Message:
                     </p>
                     <div style="color: #1f2937; white-space: pre-wrap;">{message}</div>
                 </div>
@@ -291,7 +347,6 @@ class WhatsAppWebhookController(http.Controller):
                     'body': body_html,
                 })
 
-            # Schedule Activity for lead owner
             lead.activity_schedule(
                 act_type_xmlid=None,
                 activity_type_id=call_act_type.id,
@@ -329,7 +384,6 @@ class WhatsAppWebhookController(http.Controller):
                 'lead_temperature': lead_temp,
             })
 
-            # Post Re-open notice & WhatsApp message to Chatter
             reopen_body = f"""
             <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 10px; border-radius: 4px; margin-bottom: 8px;">
                 <p style="margin: 0; color: #1e40af; font-weight: bold;">
@@ -357,7 +411,6 @@ class WhatsAppWebhookController(http.Controller):
                 'body': reopen_body,
             })
 
-            # Schedule Call Activity
             lead.activity_schedule(
                 act_type_xmlid=None,
                 activity_type_id=call_act_type.id,
