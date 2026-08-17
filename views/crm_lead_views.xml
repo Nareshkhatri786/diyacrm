@@ -117,6 +117,14 @@
                 <field name="lead_temperature"/>
             </xpath>
 
+            <!-- Hide duplicate contact_name and partner_name from Kanban Card -->
+            <xpath expr="//field[@name='contact_name']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='partner_name']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
             <!-- Hide Priority Stars from Kanban Card -->
             <xpath expr="//field[@name='priority']" position="attributes">
                 <attribute name="invisible">1</attribute>
