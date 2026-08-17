@@ -1,25 +1,13 @@
 import { ActivityMarkAsDone } from "@mail/core/web/activity_markasdone_popover";
 import { patch } from "@web/core/utils/patch";
-import * as owl from "@odoo/owl";
-
-const makeReactiveState = (initialState) => {
-    if (typeof owl.useState === "function") {
-        try {
-            return owl.useState(initialState);
-        } catch (e) {
-            // fallback if not in component setup hook context
-        }
-    }
-    if (typeof owl.reactive === "function") {
-        return owl.reactive(initialState);
-    }
-    return initialState;
-};
+import { useState } from "@odoo/owl";
 
 patch(ActivityMarkAsDone.prototype, {
     setup() {
         super.setup();
-        this.state = makeReactiveState({
+        const initialTab = this.isSiteVisitActivity ? "site_visit" : "call";
+        this.state = useState({
+            activeTab: initialTab,
             selectedOutcome: null,
             // Site Visit Outcomes
             purchaseTimeline: "Not discussed",
@@ -31,27 +19,39 @@ patch(ActivityMarkAsDone.prototype, {
         });
     },
 
-    get isCallActivity() {
-        const act = this.props.activity;
+    get isSiteVisitActivity() {
+        const act = this.props.activity || {};
+        const typeName = (
+            act.activity_type_id?.name ||
+            act.type?.name ||
+            act.activity_type_name ||
+            (Array.isArray(act.activity_type_id) ? act.activity_type_id[1] : "") ||
+            ""
+        ).toLowerCase();
+        const summary = (act.summary || "").toLowerCase();
+        const category = (act.activity_category || "").toLowerCase();
+
         return (
-            act.activity_category === "phonecall" ||
-            act.summary === "Call" ||
-            act.activity_type_id?.name === "Call" ||
-            (Array.isArray(act.activity_type_id) && act.activity_type_id[1] === "Call")
+            category === "meeting" ||
+            typeName.includes("visit") ||
+            typeName.includes("site") ||
+            typeName.includes("meeting") ||
+            summary.includes("visit") ||
+            summary.includes("site") ||
+            summary.includes("meeting")
         );
     },
 
-    get isSiteVisitActivity() {
-        const act = this.props.activity;
-        return (
-            act.summary === "Site Visit" ||
-            act.activity_type_id?.name === "Site Visit" ||
-            (Array.isArray(act.activity_type_id) && act.activity_type_id[1] === "Site Visit")
-        );
+    get isCallActivity() {
+        return !this.isSiteVisitActivity;
     },
 
     get selectedOutcome() {
         return this.state.selectedOutcome;
+    },
+
+    setActiveTab(tab) {
+        this.state.activeTab = tab;
     },
 
     selectOutcome(outcome) {
@@ -69,7 +69,6 @@ patch(ActivityMarkAsDone.prototype, {
                 this.state.accompaniedBy = ["Alone"];
             }
         } else {
-            // Remove 'Alone' if another person is checked
             let list = this.state.accompaniedBy.filter((p) => p !== "Alone");
             if (list.includes(person)) {
                 list = list.filter((p) => p !== person);
@@ -93,7 +92,6 @@ patch(ActivityMarkAsDone.prototype, {
         const formattedBlock = lines.join("\n");
 
         const currentFeedback = this.props.activity.feedback || "";
-        // Remove previous Site Visit block if already present
         const cleanedFeedback = currentFeedback.replace(/--- Site Visit Outcome ---[\s\S]*?(?=\n\n|$)/, "").trim();
 
         this.props.activity.feedback = `${formattedBlock}${cleanedFeedback ? "\n\n" + cleanedFeedback : ""}`;
