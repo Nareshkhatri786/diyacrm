@@ -5,9 +5,7 @@ import { useState } from "@odoo/owl";
 patch(ActivityMarkAsDone.prototype, {
     setup() {
         super.setup();
-        const initialTab = this.isSiteVisitActivity ? "site_visit" : "call";
         this.state = useState({
-            activeTab: initialTab,
             selectedOutcome: null,
             // Site Visit Outcomes
             purchaseTimeline: "Not discussed",
@@ -37,21 +35,19 @@ patch(ActivityMarkAsDone.prototype, {
             typeName.includes("site") ||
             typeName.includes("meeting") ||
             summary.includes("visit") ||
-            summary.includes("site") ||
-            summary.includes("meeting")
+            summary.includes("site")
         );
     },
 
     get isCallActivity() {
-        return !this.isSiteVisitActivity;
+        if (this.isSiteVisitActivity) {
+            return false;
+        }
+        return true;
     },
 
     get selectedOutcome() {
         return this.state.selectedOutcome;
-    },
-
-    setActiveTab(tab) {
-        this.state.activeTab = tab;
     },
 
     selectOutcome(outcome) {

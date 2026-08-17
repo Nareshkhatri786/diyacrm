@@ -2,22 +2,8 @@
 <templates xml:space="preserve">
     <t t-inherit="mail.ActivityMarkAsDone" t-inherit-mode="extension">
         <xpath expr="//textarea" position="before">
-            <!-- MODE SWITCHER TABS (Quick Switch between Call & Site Visit) -->
-            <div class="d-flex mb-3 border-bottom pb-2 gap-2">
-                <button type="button" 
-                    t-attf-class="btn btn-sm flex-fill fw-semibold {{ state.activeTab === 'call' ? 'btn-primary' : 'btn-outline-secondary' }}"
-                    t-on-click="() => this.setActiveTab('call')">
-                    <i class="fa fa-phone me-1"/> Call Outcome
-                </button>
-                <button type="button" 
-                    t-attf-class="btn btn-sm flex-fill fw-semibold {{ state.activeTab === 'site_visit' ? 'btn-primary' : 'btn-outline-secondary' }}"
-                    t-on-click="() => this.setActiveTab('site_visit')">
-                    <i class="fa fa-building me-1"/> Site Visit Outcome
-                </button>
-            </div>
-
-            <!-- 1. CALL OUTCOME SECTION -->
-            <div t-if="state.activeTab === 'call'" class="mb-3">
+            <!-- 1. CALL OUTCOME SECTION (Only for Call Activities) -->
+            <div t-if="isCallActivity" class="mb-3">
                 <label class="form-label text-uppercase text-muted fw-bold small mb-2 d-block" style="letter-spacing: 0.5px; font-size: 0.75rem;">
                     Call Outcome <span class="text-primary">*</span>
                 </label>
@@ -57,8 +43,12 @@
                 </div>
             </div>
 
-            <!-- 2. SITE VISIT OUTCOME SECTION -->
-            <div t-if="state.activeTab === 'site_visit'" class="mb-3">
+            <!-- 2. SITE VISIT OUTCOME SECTION (Only for Site Visit Activities) -->
+            <div t-if="isSiteVisitActivity" class="mb-3">
+                <label class="form-label text-uppercase text-primary fw-bold small mb-2 d-block" style="letter-spacing: 0.5px; font-size: 0.8rem;">
+                    <i class="fa fa-building me-1"/> Site Visit Outcome
+                </label>
+
                 <!-- Dropdown Row 1 -->
                 <div class="row g-2 mb-2">
                     <div class="col-6">
