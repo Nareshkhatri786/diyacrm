@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 import json
 import logging
-import datetime
-import odoo
 from odoo import http, fields, SUPERUSER_ID
 from odoo.http import request, Response
-from odoo.orm.registry import Registry
 
 _logger = logging.getLogger(__name__)
 
@@ -16,7 +13,7 @@ class WhatsAppWebhookController(http.Controller):
         '/api/whatsapp/lead',
         '/webhook/whatsapp',
         '/diyacrm/webhook/whatsapp'
-    ], type='http', auth='none', methods=['POST', 'GET'], csrf=False, save_session=False)
+    ], type='http', auth='public', methods=['POST', 'GET'], csrf=False)
     def handle_whatsapp_webhook(self, **kwargs):
         """
         Universal Webhook Endpoint for WhatsApp / Meta / Wati / AiSensy / Chatbot integration.
@@ -47,26 +44,8 @@ class WhatsAppWebhookController(http.Controller):
             else:
                 payload = kwargs
 
-            # Determine Target Database
-            db_name = request.db or (request.httprequest.headers.get('X-Odoo-Db'))
-            if not db_name:
-                try:
-                    db_list = odoo.service.db.list_dbs()
-                    if 'diyacrm' in db_list:
-                        db_name = 'diyacrm'
-                    elif 'odoo19' in db_list:
-                        db_name = 'odoo19'
-                    elif db_list:
-                        db_name = db_list[0]
-                except Exception:
-                    db_name = 'odoo19'
-
-            registry = Registry(db_name)
-            with registry.cursor() as cr:
-                env = odoo.api.Environment(cr, SUPERUSER_ID, {})
-                result = self._process_inbound_lead(env, payload)
-                cr.commit()
-
+            env = request.env(user=SUPERUSER_ID)
+            result = self._process_inbound_lead(env, payload)
             status_code = 200 if result.get('status') == 'success' else 400
             return Response(json.dumps(result), status=status_code, content_type='application/json')
         except Exception as e:
