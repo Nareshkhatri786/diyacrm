@@ -67,13 +67,13 @@ def run_full_migration(json_file_path):
             user = env['res.users'].search([('name', '=', u_name)], limit=1)
             if not user:
                 login_clean = u_name.lower().replace(' ', '.') + '@diyacrm.com'
-                user = env['res.users'].create({
+                user_vals = {
                     'name': u_name,
                     'login': login_clean,
                     'company_id': main_comp_id,
                     'company_ids': [(6, 0, list(company_map.values()) + [env.company.id])],
-                    'groups_id': [(4, env.ref('sales_team.group_sale_salesman').id)],
-                })
+                }
+                user = env['res.users'].create(user_vals)
                 print(f"Created User: {u_name} ({login_clean})")
             else:
                 print(f"Found User: {u_name}")
