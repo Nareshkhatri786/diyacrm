@@ -26,6 +26,24 @@ from odoo.tools import config
 config.parse_config(['-c', config_path, '-d', db_name])
 
 
+def parse_datetime_str(date_val):
+    if not date_val:
+        return fields.Datetime.now()
+    if isinstance(date_val, datetime.datetime):
+        return date_val.strftime('%Y-%m-%d %H:%M:%S')
+    s = str(date_val).replace('T', ' ').replace('Z', '').split('.')[0].strip()
+    if len(s) == 10:
+        s += ' 00:00:00'
+    return s[:19]
+
+
+def parse_date_only_str(date_val):
+    if not date_val:
+        return str(fields.Date.today())
+    s = str(date_val).split('T')[0].split(' ')[0].strip()
+    return s[:10]
+
+
 def import_shreemad_v2(json_file_path):
     print(f"=== Reading JSON file from: {json_file_path} ===")
     if not os.path.exists(json_file_path):
@@ -192,7 +210,7 @@ def import_shreemad_v2(json_file_path):
                 lead_vals['area'] = lead.get('area')
 
             if lead.get('created_at'):
-                lead_vals['create_date'] = lead['created_at']
+                lead_vals['create_date'] = parse_datetime_str(lead['created_at'])
 
             lead_rec = env['crm.lead'].create(lead_vals)
 
@@ -207,7 +225,7 @@ def import_shreemad_v2(json_file_path):
             for item in timeline:
                 if isinstance(item, dict):
                     content = item.get('content') or item.get('text') or item.get('body') or ''
-                    date_val = item.get('date') or fields.Datetime.now()
+                    date_val = parse_datetime_str(item.get('date'))
                     author_name = item.get('author')
                     author_partner = user_map.get(author_name.lower()).partner_id.id if (author_name and author_name.lower() in user_map) else user_obj.partner_id.id
                 else:
@@ -232,7 +250,7 @@ def import_shreemad_v2(json_file_path):
             if activity and isinstance(activity, dict) and activity.get('due_date'):
                 act_type_name = str(activity.get('type') or 'Call')
                 act_type = call_act_type if 'call' in act_type_name.lower() else sv_act_type
-                due_date_str = str(activity['due_date'])[:10]
+                due_date_str = parse_date_only_str(activity['due_date'])
                 lead_rec.activity_schedule(
                     act_type_xmlid=None,
                     activity_type_id=act_type.id,
@@ -244,7 +262,7 @@ def import_shreemad_v2(json_file_path):
             # Scheduled Visit
             scheduled = lead.get('scheduled_visit')
             if scheduled and isinstance(scheduled, dict) and scheduled.get('date'):
-                sv_date_str = str(scheduled.get('date')).split(' ')[0][:10]
+                sv_date_str = parse_date_only_str(scheduled.get('date'))
                 lead_rec.activity_schedule(
                     act_type_xmlid=None,
                     activity_type_id=sv_act_type.id,
