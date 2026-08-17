@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1. Quick Create Form Customization -->
+    <record id="quick_create_opportunity_form_inherit_diyacrm" model="ir.ui.view">
+        <field name="name">crm.lead.form.quick_create.inherit.diyacrm</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
+        <field name="arch" type="xml">
+            <!-- Hide Company -->
+            <xpath expr="//field[@name='commercial_partner_id']/.." position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Hide Contact -->
+            <xpath expr="//field[@name='partner_id']/.." position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Opportunity Name -> Full Name -->
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="placeholder">Full Name</attribute>
+                <attribute name="string">Full Name</attribute>
+            </xpath>
+
+            <!-- Hide Contact Email -->
+            <xpath expr="//field[@name='email_from']/.." position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Contact Phone -> Phone -->
+            <xpath expr="//field[@name='phone']" position="attributes">
+                <attribute name="placeholder">Phone</attribute>
+                <attribute name="string">Phone</attribute>
+            </xpath>
+
+            <!-- Add Area Field -->
+            <xpath expr="//field[@name='phone']/.." position="after">
+                <div class="d-flex align-items-center" colspan="2">
+                    <i class="fa fa-map-marker" title="Area" aria-label="Area"/>
+                    <field name="area" string="Area" placeholder="Area" nolabel="1" class="o_field_highlight w-100 mb-0"/>
+                </div>
+            </xpath>
+
+            <!-- Add Source Field -->
+            <xpath expr="//field[@name='area']/.." position="after">
+                <div class="d-flex align-items-center" colspan="2">
+                    <i class="fa fa-bullhorn" title="Source" aria-label="Source"/>
+                    <field name="source_id" string="Source" placeholder="Source" nolabel="1" class="o_field_highlight w-100 mb-0" domain="[('name', 'in', ['Walk In', 'WhatsApp', 'Reference', 'Social Media', 'Direct Call', 'AI WhatsApp Agent', 'Website'])]" options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
+                </div>
+            </xpath>
+
+            <!-- Add Status in Quick Create -->
+            <xpath expr="//field[@name='source_id']/.." position="after">
+                <div class="d-flex align-items-center" colspan="2">
+                    <i class="fa fa-thermometer-half" title="Status" aria-label="Status"/>
+                    <field name="lead_temperature" string="Status" placeholder="Status" nolabel="1" class="o_field_highlight w-100 mb-0"/>
+                </div>
+            </xpath>
+
+            <!-- Hide Expected Revenue -->
+            <xpath expr="//field[@name='expected_revenue']/../.." position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 2. Main Opportunity Form Customization -->
+    <record id="view_crm_lead_form_inherit_diyacrm" model="ir.ui.view">
+        <field name="name">crm.lead.form.inherit.diyacrm</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Opportunity's Name Placeholder -> Full Name -->
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="placeholder">e.g. Full Name</attribute>
+            </xpath>
+
+            <!-- Hide Expected Revenue & Probability Header Block -->
+            <xpath expr="//div[hasclass('oe_title')]/h2" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Hide Contact Field -->
+            <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Hide Email Field & Label -->
+            <xpath expr="//group[@name='opportunity_partner']/label[@for='email_from']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//group[@name='opportunity_partner']/div[field[@name='email_from']]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Add Area in Left Column after Phone -->
+            <xpath expr="//group[@name='opportunity_partner']/div[field[@name='phone']]" position="after">
+                <field name="area" placeholder="Select Area..."/>
+            </xpath>
+
+            <!-- Add Editable Status & Source in Right Column -->
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="lead_temperature" string="Status" placeholder="Select Status..."/>
+            </xpath>
+            <xpath expr="//field[@name='tag_ids']" position="after">
+                <field name="source_id" string="Source" domain="[('name', 'in', ['Walk In', 'WhatsApp', 'Reference', 'Social Media', 'Direct Call', 'AI WhatsApp Agent', 'Website'])]" options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 3. Kanban Card & Column Header Customization -->
+    <record id="crm_case_kanban_view_leads_inherit_diyacrm" model="ir.ui.view">
+        <field name="name">crm.lead.kanban.inherit.diyacrm</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_case_kanban_view_leads"/>
+        <field name="arch" type="xml">
+            <!-- Remove Expected Revenue sum from Column Header Progress Bar -->
+            <xpath expr="//progressbar" position="replace">
+                <progressbar field="activity_state" colors='{"planned": "success", "today": "warning", "overdue": "danger"}'
+                    help="This bar allows to filter the opportunities based on scheduled activities."/>
+            </xpath>
+
+            <!-- Hide Expected Revenue in Kanban Cards -->
+            <xpath expr="//div[hasclass('o_kanban_card_crm_lead_revenue')]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Ensure lead_temperature is loaded -->
+            <xpath expr="//field[@name='probability']" position="after">
+                <field name="lead_temperature"/>
+            </xpath>
+
+            <!-- Name on Top-Left and Status Badge on Top-Right -->
+            <xpath expr="//field[@name='name']" position="replace">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold fs-5 text-dark text-truncate me-2"><field name="name"/></span>
+                    <field name="lead_temperature" widget="badge" decoration-danger="lead_temperature == 'hot'" decoration-warning="lead_temperature == 'warm'" decoration-info="lead_temperature == 'cold'" class="flex-shrink-0"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 4. Search View Customization (Filter & Group by Status) -->
+    <record id="view_crm_case_opportunities_filter_inherit_diyacrm" model="ir.ui.view">
+        <field name="name">crm.lead.search.inherit.diyacrm</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.view_crm_case_opportunities_filter"/>
+        <field name="arch" type="xml">
+            <!-- Quick Filters for Status -->
+            <xpath expr="//filter[@name='filter_won_status_won']" position="after">
+                <separator/>
+                <filter string="🔥 Hot" name="filter_lead_hot" domain="[('lead_temperature', '=', 'hot')]"/>
+                <filter string="⛅ Warm" name="filter_lead_warm" domain="[('lead_temperature', '=', 'warm')]"/>
+                <filter string="❄️ Cold" name="filter_lead_cold" domain="[('lead_temperature', '=', 'cold')]"/>
+            </xpath>
+            <!-- Group By Status & Area -->
+            <xpath expr="//filter[@name='salesperson']" position="before">
+                <filter string="Status" name="group_lead_temperature" context="{'group_by':'lead_temperature'}"/>
+                <filter string="Area" name="group_area" context="{'group_by':'area'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

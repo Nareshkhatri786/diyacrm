@@ -1,0 +1,59 @@
+/* Diya CRM - Mild Tone Badges */
+.badge.text-bg-danger, .badge.bg-danger {
+    background-color: #ffe4e6 !important;
+    color: #be123c !important;
+    border: 1px solid #fecdd3 !important;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+}
+
+.badge.text-bg-warning, .badge.bg-warning {
+    background-color: #fef3c7 !important;
+    color: #b45309 !important;
+    border: 1px solid #fde68a !important;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+}
+
+.badge.text-bg-info, .badge.bg-info {
+    background-color: #e0f2fe !important;
+    color: #0369a1 !important;
+    border: 1px solid #bae6fd !important;
+    font-weight: 600;
+    padding: 0.35em 0.65em;
+}
+
+/* Diya CRM - Call Outcome Buttons */
+.call-outcome-btn {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    color: #334155;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.call-outcome-btn:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
+}
+
+.call-outcome-btn.active-outcome {
+    background-color: #eff6ff !important;
+    border-color: #3b82f6 !important;
+    color: #1d4ed8 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Diya CRM - Site Visit Accompanied Checkboxes */
+.sv-person-check {
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.sv-person-check:hover {
+    background-color: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}

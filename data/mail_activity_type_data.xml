@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1. Hide Email & Document -->
+    <record id="mail.mail_activity_data_email" model="mail.activity.type">
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="mail.mail_activity_data_upload_document" model="mail.activity.type">
+        <field name="active" eval="False"/>
+    </record>
+
+    <!-- 2. 1st: Call (Sequence 1) -->
+    <record id="mail.mail_activity_data_call" model="mail.activity.type">
+        <field name="sequence">1</field>
+    </record>
+
+    <!-- 3. 2nd: Meeting -> Site Visit (Sequence 2, Standard form category) -->
+    <record id="mail.mail_activity_data_meeting" model="mail.activity.type">
+        <field name="name">Site Visit</field>
+        <field name="summary">Site Visit</field>
+        <field name="icon">fa-building</field>
+        <field name="category">default</field>
+        <field name="delay_count">0</field>
+        <field name="sequence">2</field>
+    </record>
+
+    <!-- 4. 3rd: WhatsApp (Sequence 3) -->
+    <record id="mail_activity_data_whatsapp" model="mail.activity.type">
+        <field name="name">WhatsApp</field>
+        <field name="summary">WhatsApp</field>
+        <field name="icon">fa-whatsapp</field>
+        <field name="category">default</field>
+        <field name="delay_count">0</field>
+        <field name="sequence">3</field>
+    </record>
+
+    <!-- 5. 4th: To-Do (Sequence 4) -->
+    <record id="mail.mail_activity_data_todo" model="mail.activity.type">
+        <field name="sequence">4</field>
+    </record>
+</odoo>

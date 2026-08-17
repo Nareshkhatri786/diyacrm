@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mail_activity_view_form_popup_inherit_diyacrm" model="ir.ui.view">
+        <field name="name">mail.activity.form.popup.inherit.diyacrm</field>
+        <field name="model">mail.activity</field>
+        <field name="inherit_id" ref="mail.mail_activity_view_form_popup"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='summary']" position="after">
+                <field name="call_outcome" widget="radio" options="{'horizontal': true}"
+                    invisible="activity_category != 'phonecall' and summary != 'Call'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

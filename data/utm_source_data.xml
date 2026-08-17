@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="utm_source_social_media" model="utm.source">
+        <field name="name">Social Media</field>
+    </record>
+    <record id="utm_source_walk_in" model="utm.source">
+        <field name="name">Walk In</field>
+    </record>
+    <record id="utm_source_hoarding" model="utm.source">
+        <field name="name">Hoarding</field>
+    </record>
+    <record id="utm_source_housing" model="utm.source">
+        <field name="name">Housing</field>
+    </record>
+    <record id="utm_source_whatsapp" model="utm.source">
+        <field name="name">WhatsApp</field>
+    </record>
+    <record id="utm_source_reference" model="utm.source">
+        <field name="name">Reference</field>
+    </record>
+</odoo>
