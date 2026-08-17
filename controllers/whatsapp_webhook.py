@@ -75,21 +75,14 @@ class WhatsAppWebhookController(http.Controller):
         '/api/inbound-whatsapp-devi.php',
     ], type='http', auth='public', methods=['POST', 'GET'], csrf=False)
     def handle_whatsapp_webhook(self, **kwargs):
-        """
-        Universal WhatsApp Webhook for:
-        1. Meta Cloud API (GET challenge verification + Standard WhatsApp webhook payload)
-        2. WaMantra / Custom API bot payloads
-        """
-        # =========================================================================
         # 1. META WEBHOOK VERIFICATION (GET REQUEST)
-        # =========================================================================
         if request.httprequest.method == 'GET':
             mode = kwargs.get('hub.mode') or kwargs.get('mode')
             token = kwargs.get('hub.verify_token') or kwargs.get('verify_token') or kwargs.get('token')
             challenge = kwargs.get('hub.challenge') or kwargs.get('challenge')
 
             if mode and challenge:
-                _logger.info("Meta Webhook Verification Request: mode=%s, token=%s", mode, token)
+                _logger.info("Meta Webhook Verification: mode=%s, token=%s", mode, token)
                 return Response(str(challenge), status=200, content_type='text/plain')
 
             if challenge:
@@ -99,16 +92,14 @@ class WhatsAppWebhookController(http.Controller):
                 json.dumps({
                     'status': 'online',
                     'service': 'Diya CRM Meta Cloud API & WhatsApp Webhook Engine',
-                    'version': '2.5',
+                    'version': '3.0',
                     'verify_token': META_VERIFY_TOKEN
                 }),
                 status=200,
                 content_type='application/json'
             )
 
-        # =========================================================================
         # 2. INBOUND WEBHOOK DATA PROCESSING (POST REQUEST)
-        # =========================================================================
         try:
             raw_data = request.httprequest.data
             if raw_data:
@@ -121,27 +112,22 @@ class WhatsAppWebhookController(http.Controller):
 
             env = request.env(user=SUPERUSER_ID)
 
-            # Check if this is a standard Meta WhatsApp Cloud API Payload
+            # Check if Meta WhatsApp Cloud API Payload
             if 'entry' in payload and isinstance(payload['entry'], list):
-                _logger.info("Parsing Meta Cloud API Webhook Format...")
                 results = self._parse_and_process_meta_payload(env, payload)
                 return Response(json.dumps({'status': 'success', 'processed': len(results), 'details': results}), status=200, content_type='application/json')
 
-            # Otherwise handle as Direct / WaMantra / Custom JSON Payload
+            # Direct JSON Payload
             payload['_url_path'] = request.httprequest.path
             payload['_url_account'] = kwargs.get('account')
             result = self._process_inbound_lead(env, payload)
-            status_code = 200 if result.get('status') == 'success' else 400
+            status_code = 200 if result.get('status') in ['success', 'ignored'] else 400
             return Response(json.dumps(result), status=status_code, content_type='application/json')
         except Exception as e:
             _logger.exception("Diya CRM Webhook Error: %s", str(e))
             return Response(json.dumps({'status': 'error', 'message': str(e)}), status=500, content_type='application/json')
 
     def _parse_and_process_meta_payload(self, env, payload):
-        """
-        Parses Meta's standard Webhook schema:
-        entry -> changes -> value -> metadata (phone_number_id) + contacts + messages
-        """
         results = []
         for entry in payload.get('entry', []):
             for change in entry.get('changes', []):
@@ -149,6 +135,11 @@ class WhatsAppWebhookController(http.Controller):
                 metadata = value.get('metadata', {})
                 phone_number_id = metadata.get('phone_number_id', '')
                 display_phone_number = metadata.get('display_phone_number', '')
+
+                # Ignore status delivery receipts (sent / delivered / read updates)
+                if 'statuses' in value and not value.get('messages'):
+                    _logger.info("Ignoring Meta status delivery receipt (statuses update)")
+                    continue
 
                 # Contacts mapping (Name & wa_id)
                 contacts_map = {}
@@ -160,10 +151,15 @@ class WhatsAppWebhookController(http.Controller):
 
                 # Messages
                 messages = value.get('messages', [])
+                if not messages:
+                    continue
+
                 for msg in messages:
-                    from_number = msg.get('from', '')
+                    from_number = str(msg.get('from', '')).strip()
+                    if not from_number:
+                        continue
+
                     msg_type = msg.get('type', 'text')
-                    
                     text_body = ""
                     if msg_type == 'text':
                         text_body = msg.get('text', {}).get('body', '')
@@ -281,6 +277,18 @@ class WhatsAppWebhookController(http.Controller):
     def _process_inbound_lead(self, env, data):
         _logger.info("Diya CRM Webhook Payload Processing: %s", data)
 
+        raw_phone = str(data.get('phone') or data.get('mobile') or data.get('wa_number') or data.get('from') or '').strip()
+        message = data.get('message') or data.get('last_message') or data.get('chat_history') or data.get('body') or ''
+        clean_mobile_10 = clean_phone_number(raw_phone)
+
+        # Ignore empty test pings with no phone number and no message
+        if not clean_mobile_10 and not raw_phone and not message:
+            _logger.info("Ignoring empty webhook payload with no phone or message.")
+            return {
+                'status': 'ignored',
+                'message': 'Empty webhook payload with no phone number or message'
+            }
+
         # 1. Determine Company & Rule
         company, rule = self._determine_company_and_rule(env, data)
         company_id = company.id
@@ -288,12 +296,9 @@ class WhatsAppWebhookController(http.Controller):
 
         # 2. Extract Lead Info
         name = data.get('name') or data.get('customer_name') or data.get('contact_name')
-        raw_phone = str(data.get('phone') or data.get('mobile') or data.get('wa_number') or data.get('from') or '').strip()
         email = data.get('email') or False
         area = data.get('area') or False
-        message = data.get('message') or data.get('last_message') or data.get('chat_history') or data.get('body') or ''
 
-        clean_mobile_10 = clean_phone_number(raw_phone)
         if not name:
             name = f"WhatsApp Lead ({clean_mobile_10})" if clean_mobile_10 else "New WhatsApp Lead"
 
