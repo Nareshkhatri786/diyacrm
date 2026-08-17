@@ -44,8 +44,8 @@
                 </div>
             </xpath>
 
-            <!-- Hide Expected Revenue & Priority Row -->
-            <xpath expr="//field[@name='expected_revenue']/ancestor::div[hasclass('d-flex')]" position="attributes">
+            <!-- Hide Expected Revenue only, Keep Priority Star in Quick Create -->
+            <xpath expr="//field[@name='expected_revenue']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
         </field>
@@ -110,11 +110,6 @@
             <xpath expr="//field[@name='date_deadline']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
-
-            <!-- Hide Priority Stars from Form -->
-            <xpath expr="//field[@name='priority']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
         </field>
     </record>
 
@@ -143,9 +138,10 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Hide Priority Stars from Kanban Card -->
+            <!-- Ensure Priority Stars are visible with priority widget -->
             <xpath expr="//field[@name='priority']" position="attributes">
-                <attribute name="invisible">1</attribute>
+                <attribute name="widget">priority</attribute>
+                <attribute name="invisible">0</attribute>
             </xpath>
 
             <!-- Name on Top-Left and Status Badge on Top-Right -->
