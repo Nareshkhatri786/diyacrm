@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
         <field name="arch" type="xml">
             <!-- Hide Contact Field if present -->
-            <xpath expr="//field[@name='partner_id']/.." position="attributes">
+            <xpath expr="//field[@name='partner_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
@@ -18,7 +18,7 @@
             </xpath>
 
             <!-- Hide Contact Email -->
-            <xpath expr="//field[@name='email_from']/.." position="attributes">
+            <xpath expr="//field[@name='email_from']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
@@ -29,7 +29,7 @@
             </xpath>
 
             <!-- Add Area, Source, and Status after Phone -->
-            <xpath expr="//field[@name='phone']/.." position="after">
+            <xpath expr="//field[@name='phone']" position="after">
                 <div class="d-flex align-items-center" colspan="2">
                     <i class="fa fa-map-marker" title="Area" aria-label="Area"/>
                     <field name="area" string="Area" placeholder="Area" nolabel="1" class="o_field_highlight w-100 mb-0"/>
@@ -57,29 +57,24 @@
                 <attribute name="placeholder">e.g. Full Name</attribute>
             </xpath>
 
-            <!-- Hide Contact Field in opportunity_partner -->
-            <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="attributes">
+            <!-- Hide Contact Field -->
+            <xpath expr="//field[@name='partner_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Hide Email Field & Label -->
-            <xpath expr="//group[@name='opportunity_partner']/label[@for='email_from']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//group[@name='opportunity_partner']/div[field[@name='email_from']]" position="attributes">
+            <!-- Hide Email Field -->
+            <xpath expr="//field[@name='email_from']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Add Area in Left Column after Phone -->
-            <xpath expr="//group[@name='opportunity_partner']/div[field[@name='phone']]" position="after">
+            <!-- Add Area after Phone -->
+            <xpath expr="//field[@name='phone']" position="after">
                 <field name="area" placeholder="Select Area..."/>
             </xpath>
 
             <!-- Add Editable Status & Source in Right Column -->
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="lead_temperature" string="Status" placeholder="Select Status..."/>
-            </xpath>
-            <xpath expr="//field[@name='tag_ids']" position="after">
                 <field name="source_id" string="Source" domain="[('name', 'in', ['Walk In', 'WhatsApp', 'Reference', 'Social Media', 'Direct Call', 'AI WhatsApp Agent', 'Website'])]" options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
             </xpath>
         </field>
