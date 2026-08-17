@@ -1,11 +1,25 @@
 import { ActivityMarkAsDone } from "@mail/core/web/activity_markasdone_popover";
 import { patch } from "@web/core/utils/patch";
-import { useState } from "@odoo/owl";
+import * as owl from "@odoo/owl";
+
+const makeReactiveState = (initialState) => {
+    if (typeof owl.useState === "function") {
+        try {
+            return owl.useState(initialState);
+        } catch (e) {
+            // fallback if not in component setup hook context
+        }
+    }
+    if (typeof owl.reactive === "function") {
+        return owl.reactive(initialState);
+    }
+    return initialState;
+};
 
 patch(ActivityMarkAsDone.prototype, {
     setup() {
         super.setup();
-        this.state = useState({
+        this.state = makeReactiveState({
             selectedOutcome: null,
             // Site Visit Outcomes
             purchaseTimeline: "Not discussed",
