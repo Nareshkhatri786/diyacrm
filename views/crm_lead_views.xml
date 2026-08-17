@@ -67,24 +67,18 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Hide Contact Field in lead_partner & opportunity_partner -->
-            <xpath expr="//group[@name='lead_partner']/field[@name='partner_id']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="attributes">
+            <!-- Hide Contact Field in Detail Form -->
+            <xpath expr="//field[@name='partner_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Hide Email Field & Label -->
-            <xpath expr="//label[@for='email_from']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//field[@name='email_from']/parent::div" position="attributes">
+            <!-- Hide Email Field -->
+            <xpath expr="//field[@name='email_from']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Add Area as its own separate full-width row after Phone row -->
-            <xpath expr="//field[@name='phone']/parent::div" position="after">
+            <!-- Add Area after Phone -->
+            <xpath expr="//field[@name='phone']" position="after">
                 <field name="area" placeholder="Select Area..."/>
             </xpath>
 
