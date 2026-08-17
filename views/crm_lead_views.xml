@@ -6,8 +6,8 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
         <field name="arch" type="xml">
-            <!-- Hide Contact Field if present -->
-            <xpath expr="//field[@name='partner_id']" position="attributes">
+            <!-- Hide Contact Row (icon + field) -->
+            <xpath expr="//field[@name='partner_id']/parent::div" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
@@ -17,8 +17,8 @@
                 <attribute name="string">Full Name</attribute>
             </xpath>
 
-            <!-- Hide Contact Email -->
-            <xpath expr="//field[@name='email_from']" position="attributes">
+            <!-- Hide Contact Email Row (icon + field) -->
+            <xpath expr="//field[@name='email_from']/parent::div" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
@@ -28,8 +28,8 @@
                 <attribute name="string">Phone</attribute>
             </xpath>
 
-            <!-- Add Area, Source, and Status after Phone -->
-            <xpath expr="//field[@name='phone']" position="after">
+            <!-- Add Area, Source, and Status as clean full-width rows -->
+            <xpath expr="//field[@name='phone']/parent::div" position="after">
                 <div class="d-flex align-items-center" colspan="2">
                     <i class="fa fa-map-marker" title="Area" aria-label="Area"/>
                     <field name="area" string="Area" placeholder="Area" nolabel="1" class="o_field_highlight w-100 mb-0"/>
@@ -42,6 +42,11 @@
                     <i class="fa fa-thermometer-half" title="Status" aria-label="Status"/>
                     <field name="lead_temperature" string="Status" placeholder="Status" nolabel="1" class="o_field_highlight w-100 mb-0"/>
                 </div>
+            </xpath>
+
+            <!-- Hide Expected Revenue & Priority Row -->
+            <xpath expr="//field[@name='expected_revenue']/ancestor::div[hasclass('d-flex')]" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
         </field>
     </record>
@@ -57,7 +62,7 @@
                 <attribute name="placeholder">e.g. Full Name</attribute>
             </xpath>
 
-            <!-- Hide Contact Field -->
+            <!-- Hide Contact Field in opportunity form if present -->
             <xpath expr="//field[@name='partner_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
