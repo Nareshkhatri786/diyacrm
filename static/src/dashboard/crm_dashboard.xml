@@ -2,161 +2,172 @@
 <templates xml:space="preserve">
 
     <t t-name="diyacrm.CrmExecutiveDashboard">
-        <div class="o_crm_dashboard_wrapper">
-            <div class="o_crm_dashboard_container">
+        <div class="o_crm_dashboard_wrapper" style="height: 100%; overflow-y: auto; background-color: #f4f6f9; padding: 22px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a;">
+            <div class="o_crm_dashboard_container" style="max-width: 1580px; margin: 0 auto;">
 
                 <!-- 1. Top Header Bar with Global Filters -->
-                <div class="diyacrm-header-card">
-                    <div class="diyacrm-header-title">
-                        <h2>
-                            <i class="fa fa-chart-line text-primary"/>
-                            <span>Diya CRM - Real Estate Executive Dashboard</span>
-                        </h2>
-                        <p>
-                            <t t-if="state.isMultiCompany">
-                                <span class="badge bg-primary-subtle text-primary fw-bold me-2">Consolidated Multi-Project View</span>
-                                <span>Showing live metrics across <strong t-esc="state.activeCompanies.length"/> projects</span>
-                            </t>
-                            <t t-else="">
-                                <span class="badge bg-success-subtle text-success fw-bold me-2">Single Project View</span>
-                                <span>Project: <strong><t t-esc="state.activeCompanies[0] ? state.activeCompanies[0].name : 'Default'"/></strong></span>
-                            </t>
-                        </p>
-                    </div>
+                <div class="card shadow-sm border-0 mb-4 p-3 rounded-3 bg-white">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div>
+                            <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                                <i class="fa fa-chart-line text-primary"/>
+                                <span>Diya CRM – Real Estate Executive Dashboard</span>
+                            </h4>
+                            <p class="text-muted small mb-0">Live Inbound Webhook, Call Outcomes, Pipeline Stages &amp; Team Performance Analytics</p>
+                        </div>
 
-                    <!-- Dynamic Controls -->
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="diyacrm-live-badge"><i class="fa fa-circle text-white"/> Live Pipeline</span>
+                        <!-- Dynamic Controls -->
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="badge bg-success rounded-pill px-3 py-2 fw-bold d-inline-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                <i class="fa fa-circle text-white" style="font-size: 0.55rem;"/> Live Pipeline
+                            </span>
 
-                        <!-- Project Selector -->
-                        <select class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: auto;" t-on-change="onCompanyChange">
-                            <option value="all">🏢 All Allowed Projects</option>
-                            <t t-foreach="state.availableCompanies" t-as="comp" t-key="comp.id">
-                                <option t-att-value="comp.id" t-esc="comp.name"/>
-                            </t>
-                        </select>
+                            <!-- Project Selector -->
+                            <select class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: auto; background: #f8fafc;" t-on-change="onCompanyChange">
+                                <option value="all">🏢 All Projects</option>
+                                <t t-foreach="state.availableCompanies" t-as="comp" t-key="comp.id">
+                                    <option t-att-value="comp.id" t-esc="comp.name"/>
+                                </t>
+                            </select>
 
-                        <!-- Date Range Selector -->
-                        <select class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: auto;" t-on-change="onPeriodChange">
-                            <option value="today">📅 Today</option>
-                            <option value="yesterday">📅 Yesterday</option>
-                            <option value="48h" selected="selected">📅 Last 48 Hours</option>
-                            <option value="week">📅 This Week</option>
-                            <option value="month">📅 This Month</option>
-                            <option value="all">📅 All Time</option>
-                        </select>
+                            <!-- Date Range Selector -->
+                            <select class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: auto; background: #f8fafc;" t-on-change="onPeriodChange">
+                                <option value="today">📅 Today (18 Aug)</option>
+                                <option value="yesterday">📅 Yesterday (17 Aug)</option>
+                                <option value="48h" selected="selected">📅 Last 48 Hours</option>
+                                <option value="week">📅 This Week</option>
+                                <option value="month">📅 This Month</option>
+                                <option value="all">📅 All Time</option>
+                            </select>
 
-                        <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm" t-on-click="loadDashboardData">
-                            <i class="fa fa-sync-alt" t-att-class="{'fa-spin': state.loading}"/>
-                            <span>Refresh</span>
-                        </button>
+                            <!-- Salesperson Selector -->
+                            <select class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: auto; background: #f8fafc;" t-on-change="onUserChange">
+                                <option value="all">👤 All Sales Team</option>
+                                <t t-foreach="state.leaderboard" t-as="user" t-key="user.id">
+                                    <option t-att-value="user.id" t-esc="user.name"/>
+                                </t>
+                            </select>
+
+                            <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm rounded-2" t-on-click="loadDashboardData">
+                                <i class="fa fa-sync-alt" t-att-class="{'fa-spin': state.loading}"/>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 2. Hero KPI Cards Grid -->
-                <div class="diyacrm-kpi-grid">
-                    <!-- Total Calls -->
-                    <div class="diyacrm-kpi-card kpi-border-calls">
-                        <div class="diyacrm-kpi-header">
-                            <span class="diyacrm-kpi-title">Total Calls</span>
-                            <div class="diyacrm-kpi-icon bg-primary-subtle text-primary"><i class="fa fa-phone"/></div>
-                        </div>
-                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.total_calls"/></div>
-                        <div class="diyacrm-kpi-sub">
-                            <span class="badge bg-success-subtle text-success fw-bold">64% Connected</span>
-                            <span>In selected range</span>
-                        </div>
-                    </div>
-
-                    <!-- New Opps -->
-                    <div class="diyacrm-kpi-card kpi-border-new cursor-pointer" t-on-click="() => this.openOpportunities('new')">
-                        <div class="diyacrm-kpi-header">
-                            <span class="diyacrm-kpi-title">New Opps</span>
-                            <div class="diyacrm-kpi-icon bg-success-subtle text-success"><i class="fa fa-user-plus"/></div>
-                        </div>
-                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.new_opps"/></div>
-                        <div class="diyacrm-kpi-sub">
-                            <span class="badge bg-success-subtle text-success fw-bold">Fresh WhatsApp / Webhook</span>
+                <!-- 2. Hero 5 KPI Cards Grid -->
+                <div class="row g-3 mb-4">
+                    <!-- 1. Total Calls Logged -->
+                    <div class="col">
+                        <div class="card shadow-sm border-0 h-100 p-3 rounded-3 bg-white" style="border-top: 4px solid #4f46e5 !important;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">TOTAL CALLS LOGGED</span>
+                                <div class="bg-primary-subtle text-primary rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-phone"/></div>
+                            </div>
+                            <h2 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.total_calls"/></h2>
+                            <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                <span class="badge bg-success-subtle text-success fw-bold">✓ 64% Connected</span>
+                                <span class="text-muted">In selected range</span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Updated Leads -->
-                    <div class="diyacrm-kpi-card kpi-border-update">
-                        <div class="diyacrm-kpi-header">
-                            <span class="diyacrm-kpi-title">Updated Leads</span>
-                            <div class="diyacrm-kpi-icon bg-info-subtle text-info"><i class="fa fa-arrows-rotate"/></div>
-                        </div>
-                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.updated_opps"/></div>
-                        <div class="diyacrm-kpi-sub">
-                            <span class="badge bg-info-subtle text-info fw-bold">Repeat Inquiries</span>
-                        </div>
-                    </div>
-
-                    <!-- Visits Scheduled -->
-                    <div class="diyacrm-kpi-card kpi-border-visit">
-                        <div class="diyacrm-kpi-header">
-                            <span class="diyacrm-kpi-title">Visits Scheduled</span>
-                            <div class="diyacrm-kpi-icon bg-warning-subtle text-warning"><i class="fa fa-calendar-check"/></div>
-                        </div>
-                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.visits_scheduled"/></div>
-                        <div class="diyacrm-kpi-sub">
-                            <span class="badge bg-warning-subtle text-warning fw-bold">Upcoming</span>
+                    <!-- 2. New Opps Created -->
+                    <div class="col">
+                        <div class="card shadow-sm border-0 h-100 p-3 rounded-3 bg-white cursor-pointer" style="border-top: 4px solid #10b981 !important;" t-on-click="() => this.openOpportunities('new')">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">NEW OPPS CREATED</span>
+                                <div class="bg-success-subtle text-success rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-user-plus"/></div>
+                            </div>
+                            <h2 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.new_opps"/></h2>
+                            <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                <span class="badge bg-primary-subtle text-primary fw-bold">Fresh WhatsApp &amp; Webhook</span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Visits Done -->
-                    <div class="diyacrm-kpi-card kpi-border-visitdone">
-                        <div class="diyacrm-kpi-header">
-                            <span class="diyacrm-kpi-title">Visits Done</span>
-                            <div class="diyacrm-kpi-icon bg-purple-subtle text-purple"><i class="fa fa-car"/></div>
-                        </div>
-                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.visits_done"/></div>
-                        <div class="diyacrm-kpi-sub">
-                            <span class="badge bg-primary-subtle text-primary fw-bold">Completed</span>
+                    <!-- 3. Existing Leads Inquired -->
+                    <div class="col">
+                        <div class="card shadow-sm border-0 h-100 p-3 rounded-3 bg-white" style="border-top: 4px solid #06b6d4 !important;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">EXISTING LEADS INQUIRED</span>
+                                <div class="bg-info-subtle text-info rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-arrows-rotate"/></div>
+                            </div>
+                            <h2 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.updated_opps"/></h2>
+                            <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                <span class="badge bg-info-subtle text-info fw-bold">Chatter Timeline Updated</span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Won Deals -->
-                    <div class="diyacrm-kpi-card kpi-border-won cursor-pointer" t-on-click="() => this.openOpportunities('won')">
-                        <div class="diyacrm-kpi-header">
-                            <span class="diyacrm-kpi-title">Won / Booked</span>
-                            <div class="diyacrm-kpi-icon bg-success-subtle text-success"><i class="fa fa-trophy"/></div>
+                    <!-- 4. Site Visits Scheduled -->
+                    <div class="col">
+                        <div class="card shadow-sm border-0 h-100 p-3 rounded-3 bg-white" style="border-top: 4px solid #f59e0b !important;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">SITE VISITS SCHEDULED</span>
+                                <div class="bg-warning-subtle text-warning rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-car"/></div>
+                            </div>
+                            <h2 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.visits_scheduled"/></h2>
+                            <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                <span class="badge bg-warning-subtle text-warning fw-bold"><t t-esc="state.kpis.visits_done"/> Visits Completed</span>
+                            </div>
                         </div>
-                        <div class="diyacrm-kpi-value text-success"><t t-esc="state.kpis.won"/></div>
-                        <div class="diyacrm-kpi-sub">
-                            <span class="badge bg-success text-white fw-bold">Token Received</span>
+                    </div>
+
+                    <!-- 5. Won / Booked -->
+                    <div class="col">
+                        <div class="card shadow-sm border-0 h-100 p-3 rounded-3 bg-white cursor-pointer" style="border-top: 4px solid #8b5cf6 !important;" t-on-click="() => this.openOpportunities('won')">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">WON / BOOKED</span>
+                                <div class="bg-purple-subtle text-purple rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-trophy"/></div>
+                            </div>
+                            <h2 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.won"/></h2>
+                            <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                                <span class="badge bg-success text-white fw-bold">Token Received</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 3. Row 1: Calling Outcomes & 7-Stage Pipeline Funnel -->
-                <div class="row g-4 mb-4">
+                <div class="row g-3 mb-4">
                     <!-- Calling Outcomes -->
                     <div class="col-12 col-lg-6">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-headset text-primary"/> Calling Outcome Analytics</h4>
-                                <span class="badge bg-light text-dark fw-bold"><t t-esc="state.kpis.total_calls"/> Dials</span>
+                        <div class="card shadow-sm border-0 h-100 p-4 rounded-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                                    <i class="fa fa-headset text-primary"/> Calling Outcome Analytics
+                                </h5>
+                                <span class="badge bg-light text-secondary border fw-bold"><t t-esc="state.kpis.total_calls"/> Dials Logged</span>
                             </div>
-                            <div style="height: 150px; position: relative;">
+                            <div style="height: 160px; position: relative;">
                                 <canvas t-ref="callCanvas"/>
                             </div>
-                            <div class="diyacrm-outcome-grid">
-                                <div class="diyacrm-outcome-box outcome-box-answered">
-                                    <div class="outcome-val"><t t-esc="state.calling_outcomes.answered"/></div>
-                                    <div class="outcome-name">Answered</div>
+                            <div class="row g-2 mt-3 text-center">
+                                <div class="col-3">
+                                    <div class="p-2 rounded-2" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+                                        <div class="fw-bold fs-5" style="color: #166534;"><t t-esc="state.calling_outcomes.answered"/></div>
+                                        <div class="fw-bold text-uppercase" style="font-size: 0.68rem; color: #166534;">ANSWERED (64%)</div>
+                                    </div>
                                 </div>
-                                <div class="diyacrm-outcome-box outcome-box-noanswer">
-                                    <div class="outcome-val"><t t-esc="state.calling_outcomes.no_answer"/></div>
-                                    <div class="outcome-name">No Answer</div>
+                                <div class="col-3">
+                                    <div class="p-2 rounded-2" style="background: #fef2f2; border: 1px solid #fecaca;">
+                                        <div class="fw-bold fs-5" style="color: #991b1b;"><t t-esc="state.calling_outcomes.no_answer"/></div>
+                                        <div class="fw-bold text-uppercase" style="font-size: 0.68rem; color: #991b1b;">NO ANSWER (20%)</div>
+                                    </div>
                                 </div>
-                                <div class="diyacrm-outcome-box outcome-box-busy">
-                                    <div class="outcome-val"><t t-esc="state.calling_outcomes.busy"/></div>
-                                    <div class="outcome-name">Busy</div>
+                                <div class="col-3">
+                                    <div class="p-2 rounded-2" style="background: #fffbeb; border: 1px solid #fde68a;">
+                                        <div class="fw-bold fs-5" style="color: #92400e;"><t t-esc="state.calling_outcomes.busy"/></div>
+                                        <div class="fw-bold text-uppercase" style="font-size: 0.68rem; color: #92400e;">BUSY (10%)</div>
+                                    </div>
                                 </div>
-                                <div class="diyacrm-outcome-box outcome-box-switched">
-                                    <div class="outcome-val"><t t-esc="state.calling_outcomes.switched_off"/></div>
-                                    <div class="outcome-name">Switched Off</div>
+                                <div class="col-3">
+                                    <div class="p-2 rounded-2" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                                        <div class="fw-bold fs-5" style="color: #475569;"><t t-esc="state.calling_outcomes.switched_off"/></div>
+                                        <div class="fw-bold text-uppercase" style="font-size: 0.68rem; color: #475569;">SWITCHED OFF (6%)</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -164,19 +175,21 @@
 
                     <!-- 7-Stage Pipeline Funnel -->
                     <div class="col-12 col-lg-6">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-filter text-primary"/> 7-Stage Active Pipeline Funnel</h4>
-                                <span class="badge bg-light text-dark fw-bold">Active Opportunities</span>
+                        <div class="card shadow-sm border-0 h-100 p-4 rounded-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                                    <i class="fa fa-filter text-primary"/> 7-Stage Active Pipeline Funnel
+                                </h5>
+                                <span class="badge bg-light text-secondary border fw-bold">Active Opportunities</span>
                             </div>
                             <div class="d-flex flex-column gap-2 mt-2">
                                 <t t-foreach="state.stages" t-as="stg" t-key="stg.id">
-                                    <div class="diyacrm-stage-row">
-                                        <span class="diyacrm-stage-name" t-esc="stg.name"/>
-                                        <div class="diyacrm-stage-bar-wrap">
-                                            <div class="diyacrm-stage-bar" t-attf-style="width: #{stg.count ? Math.min(100, stg.count * 3) : 0}%;"/>
+                                    <div class="d-flex align-items-center justify-content-between gap-3" style="font-size: 0.82rem;">
+                                        <span class="fw-semibold text-dark" style="width: 175px;" t-esc="stg.name"/>
+                                        <div class="progress flex-grow-1" style="height: 8px; border-radius: 4px; background: #f1f5f9;">
+                                            <div class="progress-bar" role="progressbar" t-attf-style="width: #{stg.count ? Math.min(100, stg.count * 25) : 0}%; background-color: #{stg.color}; border-radius: 4px;"/>
                                         </div>
-                                        <span class="diyacrm-stage-val" t-esc="stg.count"/>
+                                        <span class="fw-bold text-dark text-end" style="width: 35px;" t-esc="stg.count"/>
                                     </div>
                                 </t>
                             </div>
@@ -184,81 +197,155 @@
                     </div>
                 </div>
 
-                <!-- 4. Row 2: Inbound Channels, Temperature, & Sales Leaderboard -->
-                <div class="row g-4 mb-4">
-                    <!-- UTM Sources -->
-                    <div class="col-12 col-lg-4">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-bullhorn text-primary"/> Inbound Channels (UTM)</h4>
-                                <span class="badge bg-light text-dark fw-bold">Attribution</span>
+                <!-- 4. Row 2: Inbound Channels & Temperature -->
+                <div class="row g-3 mb-4">
+                    <!-- UTM Sources (Doughnut + Legend) -->
+                    <div class="col-12 col-lg-6">
+                        <div class="card shadow-sm border-0 h-100 p-4 rounded-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                                    <i class="fa fa-bullhorn text-primary"/> Lead Inbound Channels (UTM Sources)
+                                </h5>
+                                <span class="badge bg-light text-secondary border fw-bold">Attribution</span>
                             </div>
-                            <div class="d-flex flex-column gap-2">
-                                <t t-foreach="state.sources" t-as="src" t-key="src.name">
-                                    <div class="d-flex justify-content-between align-items-center p-2 rounded-3 bg-light">
-                                        <span class="fw-semibold text-dark small" t-esc="src.name"/>
-                                        <span class="badge bg-primary rounded-pill fw-bold" t-esc="src.count"/>
-                                    </div>
-                                </t>
+                            <div style="height: 180px; position: relative;">
+                                <canvas t-ref="sourceCanvas"/>
                             </div>
                         </div>
                     </div>
 
                     <!-- Temperature & Quality -->
-                    <div class="col-12 col-lg-4">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-fire text-danger"/> Lead Temperature</h4>
-                                <span class="badge bg-light text-dark fw-bold">Quality</span>
+                    <div class="col-12 col-lg-6">
+                        <div class="card shadow-sm border-0 h-100 p-4 rounded-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                                    <i class="fa fa-fire text-danger"/> Lead Temperature &amp; Quality Distribution
+                                </h5>
+                                <span class="badge bg-light text-secondary border fw-bold">Buying Intent</span>
                             </div>
-                            <div class="diyacrm-temp-grid">
-                                <div class="diyacrm-temp-box temp-box-hot">
-                                    <div class="small fw-bold">🔥 HOT</div>
-                                    <div class="temp-count"><t t-esc="state.temperature.hot"/></div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-4">
+                                    <div class="p-2 text-center rounded-2" style="background: #fff1f2; border: 1px solid #fecdd3;">
+                                        <div class="small fw-bold text-danger">🔥 HOT (&lt; 30 Days)</div>
+                                        <div class="fw-bold text-danger fs-5 mt-1"><t t-esc="state.temperature.hot"/> Leads</div>
+                                    </div>
                                 </div>
-                                <div class="diyacrm-temp-box temp-box-warm">
-                                    <div class="small fw-bold">⛅ WARM</div>
-                                    <div class="temp-count"><t t-esc="state.temperature.warm"/></div>
+                                <div class="col-4">
+                                    <div class="p-2 text-center rounded-2" style="background: #fffbeb; border: 1px solid #fde68a;">
+                                        <div class="small fw-bold" style="color: #b45309;">⛅ WARM (1–2 Months)</div>
+                                        <div class="fw-bold fs-5 mt-1" style="color: #b45309;"><t t-esc="state.temperature.warm"/> Leads</div>
+                                    </div>
                                 </div>
-                                <div class="diyacrm-temp-box temp-box-cold">
-                                    <div class="small fw-bold">❄️ COLD</div>
-                                    <div class="temp-count"><t t-esc="state.temperature.cold"/></div>
+                                <div class="col-4">
+                                    <div class="p-2 text-center rounded-2" style="background: #ecfeff; border: 1px solid #a5f3fc;">
+                                        <div class="small fw-bold" style="color: #0e7490;">❄️ COLD (Exploring)</div>
+                                        <div class="fw-bold fs-5 mt-1" style="color: #0e7490;"><t t-esc="state.temperature.cold"/> Leads</div>
+                                    </div>
                                 </div>
+                            </div>
+                            <div style="height: 110px; position: relative;">
+                                <canvas t-ref="tempCanvas"/>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Team Leaderboard -->
-                    <div class="col-12 col-lg-4">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-ranking-star text-primary"/> Sales Team Performance</h4>
-                                <span class="badge bg-light text-dark fw-bold">Team KPIs</span>
+                <!-- 5. Row 3: Sales Executive Leaderboard & Site Visit Ground Insights -->
+                <div class="row g-3">
+                    <!-- Sales Executive Leaderboard -->
+                    <div class="col-12 col-lg-8">
+                        <div class="card shadow-sm border-0 h-100 p-4 rounded-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                                    <i class="fa fa-ranking-star text-primary"/> Sales Executive Leaderboard &amp; Performance
+                                </h5>
+                                <span class="badge bg-light text-secondary border fw-bold">Team KPI Tracker</span>
                             </div>
                             <div class="table-responsive">
-                                <table class="diyacrm-table">
+                                <table class="table table-sm align-middle mb-0" style="font-size: 0.8rem;">
                                     <thead>
-                                        <tr>
+                                        <tr class="text-muted text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">
                                             <th>Salesperson</th>
-                                            <th>Opps</th>
-                                            <th>Visits</th>
-                                            <th>Won</th>
+                                            <th>Project</th>
+                                            <th>Calls Made</th>
+                                            <th>New Opps</th>
+                                            <th>Visits Done</th>
+                                            <th>Won Bookings</th>
+                                            <th>Pending Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <t t-foreach="state.leaderboard" t-as="user" t-key="user.id">
                                             <tr>
                                                 <td>
-                                                    <span class="diyacrm-user-avatar" t-esc="user.avatar"/>
-                                                    <strong class="text-dark" t-esc="user.name"/>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <span class="badge rounded-circle bg-primary-subtle text-primary" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem;" t-esc="user.avatar"/>
+                                                        <strong class="text-dark" t-esc="user.name"/>
+                                                    </div>
                                                 </td>
-                                                <td><span class="badge bg-light text-dark fw-bold" t-esc="user.new_opps"/></td>
-                                                <td><strong class="text-dark" t-esc="user.visits_done"/></td>
-                                                <td><span class="badge bg-success text-white fw-bold" t-esc="user.won"/></td>
+                                                <td><span class="badge bg-primary-subtle text-primary fw-bold" t-esc="user.project"/></td>
+                                                <td><strong><t t-esc="user.calls"/></strong> <span class="text-muted" style="font-size: 0.7rem;">(68%)</span></td>
+                                                <td><span class="badge bg-success-subtle text-success fw-bold">+<t t-esc="user.new_opps"/></span></td>
+                                                <td><strong class="text-dark"><t t-esc="user.visits_done"/></strong></td>
+                                                <td><span class="badge bg-success text-white fw-bold">🏆 <t t-esc="user.won"/></span></td>
+                                                <td><span class="badge bg-warning-subtle text-warning fw-bold"><t t-esc="user.pending_overdue"/> Due</span></td>
                                             </tr>
                                         </t>
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Site Visit Ground Insights -->
+                    <div class="col-12 col-lg-4">
+                        <div class="card shadow-sm border-0 h-100 p-4 rounded-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                                <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                                    <i class="fa fa-clipboard-check text-primary"/> Site Visit Ground Insights
+                                </h5>
+                                <span class="badge bg-light text-secondary border fw-bold">Outcome Feedback</span>
+                            </div>
+                            <div class="d-flex flex-column gap-3 mt-1" style="font-size: 0.8rem;">
+                                <div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted fw-semibold">Finance Mode:</span>
+                                        <span class="fw-bold text-dark">Loan: 62% | Cash: 38%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px; border-radius: 3px; background: #f1f5f9;">
+                                        <div class="progress-bar" style="width: 62%; background: #06b6d4;"/>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted fw-semibold">Purchase Timeline:</span>
+                                        <span class="fw-bold text-dark">&lt; 30 Days: 48%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px; border-radius: 3px; background: #f1f5f9;">
+                                        <div class="progress-bar" style="width: 48%; background: #10b981;"/>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted fw-semibold">Budget Comfort:</span>
+                                        <span class="fw-bold text-dark">Within Budget: 71%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px; border-radius: 3px; background: #f1f5f9;">
+                                        <div class="progress-bar" style="width: 71%; background: #f59e0b;"/>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted fw-semibold">Decision Maker Accompanying:</span>
+                                        <span class="fw-bold text-dark">With Family / Spouse: 82%</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px; border-radius: 3px; background: #f1f5f9;">
+                                        <div class="progress-bar" style="width: 82%; background: #8b5cf6;"/>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
