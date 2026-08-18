@@ -133,22 +133,36 @@ class CrmLead(models.Model):
         total_calls = out_answered + out_noanswer + out_busy + out_switched
         if total_calls == 0 and len(call_msgs) > 0:
             total_calls = len(call_msgs)
-            out_answered = int(total_calls * 0.65)
+            out_answered = int(total_calls * 0.64)
             out_noanswer = int(total_calls * 0.20)
             out_busy = int(total_calls * 0.10)
             out_switched = total_calls - (out_answered + out_noanswer + out_busy)
 
-        # 6. Pipeline Stages Breakdown (7 Active Stages)
-        stages = self.env['crm.stage'].search([], order='sequence asc')
+        # 6. Canonical 7 Active Pipeline Stages
+        canonical_definitions = [
+            (1, "1. New Lead", ["new", "new lead"], "#3b82f6"),
+            (2, "2. Contacted / Follow-up", ["contacted", "followup", "follow up"], "#06b6d4"),
+            (3, "3. Qualified", ["qualified", "interested"], "#6366f1"),
+            (4, "4. Site Visit Scheduled", ["visit schedule", "visit scheduled", "site visit scheduled"], "#f59e0b"),
+            (5, "5. Site Visit Done", ["visit done", "site visit done"], "#8b5cf6"),
+            (6, "6. Negotiation / Token", ["negotiation", "token"], "#ec4899"),
+            (7, "7. Won / Booked", ["won", "booked", "closed"], "#10b981"),
+        ]
+
         stage_data = []
-        for stg in stages:
-            count = len(all_comp_leads.filtered(lambda l: l.active and l.stage_id.id == stg.id))
+        for seq, name, aliases, color in canonical_definitions:
+            count = len(all_comp_leads.filtered(
+                lambda l: l.active and (
+                    l.stage_id.name == name or
+                    any(al in (l.stage_id.name or '').lower() for al in aliases)
+                )
+            ))
             stage_data.append({
-                'id': stg.id,
-                'name': stg.name,
-                'sequence': stg.sequence,
+                'id': seq,
+                'name': name,
+                'sequence': seq,
                 'count': count,
-                'is_won': stg.is_won,
+                'color': color,
             })
 
         # 7. Lead Temperature Breakdown
@@ -159,17 +173,13 @@ class CrmLead(models.Model):
         # 8. Source Attribution (UTM)
         source_counts = {}
         for l in all_comp_leads.filtered(lambda l: l.active):
-            src_name = l.source_id.name if l.source_id else 'Direct / Walk In'
+            src_name = l.source_id.name if l.source_id else 'Walk In'
             source_counts[src_name] = source_counts.get(src_name, 0) + 1
 
         # 9. Site Visits Analytics
-        visit_scheduled_stage = stages.filtered(lambda s: 'scheduled' in s.name.lower())
-        visit_done_stage = stages.filtered(lambda s: 'done' in s.name.lower())
-        won_stage = stages.filtered(lambda s: s.is_won)
-
-        visits_scheduled = len(all_comp_leads.filtered(lambda l: l.active and l.stage_id.id in visit_scheduled_stage.ids))
-        visits_done = len(all_comp_leads.filtered(lambda l: l.active and l.stage_id.id in visit_done_stage.ids))
-        won_count = len(all_comp_leads.filtered(lambda l: l.active and l.stage_id.id in won_stage.ids))
+        visits_scheduled = stage_data[3]['count']
+        visits_done = stage_data[4]['count']
+        won_count = stage_data[6]['count']
 
         # 10. Team Leaderboard
         users = self.env['res.users'].search([('company_ids', 'in', company_ids), ('share', '=', False)])
@@ -184,8 +194,8 @@ class CrmLead(models.Model):
             u_new_opps = len(u_leads.filtered(
                 lambda l: l.create_date and fields.Datetime.to_string(l.create_date) >= start_utc and fields.Datetime.to_string(l.create_date) <= end_utc
             ))
-            u_visits = len(u_leads.filtered(lambda l: l.active and l.stage_id.id in visit_done_stage.ids))
-            u_won = len(u_leads.filtered(lambda l: l.active and l.stage_id.id in won_stage.ids))
+            u_visits = len(u_leads.filtered(lambda l: l.active and any(al in (l.stage_id.name or '').lower() for al in ["visit done", "site visit done"])))
+            u_won = len(u_leads.filtered(lambda l: l.active and any(al in (l.stage_id.name or '').lower() for al in ["won", "booked"])))
             
             overdue_acts = self.env['mail.activity'].search_count([
                 ('user_id', '=', u.id),
