@@ -2,29 +2,107 @@
 <templates xml:space="preserve">
 
     <t t-name="diyacrm.CrmExecutiveDashboard">
-        <div class="o_crm_dashboard_wrapper" style="height: 100%; overflow-y: auto; background-color: #f4f6f9; padding: 22px 28px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a;">
+        <div class="o_crm_dashboard_wrapper" style="height: 100%; overflow-y: auto; background-color: #f4f6f9; padding: 24px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a;">
             
             <style>
-                .diyacrm-kpi-grid-5 {
-                    display: grid;
-                    grid-template-columns: repeat(5, 1fr);
-                    gap: 16px;
-                    margin-bottom: 20px;
+                .diyacrm-dashboard-container {
+                    max-width: 1540px;
+                    margin: 0 auto;
                 }
+
+                /* Top Header &amp; Filters */
+                .diyacrm-header-card {
+                    background: #ffffff;
+                    border-radius: 16px;
+                    padding: 20px 24px;
+                    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+                    border: 1px solid #e2e8f0;
+                    margin-bottom: 24px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 16px;
+                }
+
+                .diyacrm-header-title h1 {
+                    font-size: 1.45rem;
+                    font-weight: 800;
+                    color: #0f172a;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    margin-bottom: 0;
+                }
+
+                .diyacrm-header-title p {
+                    font-size: 0.85rem;
+                    color: #64748b;
+                    margin-top: 4px;
+                    margin-bottom: 0;
+                }
+
+                .diyacrm-filter-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                }
+
+                .diyacrm-select-filter {
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    color: #0f172a;
+                    padding: 8px 14px;
+                    border-radius: 8px;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    outline: none;
+                    transition: all 0.2s;
+                }
+
+                .diyacrm-select-filter:hover, .diyacrm-select-filter:focus {
+                    border-color: #4f46e5;
+                    background: #ffffff;
+                }
+
+                .diyacrm-btn-live {
+                    background: #10b981;
+                    color: white;
+                    padding: 7px 14px;
+                    border-radius: 20px;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+
+                /* KPI Cards Grid */
+                .diyacrm-kpi-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+                    gap: 18px;
+                    margin-bottom: 24px;
+                }
+
                 .diyacrm-kpi-card {
                     background: #ffffff;
                     border-radius: 12px;
-                    padding: 18px 20px;
+                    padding: 20px;
                     border: 1px solid #e2e8f0;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
                     position: relative;
                     overflow: hidden;
                     transition: transform 0.2s, box-shadow 0.2s;
                 }
+
                 .diyacrm-kpi-card:hover {
                     transform: translateY(-2px);
-                    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+                    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
                 }
+
                 .diyacrm-kpi-card::before {
                     content: '';
                     position: absolute;
@@ -33,405 +111,536 @@
                     right: 0;
                     height: 4px;
                 }
-                .kpi-border-calls::before { background: #4f46e5; }
-                .kpi-border-new::before { background: #10b981; }
-                .kpi-border-update::before { background: #06b6d4; }
-                .kpi-border-visit::before { background: #f59e0b; }
-                .kpi-border-won::before { background: #8b5cf6; }
 
-                .diyacrm-card {
+                .kpi-calls::before { background: #4f46e5; }
+                .kpi-new::before { background: #10b981; }
+                .kpi-update::before { background: #06b6d4; }
+                .kpi-visit::before { background: #f59e0b; }
+                .kpi-won::before { background: #8b5cf6; }
+
+                .diyacrm-kpi-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 12px;
+                }
+
+                .diyacrm-kpi-title {
+                    font-size: 0.8rem;
+                    font-weight: 700;
+                    color: #64748b;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+
+                .diyacrm-kpi-icon-wrap {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1rem;
+                }
+
+                .kpi-calls .diyacrm-kpi-icon-wrap { background: #eef2ff; color: #4f46e5; }
+                .kpi-new .diyacrm-kpi-icon-wrap { background: #ecfdf5; color: #10b981; }
+                .kpi-update .diyacrm-kpi-icon-wrap { background: #ecfeff; color: #06b6d4; }
+                .kpi-visit .diyacrm-kpi-icon-wrap { background: #fffbeb; color: #f59e0b; }
+                .kpi-won .diyacrm-kpi-icon-wrap { background: #f3e8ff; color: #8b5cf6; }
+
+                .diyacrm-kpi-value {
+                    font-size: 1.85rem;
+                    font-weight: 800;
+                    color: #0f172a;
+                    line-height: 1.1;
+                }
+
+                .diyacrm-kpi-subtitle {
+                    font-size: 0.78rem;
+                    color: #64748b;
+                    margin-top: 6px;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }
+
+                .diyacrm-badge-pill {
+                    display: inline-block;
+                    padding: 2px 8px;
+                    border-radius: 12px;
+                    font-size: 0.7rem;
+                    font-weight: 700;
+                }
+                .badge-green { background: #ecfdf5; color: #047857; }
+                .badge-blue { background: #eef2ff; color: #4f46e5; }
+                .badge-orange { background: #fffbeb; color: #b45309; }
+
+                /* Dashboard Grid Layout */
+                .diyacrm-dash-row {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 20px;
+                    margin-bottom: 24px;
+                }
+
+                .diyacrm-dash-row-3 {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 20px;
+                    margin-bottom: 24px;
+                }
+
+                .diyacrm-box-card {
                     background: #ffffff;
                     border-radius: 12px;
-                    padding: 18px 20px;
+                    padding: 20px;
                     border: 1px solid #e2e8f0;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-                    height: 100%;
+                    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
                 }
+
                 .diyacrm-card-header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 14px;
+                    margin-bottom: 18px;
                     border-bottom: 1px solid #f1f5f9;
-                    padding-bottom: 10px;
+                    padding-bottom: 12px;
                 }
-                .diyacrm-card-header h4 {
-                    font-size: 0.88rem;
+
+                .diyacrm-card-header h3 {
+                    font-size: 1rem;
                     font-weight: 700;
                     color: #0f172a;
-                    margin-bottom: 0;
                     display: flex;
                     align-items: center;
                     gap: 8px;
+                    margin-bottom: 0;
                 }
-                .diyacrm-card-header .header-tag {
-                    font-size: 0.7rem;
+
+                .diyacrm-card-header .diyacrm-card-tag {
+                    font-size: 0.75rem;
                     font-weight: 600;
                     color: #64748b;
                     background: #f1f5f9;
-                    padding: 2px 8px;
+                    padding: 3px 10px;
                     border-radius: 6px;
                 }
+
+                /* Outcome Pills Grid */
+                .diyacrm-outcome-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 12px;
+                    margin-top: 14px;
+                }
+
+                .diyacrm-outcome-box {
+                    padding: 12px;
+                    border-radius: 10px;
+                    text-align: center;
+                    border: 1px solid transparent;
+                }
+
+                .box-answered { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+                .box-noanswer { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+                .box-busy { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+                .box-switched { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
+
+                .diyacrm-outcome-count { font-size: 1.3rem; font-weight: 800; }
+                .diyacrm-outcome-lbl { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+
+                /* Real Estate Funnel Stages */
+                .diyacrm-stage-funnel-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+
                 .diyacrm-stage-row {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
                     gap: 12px;
-                    font-size: 0.82rem;
-                    margin-bottom: 9px;
+                    font-size: 0.85rem;
                 }
+
                 .diyacrm-stage-name {
                     width: 170px;
                     font-weight: 600;
                     color: #334155;
                 }
+
                 .diyacrm-stage-bar-wrap {
                     flex-grow: 1;
-                    height: 8px;
+                    height: 10px;
                     background: #f1f5f9;
-                    border-radius: 4px;
+                    border-radius: 5px;
                     overflow: hidden;
                 }
+
                 .diyacrm-stage-bar {
                     height: 100%;
-                    border-radius: 4px;
-                    transition: width 0.4s ease;
+                    border-radius: 5px;
+                    transition: width 0.5s ease;
                 }
+
                 .diyacrm-stage-val {
-                    width: 40px;
+                    width: 50px;
                     text-align: right;
                     font-weight: 700;
                     color: #0f172a;
                 }
-                @media (max-width: 1200px) {
-                    .diyacrm-kpi-grid-5 { grid-template-columns: repeat(3, 1fr); }
+
+                /* Leaderboard Table */
+                .diyacrm-leaderboard-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 0.85rem;
                 }
-                @media (max-width: 768px) {
-                    .diyacrm-kpi-grid-5 { grid-template-columns: repeat(2, 1fr); }
+
+                .diyacrm-leaderboard-table th {
+                    background: #f8fafc;
+                    color: #64748b;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    font-size: 0.72rem;
+                    letter-spacing: 0.5px;
+                    padding: 10px 14px;
+                    text-align: left;
+                    border-bottom: 1px solid #e2e8f0;
+                }
+
+                .diyacrm-leaderboard-table td {
+                    padding: 12px 14px;
+                    border-bottom: 1px solid #f1f5f9;
+                    color: #334155;
+                    font-weight: 500;
+                }
+
+                .diyacrm-leaderboard-table tr:hover td {
+                    background: #f8fafc;
+                }
+
+                .diyacrm-user-cell {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    font-weight: 700;
+                    color: #0f172a;
+                }
+
+                .diyacrm-user-avatar {
+                    width: 30px;
+                    height: 30px;
+                    border-radius: 50%;
+                    background: #eef2ff;
+                    color: #4f46e5;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.8rem;
+                    font-weight: 700;
+                }
+
+                /* Temperature Grid */
+                .diyacrm-temp-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 14px;
+                }
+
+                .diyacrm-temp-card {
+                    border-radius: 10px;
+                    padding: 14px;
+                    text-align: center;
+                }
+
+                .temp-hot { background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; }
+                .temp-warm { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; }
+                .temp-cold { background: #ecfeff; border: 1px solid #a5f3fc; color: #0e7490; }
+
+                .diyacrm-temp-val { font-size: 1.45rem; font-weight: 800; margin-top: 4px; }
+
+                @media (max-width: 1024px) {
+                    .diyacrm-dash-row, .diyacrm-dash-row-3 { grid-template-columns: 1fr; }
+                    .diyacrm-outcome-grid { grid-template-columns: repeat(2, 1fr); }
                 }
             </style>
 
-            <div class="o_crm_dashboard_container" style="max-width: 1580px; margin: 0 auto;">
+            <div class="diyacrm-dashboard-container">
 
                 <!-- 1. Top Header Bar with Global Filters -->
-                <div class="card shadow-sm border-0 mb-4 p-3 rounded-3 bg-white" style="border: 1px solid #e2e8f0 !important;">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                        <div>
-                            <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2" style="font-size: 1.25rem;">
-                                <i class="fa fa-chart-line text-primary"/>
-                                <span>Diya CRM – Real Estate Executive Dashboard</span>
-                            </h4>
-                            <p class="text-muted small mb-0" style="font-size: 0.8rem;">Live Inbound Webhook, Call Outcomes, Pipeline Stages &amp; Team Performance Analytics</p>
-                        </div>
+                <div class="diyacrm-header-card">
+                    <div class="diyacrm-header-title">
+                        <h1><i class="fa fa-chart-line text-primary"/> Diya CRM - Real Estate Executive Dashboard</h1>
+                        <p>Live Inbound Webhook, Call Outcomes, Pipeline Stages &amp; Team Performance Analytics</p>
+                    </div>
 
-                        <!-- Dynamic Controls -->
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span class="badge bg-success rounded-pill px-3 py-2 fw-bold d-inline-flex align-items-center gap-1" style="font-size: 0.75rem;">
-                                <i class="fa fa-circle text-white" style="font-size: 0.55rem;"/> Live Pipeline
-                            </span>
+                    <div class="diyacrm-filter-group">
+                        <span class="diyacrm-btn-live"><i class="fa fa-circle text-white"/> Live Pipeline</span>
+                        
+                        <!-- Project Selector -->
+                        <select class="diyacrm-select-filter" t-on-change="onCompanyChange">
+                            <option value="all">🏢 All Projects</option>
+                            <t t-foreach="state.availableCompanies" t-as="comp" t-key="comp.id">
+                                <option t-att-value="comp.id" t-esc="comp.name"/>
+                            </t>
+                        </select>
 
-                            <!-- Project Selector -->
-                            <select class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: auto; background: #f8fafc;" t-on-change="onCompanyChange">
-                                <option value="all">🏢 All Projects</option>
-                                <t t-foreach="state.availableCompanies" t-as="comp" t-key="comp.id">
-                                    <option t-att-value="comp.id" t-esc="comp.name"/>
-                                </t>
-                            </select>
+                        <!-- Date Range Selector -->
+                        <select class="diyacrm-select-filter" t-on-change="onPeriodChange">
+                            <option value="today">📅 Today (18 Aug)</option>
+                            <option value="yesterday">📅 Yesterday (17 Aug)</option>
+                            <option value="48h" selected="selected">📅 Last 48 Hours</option>
+                            <option value="week">📅 This Week</option>
+                            <option value="month">📅 This Month</option>
+                        </select>
 
-                            <!-- Date Range Selector -->
-                            <select class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: auto; background: #f8fafc;" t-on-change="onPeriodChange">
-                                <option value="today">📅 Today (18 Aug)</option>
-                                <option value="yesterday">📅 Yesterday (17 Aug)</option>
-                                <option value="48h" selected="selected">📅 Last 48 Hours</option>
-                                <option value="week">📅 This Week</option>
-                                <option value="month">📅 This Month</option>
-                                <option value="all">📅 All Time</option>
-                            </select>
+                        <!-- Salesperson Selector -->
+                        <select class="diyacrm-select-filter" t-on-change="onUserChange">
+                            <option value="all">👤 All Sales Team</option>
+                            <t t-foreach="state.leaderboard" t-as="user" t-key="user.id">
+                                <option t-att-value="user.id" t-esc="user.name"/>
+                            </t>
+                        </select>
 
-                            <!-- Salesperson Selector -->
-                            <select class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: auto; background: #f8fafc;" t-on-change="onUserChange">
-                                <option value="all">👤 All Sales Team</option>
-                                <t t-foreach="state.leaderboard" t-as="user" t-key="user.id">
-                                    <option t-att-value="user.id" t-esc="user.name"/>
-                                </t>
-                            </select>
-
-                            <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm rounded-2" t-on-click="loadDashboardData">
-                                <i class="fa fa-sync-alt" t-att-class="{'fa-spin': state.loading}"/>
-                                <span>Refresh</span>
-                            </button>
-                        </div>
+                        <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm rounded-2" style="padding: 8px 16px;" t-on-click="loadDashboardData">
+                            <i class="fa fa-sync-alt" t-att-class="{'fa-spin': state.loading}"/>
+                            <span>Refresh</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- 2. Hero 5 KPI Cards Grid -->
-                <div class="diyacrm-kpi-grid-5">
-                    <!-- 1. Total Calls Logged -->
-                    <div class="diyacrm-kpi-card kpi-border-calls">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">TOTAL CALLS LOGGED</span>
-                            <div class="bg-primary-subtle text-primary rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-phone"/></div>
+                <!-- 2. Hero KPI Cards -->
+                <div class="diyacrm-kpi-grid">
+                    <div class="diyacrm-kpi-card kpi-calls">
+                        <div class="diyacrm-kpi-header">
+                            <span class="diyacrm-kpi-title">Total Calls Logged</span>
+                            <div class="diyacrm-kpi-icon-wrap"><i class="fa fa-phone"/></div>
                         </div>
-                        <h2 class="fw-bold mb-1 text-dark" style="font-size: 1.85rem;"><t t-esc="state.kpis.total_calls"/></h2>
-                        <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
-                            <span class="badge bg-success-subtle text-success fw-bold">✓ 64% Connected</span>
-                            <span class="text-muted">In selected range</span>
-                        </div>
-                    </div>
-
-                    <!-- 2. New Opps Created -->
-                    <div class="diyacrm-kpi-card kpi-border-new cursor-pointer" t-on-click="() => this.openOpportunities('new')">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">NEW OPPS CREATED</span>
-                            <div class="bg-success-subtle text-success rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-user-plus"/></div>
-                        </div>
-                        <h2 class="fw-bold mb-1 text-dark" style="font-size: 1.85rem;"><t t-esc="state.kpis.new_opps"/></h2>
-                        <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
-                            <span class="badge bg-primary-subtle text-primary fw-bold">Fresh WhatsApp &amp; Webhook</span>
+                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.total_calls"/></div>
+                        <div class="diyacrm-kpi-subtitle">
+                            <span class="diyacrm-badge-pill badge-green"><i class="fa fa-check"/> 64% Connected</span>
+                            <span>In selected range</span>
                         </div>
                     </div>
 
-                    <!-- 3. Existing Leads Inquired -->
-                    <div class="diyacrm-kpi-card kpi-border-update">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">EXISTING LEADS INQUIRED</span>
-                            <div class="bg-info-subtle text-info rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-arrows-rotate"/></div>
+                    <div class="diyacrm-kpi-card kpi-new cursor-pointer" t-on-click="() => this.openOpportunities('new')">
+                        <div class="diyacrm-kpi-header">
+                            <span class="diyacrm-kpi-title">New Opps Created</span>
+                            <div class="diyacrm-kpi-icon-wrap"><i class="fa fa-user-plus"/></div>
                         </div>
-                        <h2 class="fw-bold mb-1 text-dark" style="font-size: 1.85rem;"><t t-esc="state.kpis.updated_opps"/></h2>
-                        <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
-                            <span class="badge bg-info-subtle text-info fw-bold">Chatter Timeline Updated</span>
-                        </div>
-                    </div>
-
-                    <!-- 4. Site Visits Scheduled -->
-                    <div class="diyacrm-kpi-card kpi-border-visit">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">SITE VISITS SCHEDULED</span>
-                            <div class="bg-warning-subtle text-warning rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-car"/></div>
-                        </div>
-                        <h2 class="fw-bold mb-1 text-dark" style="font-size: 1.85rem;"><t t-esc="state.kpis.visits_scheduled"/></h2>
-                        <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
-                            <span class="badge bg-warning-subtle text-warning fw-bold"><t t-esc="state.kpis.visits_done"/> Visits Completed</span>
+                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.new_opps"/></div>
+                        <div class="diyacrm-kpi-subtitle">
+                            <span class="diyacrm-badge-pill badge-blue">Fresh WhatsApp &amp; Webhook</span>
                         </div>
                     </div>
 
-                    <!-- 5. Won / Booked -->
-                    <div class="diyacrm-kpi-card kpi-border-won cursor-pointer" t-on-click="() => this.openOpportunities('won')">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem; letter-spacing: 0.5px;">WON / BOOKED</span>
-                            <div class="bg-purple-subtle text-purple rounded-2 p-1 px-2" style="font-size: 0.85rem;"><i class="fa fa-trophy"/></div>
+                    <div class="diyacrm-kpi-card kpi-update">
+                        <div class="diyacrm-kpi-header">
+                            <span class="diyacrm-kpi-title">Existing Leads Inquired</span>
+                            <div class="diyacrm-kpi-icon-wrap"><i class="fa fa-arrows-rotate"/></div>
                         </div>
-                        <h2 class="fw-bold mb-1 text-dark" style="font-size: 1.85rem;"><t t-esc="state.kpis.won"/></h2>
-                        <div class="d-flex align-items-center gap-1" style="font-size: 0.75rem;">
-                            <span class="badge bg-success text-white fw-bold">Token Received</span>
+                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.updated_opps"/></div>
+                        <div class="diyacrm-kpi-subtitle">
+                            <span class="diyacrm-badge-pill badge-blue">Chatter Timeline Updated</span>
+                        </div>
+                    </div>
+
+                    <div class="diyacrm-kpi-card kpi-visit">
+                        <div class="diyacrm-kpi-header">
+                            <span class="diyacrm-kpi-title">Site Visits Scheduled</span>
+                            <div class="diyacrm-kpi-icon-wrap"><i class="fa fa-car"/></div>
+                        </div>
+                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.visits_scheduled"/></div>
+                        <div class="diyacrm-kpi-subtitle">
+                            <span class="diyacrm-badge-pill badge-orange"><t t-esc="state.kpis.visits_done"/> Visits Completed</span>
+                        </div>
+                    </div>
+
+                    <div class="diyacrm-kpi-card kpi-won cursor-pointer" t-on-click="() => this.openOpportunities('won')">
+                        <div class="diyacrm-kpi-header">
+                            <span class="diyacrm-kpi-title">Won / Booked</span>
+                            <div class="diyacrm-kpi-icon-wrap"><i class="fa fa-trophy"/></div>
+                        </div>
+                        <div class="diyacrm-kpi-value"><t t-esc="state.kpis.won"/></div>
+                        <div class="diyacrm-kpi-subtitle">
+                            <span class="diyacrm-badge-pill badge-green">Token Received</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- 3. Row 1: Calling Outcomes & 7-Stage Pipeline Funnel -->
-                <div class="row g-3 mb-4">
-                    <!-- Calling Outcomes -->
-                    <div class="col-12 col-lg-6">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-headset text-primary"/> Calling Outcome Analytics</h4>
-                                <span class="header-tag"><t t-esc="state.kpis.total_calls"/> Dials Logged</span>
+                <div class="diyacrm-dash-row">
+                    <!-- Call Outcome Analytics -->
+                    <div class="diyacrm-box-card">
+                        <div class="diyacrm-card-header">
+                            <h3><i class="fa fa-headset text-primary"/> Calling Outcome Analytics</h3>
+                            <span class="diyacrm-card-tag"><t t-esc="state.kpis.total_calls"/> Dials Logged</span>
+                        </div>
+                        <div style="height: 180px; position: relative;">
+                            <canvas t-ref="callOutcomeChart"/>
+                        </div>
+                        <div class="diyacrm-outcome-grid">
+                            <div class="diyacrm-outcome-box box-answered">
+                                <div class="diyacrm-outcome-count"><t t-esc="state.calling_outcomes.answered"/></div>
+                                <div class="diyacrm-outcome-lbl">Answered (64%)</div>
                             </div>
-                            <div style="height: 160px; position: relative;">
-                                <canvas t-ref="callCanvas"/>
+                            <div class="diyacrm-outcome-box box-noanswer">
+                                <div class="diyacrm-outcome-count"><t t-esc="state.calling_outcomes.no_answer"/></div>
+                                <div class="diyacrm-outcome-lbl">No Answer (20%)</div>
                             </div>
-                            <div class="row g-2 mt-3 text-center">
-                                <div class="col-3">
-                                    <div class="p-2 rounded-2" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
-                                        <div class="fw-bold fs-5" style="color: #166534;"><t t-esc="state.calling_outcomes.answered"/></div>
-                                        <div class="fw-bold text-uppercase" style="font-size: 0.68rem; color: #166534;">ANSWERED (64%)</div>
-                                    </div>
-                                </div>
-                                <div class="col-3">
-                                    <div class="p-2 rounded-2" style="background: #fef2f2; border: 1px solid #fecaca;">
-                                        <div class="fw-bold fs-5" style="color: #991b1b;"><t t-esc="state.calling_outcomes.no_answer"/></div>
-                                        <div class="fw-bold text-uppercase" style="font-size: 0.68rem; color: #991b1b;">NO ANSWER (20%)</div>
-                                    </div>
-                                </div>
-                                <div class="col-3">
-                                    <div class="p-2 rounded-2" style="background: #fffbeb; border: 1px solid #fde68a;">
-                                        <div class="fw-bold fs-5" style="color: #92400e;"><t t-esc="state.calling_outcomes.busy"/></div>
-                                        <div class="fw-bold text-uppercase" style="font-size: 0.68rem; color: #92400e;">BUSY (10%)</div>
-                                    </div>
-                                </div>
-                                <div class="col-3">
-                                    <div class="p-2 rounded-2" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                                        <div class="fw-bold fs-5" style="color: #475569;"><t t-esc="state.calling_outcomes.switched_off"/></div>
-                                        <div class="fw-bold text-uppercase" style="font-size: 0.68rem; color: #475569;">SWITCHED OFF (6%)</div>
-                                    </div>
-                                </div>
+                            <div class="diyacrm-outcome-box box-busy">
+                                <div class="diyacrm-outcome-count"><t t-esc="state.calling_outcomes.busy"/></div>
+                                <div class="diyacrm-outcome-lbl">Busy (10%)</div>
+                            </div>
+                            <div class="diyacrm-outcome-box box-switched">
+                                <div class="diyacrm-outcome-count"><t t-esc="state.calling_outcomes.switched_off"/></div>
+                                <div class="diyacrm-outcome-lbl">Switched Off (6%)</div>
                             </div>
                         </div>
                     </div>
 
                     <!-- 7-Stage Pipeline Funnel -->
-                    <div class="col-12 col-lg-6">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-filter text-primary"/> 7-Stage Active Pipeline Funnel</h4>
-                                <span class="header-tag">Active Opportunities</span>
-                            </div>
-                            <div class="d-flex flex-column gap-2 mt-2">
-                                <t t-foreach="state.stages" t-as="stg" t-key="stg.id">
-                                    <div class="diyacrm-stage-row">
-                                        <span class="diyacrm-stage-name" t-esc="stg.name"/>
-                                        <div class="diyacrm-stage-bar-wrap">
-                                            <div class="diyacrm-stage-bar" t-attf-style="width: #{stg.count ? Math.min(100, Math.max(12, stg.count * 15)) : 0}%; background-color: #{stg.color};"/>
-                                        </div>
-                                        <span class="diyacrm-stage-val" t-esc="stg.count"/>
+                    <div class="diyacrm-box-card">
+                        <div class="diyacrm-card-header">
+                            <h3><i class="fa fa-filter text-primary"/> 7-Stage Active Pipeline Funnel</h3>
+                            <span class="diyacrm-card-tag">Active Opportunities</span>
+                        </div>
+                        <div class="diyacrm-stage-funnel-list">
+                            <t t-foreach="state.stages" t-as="stg" t-key="stg.id">
+                                <div class="diyacrm-stage-row">
+                                    <span class="diyacrm-stage-name" t-esc="stg.name"/>
+                                    <div class="diyacrm-stage-bar-wrap">
+                                        <div class="diyacrm-stage-bar" t-attf-style="width: #{stg.pct}%; background-color: #{stg.color};"/>
                                     </div>
-                                </t>
-                            </div>
+                                    <span class="diyacrm-stage-val" t-esc="stg.count"/>
+                                </div>
+                            </t>
                         </div>
                     </div>
                 </div>
 
-                <!-- 4. Row 2: Inbound Channels & Temperature -->
-                <div class="row g-3 mb-4">
-                    <!-- UTM Sources (Doughnut + Legend) -->
-                    <div class="col-12 col-lg-6">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-bullhorn text-primary"/> Lead Inbound Channels (UTM Sources)</h4>
-                                <span class="header-tag">Attribution</span>
-                            </div>
-                            <div style="height: 180px; position: relative;">
-                                <canvas t-ref="sourceCanvas"/>
-                            </div>
+                <!-- 4. Row 2: Source-Wise Funnel & Lead Temperature -->
+                <div class="diyacrm-dash-row">
+                    <!-- Source Breakdown -->
+                    <div class="diyacrm-box-card">
+                        <div class="diyacrm-card-header">
+                            <h3><i class="fa fa-bullhorn text-primary"/> Lead Inbound Channels (UTM Sources)</h3>
+                            <span class="diyacrm-card-tag">Attribution</span>
+                        </div>
+                        <div style="height: 220px; position: relative;">
+                            <canvas t-ref="sourceChart"/>
                         </div>
                     </div>
 
                     <!-- Temperature & Quality -->
-                    <div class="col-12 col-lg-6">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-fire text-danger"/> Lead Temperature &amp; Quality Distribution</h4>
-                                <span class="header-tag">Buying Intent</span>
+                    <div class="diyacrm-box-card">
+                        <div class="diyacrm-card-header">
+                            <h3><i class="fa fa-fire text-danger"/> Lead Temperature &amp; Quality Distribution</h3>
+                            <span class="diyacrm-card-tag">Buying Intent</span>
+                        </div>
+                        <div class="diyacrm-temp-grid mb-3">
+                            <div class="diyacrm-temp-card temp-hot">
+                                <div>🔥 <strong>HOT</strong> (&lt; 30 Days)</div>
+                                <div class="diyacrm-temp-val"><t t-esc="state.temperature.hot"/> Leads</div>
                             </div>
-                            <div class="row g-2 mb-2">
-                                <div class="col-4">
-                                    <div class="p-2 text-center rounded-2" style="background: #fff1f2; border: 1px solid #fecdd3;">
-                                        <div class="small fw-bold text-danger">🔥 HOT (&lt; 30 Days)</div>
-                                        <div class="fw-bold text-danger fs-5 mt-1"><t t-esc="state.temperature.hot"/> Leads</div>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="p-2 text-center rounded-2" style="background: #fffbeb; border: 1px solid #fde68a;">
-                                        <div class="small fw-bold" style="color: #b45309;">⛅ WARM (1–2 Months)</div>
-                                        <div class="fw-bold fs-5 mt-1" style="color: #b45309;"><t t-esc="state.temperature.warm"/> Leads</div>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="p-2 text-center rounded-2" style="background: #ecfeff; border: 1px solid #a5f3fc;">
-                                        <div class="small fw-bold" style="color: #0e7490;">❄️ COLD (Exploring)</div>
-                                        <div class="fw-bold fs-5 mt-1" style="color: #0e7490;"><t t-esc="state.temperature.cold"/> Leads</div>
-                                    </div>
-                                </div>
+                            <div class="diyacrm-temp-card temp-warm">
+                                <div>⛅ <strong>WARM</strong> (1-2 Months)</div>
+                                <div class="diyacrm-temp-val"><t t-esc="state.temperature.warm"/> Leads</div>
                             </div>
-                            <div style="height: 110px; position: relative;">
-                                <canvas t-ref="tempCanvas"/>
+                            <div class="diyacrm-temp-card temp-cold">
+                                <div>❄️ <strong>COLD</strong> (Exploring)</div>
+                                <div class="diyacrm-temp-val"><t t-esc="state.temperature.cold"/> Leads</div>
                             </div>
+                        </div>
+                        <div style="height: 140px; position: relative;">
+                            <canvas t-ref="tempChart"/>
                         </div>
                     </div>
                 </div>
 
-                <!-- 5. Row 3: Sales Executive Leaderboard & Site Visit Ground Insights -->
-                <div class="row g-3">
-                    <!-- Sales Executive Leaderboard -->
-                    <div class="col-12 col-lg-8">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-ranking-star text-primary"/> Sales Executive Leaderboard &amp; Performance</h4>
-                                <span class="header-tag">Team KPI Tracker</span>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-sm align-middle mb-0" style="font-size: 0.8rem;">
-                                    <thead>
-                                        <tr class="text-muted text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">
-                                            <th>Salesperson</th>
-                                            <th>Project</th>
-                                            <th>Calls Made</th>
-                                            <th>New Opps</th>
-                                            <th>Visits Done</th>
-                                            <th>Won Bookings</th>
-                                            <th>Pending Actions</th>
+                <!-- 5. Row 3: Leaderboard & Site Visit Ground Insights -->
+                <div class="diyacrm-dash-row-3">
+                    <!-- Sales Team Leaderboard -->
+                    <div class="diyacrm-box-card">
+                        <div class="diyacrm-card-header">
+                            <h3><i class="fa fa-ranking-star text-primary"/> Sales Executive Leaderboard &amp; Performance</h3>
+                            <span class="diyacrm-card-tag">Team KPI Tracker</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="diyacrm-leaderboard-table">
+                                <thead>
+                                    <tr>
+                                        <th>Salesperson</th>
+                                        <th>Project</th>
+                                        <th>Calls Made</th>
+                                        <th>New Opps</th>
+                                        <th>Visits Done</th>
+                                        <th>Won Bookings</th>
+                                        <th>Pending Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="state.leaderboard" t-as="user" t-key="user.id">
+                                        <tr>
+                                            <td>
+                                                <div class="diyacrm-user-cell">
+                                                    <div class="diyacrm-user-avatar" t-esc="user.avatar"/>
+                                                    <span t-esc="user.name"/>
+                                                </div>
+                                            </td>
+                                            <td><span class="diyacrm-badge-pill badge-blue" t-esc="user.project"/></td>
+                                            <td><strong><t t-esc="user.calls"/></strong> <span class="text-muted small" style="font-size: 0.72rem;">(68%)</span></td>
+                                            <td><span class="diyacrm-badge-pill badge-green">+<t t-esc="user.new_opps"/></span></td>
+                                            <td><strong><t t-esc="user.visits_done"/></strong></td>
+                                            <td><span class="diyacrm-badge-pill badge-green fw-bold">🏆 <t t-esc="user.won"/></span></td>
+                                            <td><span class="diyacrm-badge-pill badge-orange"><t t-esc="user.pending_overdue"/> Due</span></td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        <t t-foreach="state.leaderboard" t-as="user" t-key="user.id">
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <span class="badge rounded-circle bg-primary-subtle text-primary" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.72rem;" t-esc="user.avatar"/>
-                                                        <strong class="text-dark" t-esc="user.name"/>
-                                                    </div>
-                                                </td>
-                                                <td><span class="badge bg-primary-subtle text-primary fw-bold" t-esc="user.project"/></td>
-                                                <td><strong><t t-esc="user.calls"/></strong> <span class="text-muted" style="font-size: 0.7rem;">(68%)</span></td>
-                                                <td><span class="badge bg-success-subtle text-success fw-bold">+<t t-esc="user.new_opps"/></span></td>
-                                                <td><strong class="text-dark"><t t-esc="user.visits_done"/></strong></td>
-                                                <td><span class="badge bg-success text-white fw-bold">🏆 <t t-esc="user.won"/></span></td>
-                                                <td><span class="badge bg-warning-subtle text-warning fw-bold"><t t-esc="user.pending_overdue"/> Due</span></td>
-                                            </tr>
-                                        </t>
-                                    </tbody>
-                                </table>
-                            </div>
+                                    </t>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <!-- Site Visit Ground Insights -->
-                    <div class="col-12 col-lg-4">
-                        <div class="diyacrm-card">
-                            <div class="diyacrm-card-header">
-                                <h4><i class="fa fa-clipboard-check text-primary"/> Site Visit Ground Insights</h4>
-                                <span class="header-tag">Outcome Feedback</span>
+                    <!-- Ground Site Visit Intelligence -->
+                    <div class="diyacrm-box-card">
+                        <div class="diyacrm-card-header">
+                            <h3><i class="fa fa-clipboard-check text-primary"/> Site Visit Ground Insights</h3>
+                            <span class="diyacrm-card-tag">Outcome Feedback</span>
+                        </div>
+                        <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 14px;">
+                            <div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted fw-bold">Finance Mode:</span>
+                                    <span class="fw-bold">Loan: 62% | Cash: 38%</span>
+                                </div>
+                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" style="width: 62%; background: #06b6d4;"/></div>
                             </div>
-                            <div class="d-flex flex-column gap-3 mt-1" style="font-size: 0.8rem;">
-                                <div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span class="text-muted fw-semibold">Finance Mode:</span>
-                                        <span class="fw-bold text-dark">Loan: 62% | Cash: 38%</span>
-                                    </div>
-                                    <div class="progress" style="height: 6px; border-radius: 3px; background: #f1f5f9;">
-                                        <div class="progress-bar" style="width: 62%; background: #06b6d4;"/>
-                                    </div>
-                                </div>
 
-                                <div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span class="text-muted fw-semibold">Purchase Timeline:</span>
-                                        <span class="fw-bold text-dark">&lt; 30 Days: 48%</span>
-                                    </div>
-                                    <div class="progress" style="height: 6px; border-radius: 3px; background: #f1f5f9;">
-                                        <div class="progress-bar" style="width: 48%; background: #10b981;"/>
-                                    </div>
+                            <div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted fw-bold">Purchase Timeline:</span>
+                                    <span class="fw-bold">&lt; 30 Days: 48%</span>
                                 </div>
+                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" style="width: 48%; background: #10b981;"/></div>
+                            </div>
 
-                                <div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span class="text-muted fw-semibold">Budget Comfort:</span>
-                                        <span class="fw-bold text-dark">Within Budget: 71%</span>
-                                    </div>
-                                    <div class="progress" style="height: 6px; border-radius: 3px; background: #f1f5f9;">
-                                        <div class="progress-bar" style="width: 71%; background: #f59e0b;"/>
-                                    </div>
+                            <div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted fw-bold">Budget Comfort:</span>
+                                    <span class="fw-bold">Within Budget: 71%</span>
                                 </div>
+                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" style="width: 71%; background: #f59e0b;"/></div>
+                            </div>
 
-                                <div>
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span class="text-muted fw-semibold">Decision Maker Accompanying:</span>
-                                        <span class="fw-bold text-dark">With Family / Spouse: 82%</span>
-                                    </div>
-                                    <div class="progress" style="height: 6px; border-radius: 3px; background: #f1f5f9;">
-                                        <div class="progress-bar" style="width: 82%; background: #8b5cf6;"/>
-                                    </div>
+                            <div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted fw-bold">Decision Maker Accompanying:</span>
+                                    <span class="fw-bold">With Family / Spouse: 82%</span>
                                 </div>
+                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" style="width: 82%; background: #8b5cf6;"/></div>
                             </div>
                         </div>
                     </div>

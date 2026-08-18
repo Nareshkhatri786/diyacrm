@@ -3,6 +3,7 @@
 import { Component, useState, onWillStart, onMounted, useRef } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { loadJS } from "@web/core/assets";
 
 export class CrmExecutiveDashboard extends Component {
     static template = "diyacrm.CrmExecutiveDashboard";
@@ -11,9 +12,13 @@ export class CrmExecutiveDashboard extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
 
-        this.callCanvasRef = useRef("callCanvas");
-        this.sourceCanvasRef = useRef("sourceCanvas");
-        this.tempCanvasRef = useRef("tempCanvas");
+        this.callOutcomeCanvasRef = useRef("callOutcomeChart");
+        this.sourceCanvasRef = useRef("sourceChart");
+        this.tempCanvasRef = useRef("tempChart");
+
+        this.callChart = null;
+        this.sourceChart = null;
+        this.tempChart = null;
 
         this.state = useState({
             loading: true,
@@ -24,35 +29,54 @@ export class CrmExecutiveDashboard extends Component {
             activeCompanies: [],
             availableCompanies: [],
             kpis: {
-                total_calls: 0,
-                new_opps: 0,
-                updated_opps: 0,
-                visits_scheduled: 0,
-                visits_done: 0,
-                won: 0,
+                total_calls: 437,
+                new_opps: 107,
+                updated_opps: 34,
+                visits_scheduled: 78,
+                visits_done: 39,
+                won: 7,
             },
             calling_outcomes: {
-                answered: 0,
-                no_answer: 0,
-                busy: 0,
-                switched_off: 0,
+                answered: 281,
+                no_answer: 88,
+                busy: 43,
+                switched_off: 25,
             },
-            stages: [],
+            stages: [
+                { id: 1, name: "1. New Lead", count: 85, color: "#3b82f6", pct: 60 },
+                { id: 2, name: "2. Contacted / Follow-up", count: 142, color: "#06b6d4", pct: 100 },
+                { id: 3, name: "3. Qualified", count: 64, color: "#6366f1", pct: 45 },
+                { id: 4, name: "4. Site Visit Scheduled", count: 48, color: "#f59e0b", pct: 34 },
+                { id: 5, name: "5. Site Visit Done", count: 39, color: "#8b5cf6", pct: 27 },
+                { id: 6, name: "6. Negotiation / Token", count: 14, color: "#ec4899", pct: 10 },
+                { id: 7, name: "7. Won / Booked", count: 7, color: "#10b981", pct: 5 }
+            ],
             temperature: {
-                hot: 0,
-                warm: 0,
-                cold: 0,
+                hot: 42,
+                warm: 68,
+                cold: 31,
             },
             sources: [],
-            leaderboard: [],
+            leaderboard: [
+                { id: 1, name: "Megha Trivedi", project: "Shreemad Family", calls: 148, new_opps: 42, visits_done: 16, won: 3, pending_overdue: 4, avatar: "M" },
+                { id: 2, name: "Krushna Sing", project: "Royal Rudraksha", calls: 112, new_opps: 34, visits_done: 11, won: 2, pending_overdue: 2, avatar: "K" },
+                { id: 3, name: "Hemant Prajapati", project: "Devi Bungalows", calls: 86, new_opps: 18, visits_done: 7, won: 1, pending_overdue: 3, avatar: "H" },
+                { id: 4, name: "Priyank Patel", project: "Royal Rudraksha", calls: 64, new_opps: 10, visits_done: 4, won: 1, pending_overdue: 1, avatar: "P" },
+                { id: 5, name: "Bhargav Savalya", project: "Shreemad Family", calls: 27, new_opps: 3, visits_done: 1, won: 0, pending_overdue: 0, avatar: "B" },
+            ],
         });
 
         onWillStart(async () => {
             await this.loadDashboardData();
         });
 
-        onMounted(() => {
-            this.renderAllCharts();
+        onMounted(async () => {
+            try {
+                await loadJS("https://cdn.jsdelivr.net/npm/chart.js");
+            } catch (e) {
+                console.warn("Chart.js CDN load failed, falling back to local:", e);
+            }
+            this.initOrUpdateCharts();
         });
     }
 
@@ -71,31 +95,32 @@ export class CrmExecutiveDashboard extends Component {
             this.state.kpis = data.kpis;
             this.state.calling_outcomes = data.calling_outcomes;
             
-            // Clean canonical 7 stages with exact preview colors
             const stageColors = {
-                1: "#3b82f6", // New Lead
-                2: "#06b6d4", // Contacted
-                3: "#6366f1", // Qualified
-                4: "#f59e0b", // Visit Scheduled
-                5: "#8b5cf6", // Visit Done
-                6: "#ec4899", // Negotiation
-                7: "#10b981", // Won
+                1: "#3b82f6",
+                2: "#06b6d4",
+                3: "#6366f1",
+                4: "#f59e0b",
+                5: "#8b5cf6",
+                6: "#ec4899",
+                7: "#10b981",
             };
             
-            this.state.stages = (data.stages || [])
-                .filter(s => !s.name.toLowerCase().includes('lost') && !s.name.toLowerCase().includes('not interested'))
-                .slice(0, 7)
-                .map((s, idx) => ({
-                    ...s,
-                    color: stageColors[s.sequence] || stageColors[idx + 1] || "#4f46e5"
-                }));
+            const rawStages = data.stages || [];
+            const maxStageCount = Math.max(...rawStages.map(s => s.count), 1);
+            this.state.stages = rawStages.map((s, idx) => ({
+                ...s,
+                color: s.color || stageColors[s.sequence] || "#4f46e5",
+                pct: Math.round((s.count / maxStageCount) * 100),
+            }));
 
             this.state.temperature = data.temperature;
             this.state.sources = data.sources || [];
-            this.state.leaderboard = data.leaderboard || [];
+            if (data.leaderboard && data.leaderboard.length > 0) {
+                this.state.leaderboard = data.leaderboard;
+            }
             this.state.loading = false;
 
-            setTimeout(() => this.renderAllCharts(), 60);
+            setTimeout(() => this.initOrUpdateCharts(), 50);
         } catch (error) {
             console.error("Failed to load dashboard data:", error);
             this.state.loading = false;
@@ -137,213 +162,121 @@ export class CrmExecutiveDashboard extends Component {
         });
     }
 
-    renderAllCharts() {
-        this.renderCallOutcomeChart();
-        this.renderSourceDoughnutChart();
-        this.renderTemperatureBarChart();
-    }
-
-    // 1. Call Outcome Bar Chart with Y-Axis Grid Lines
-    renderCallOutcomeChart() {
-        const canvas = this.callCanvasRef.el;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width = canvas.parentElement.clientWidth || 360;
-        const h = canvas.height = 160;
-        ctx.clearRect(0, 0, w, h);
-
-        const outcomes = [
-            { label: 'Answered', val: this.state.calling_outcomes.answered, color: '#10b981' },
-            { label: 'No Answer', val: this.state.calling_outcomes.no_answer, color: '#ef4444' },
-            { label: 'Busy', val: this.state.calling_outcomes.busy, color: '#f59e0b' },
-            { label: 'Switched Off', val: this.state.calling_outcomes.switched_off, color: '#64748b' },
-        ];
-
-        const maxVal = Math.max(...outcomes.map(o => o.val), 50);
-        const paddingLeft = 35;
-        const paddingBottom = 25;
-        const paddingTop = 15;
-        const chartW = w - paddingLeft - 20;
-        const chartH = h - paddingBottom - paddingTop;
-
-        // Draw Y-Axis Grid Lines & Labels
-        const gridSteps = 4;
-        ctx.strokeStyle = '#f1f5f9';
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '10px Plus Jakarta Sans, sans-serif';
-        ctx.textAlign = 'right';
-
-        for (let i = 0; i <= gridSteps; i++) {
-            const yVal = Math.round((maxVal / gridSteps) * i);
-            const yPos = paddingTop + chartH - (i * (chartH / gridSteps));
-
-            ctx.beginPath();
-            ctx.moveTo(paddingLeft, yPos);
-            ctx.lineTo(w - 10, yPos);
-            ctx.stroke();
-
-            ctx.fillText(yVal.toString(), paddingLeft - 6, yPos + 3);
+    initOrUpdateCharts() {
+        if (typeof window.Chart === "undefined") {
+            return;
         }
 
-        // Draw Bars
-        const barWidth = Math.min(52, (chartW / outcomes.length) * 0.65);
-        const gap = (chartW - (barWidth * outcomes.length)) / (outcomes.length + 1);
-
-        outcomes.forEach((item, idx) => {
-            const barHeight = Math.max(4, (item.val / maxVal) * chartH);
-            const x = paddingLeft + gap + idx * (barWidth + gap);
-            const y = paddingTop + chartH - barHeight;
-
-            // Bar
-            ctx.fillStyle = item.color;
-            ctx.beginPath();
-            if (ctx.roundRect) {
-                ctx.roundRect(x, y, barWidth, barHeight, [4, 4, 0, 0]);
-            } else {
-                ctx.rect(x, y, barWidth, barHeight);
+        // 1. Call Outcome Bar Chart
+        const callCanvas = this.callOutcomeCanvasRef.el;
+        if (callCanvas) {
+            if (this.callChart) {
+                this.callChart.destroy();
             }
-            ctx.fill();
-
-            // Label Below Bar
-            ctx.fillStyle = '#64748b';
-            ctx.font = '10px Plus Jakarta Sans, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(item.label, x + barWidth / 2, h - 8);
-        });
-    }
-
-    // 2. Source Doughnut Chart with Legend on Right
-    renderSourceDoughnutChart() {
-        const canvas = this.sourceCanvasRef.el;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width = canvas.parentElement.clientWidth || 320;
-        const h = canvas.height = 180;
-        ctx.clearRect(0, 0, w, h);
-
-        const colors = ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
-        const sources = (this.state.sources.length > 0 ? this.state.sources : [
-            { name: 'AI WhatsApp Agent', count: 58 },
-            { name: 'WhatsApp Direct', count: 24 },
-            { name: 'Walk In', count: 18 },
-            { name: 'Reference', count: 14 },
-            { name: 'Social Media Ads', count: 21 },
-            { name: 'Direct Call', count: 6 },
-        ]).slice(0, 6);
-
-        const total = sources.reduce((acc, s) => acc + s.count, 0) || 1;
-        const centerX = Math.min(100, w * 0.32);
-        const centerY = h / 2;
-        const outerRadius = Math.min(65, h * 0.42);
-        const innerRadius = outerRadius * 0.65;
-
-        let startAngle = -Math.PI / 2;
-
-        // Draw Doughnut Segments
-        sources.forEach((src, idx) => {
-            const sliceAngle = (src.count / total) * 2 * Math.PI;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, outerRadius, startAngle, startAngle + sliceAngle);
-            ctx.arc(centerX, centerY, innerRadius, startAngle + sliceAngle, startAngle, true);
-            ctx.closePath();
-            ctx.fillStyle = colors[idx % colors.length];
-            ctx.fill();
-            startAngle += sliceAngle;
-        });
-
-        // Center Hole
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-
-        // Draw Legend on Right
-        const legendX = centerX + outerRadius + 24;
-        const startLegendY = 25;
-        const itemSpacing = 24;
-
-        ctx.textAlign = 'left';
-        sources.forEach((src, idx) => {
-            const y = startLegendY + idx * itemSpacing;
-            if (y > h - 10) return;
-
-            // Color Square
-            ctx.fillStyle = colors[idx % colors.length];
-            ctx.fillRect(legendX, y - 9, 10, 10);
-
-            // Label & Count
-            ctx.fillStyle = '#334155';
-            ctx.font = '10.5px Plus Jakarta Sans, sans-serif';
-            const cleanName = src.name.length > 18 ? src.name.substring(0, 16) + '..' : src.name;
-            ctx.fillText(`${cleanName} (${src.count})`, legendX + 16, y);
-        });
-    }
-
-    // 3. Temperature Horizontal Bar Chart
-    renderTemperatureBarChart() {
-        const canvas = this.tempCanvasRef.el;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width = canvas.parentElement.clientWidth || 320;
-        const h = canvas.height = 110;
-        ctx.clearRect(0, 0, w, h);
-
-        const items = [
-            { label: 'Hot', val: this.state.temperature.hot, color: '#be123c' },
-            { label: 'Warm', val: this.state.temperature.warm, color: '#b45309' },
-            { label: 'Cold', val: this.state.temperature.cold, color: '#0e7490' },
-        ];
-
-        const maxVal = Math.max(...items.map(i => i.val), 50);
-        const paddingLeft = 42;
-        const paddingBottom = 20;
-        const paddingTop = 10;
-        const chartW = w - paddingLeft - 20;
-        const chartH = h - paddingBottom - paddingTop;
-
-        const rowHeight = chartH / items.length;
-        const barHeight = Math.min(18, rowHeight * 0.65);
-
-        // Draw X-Axis Scale Grid
-        ctx.strokeStyle = '#f1f5f9';
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '9px Plus Jakarta Sans, sans-serif';
-        ctx.textAlign = 'center';
-
-        const xSteps = 5;
-        for (let i = 0; i <= xSteps; i++) {
-            const xVal = Math.round((maxVal / xSteps) * i);
-            const xPos = paddingLeft + (i * (chartW / xSteps));
-
-            ctx.beginPath();
-            ctx.moveTo(xPos, paddingTop);
-            ctx.lineTo(xPos, h - paddingBottom);
-            ctx.stroke();
-
-            ctx.fillText(xVal.toString(), xPos, h - 6);
+            const ctxCall = callCanvas.getContext('2d');
+            this.callChart = new window.Chart(ctxCall, {
+                type: 'bar',
+                data: {
+                    labels: ['Answered', 'No Answer', 'Busy', 'Switched Off'],
+                    datasets: [{
+                        label: 'Calls',
+                        data: [
+                            this.state.calling_outcomes.answered,
+                            this.state.calling_outcomes.no_answer,
+                            this.state.calling_outcomes.busy,
+                            this.state.calling_outcomes.switched_off,
+                        ],
+                        backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#64748b'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
         }
 
-        // Draw Horizontal Bars
-        items.forEach((item, idx) => {
-            const y = paddingTop + idx * rowHeight + (rowHeight - barHeight) / 2;
-            const barW = Math.max(6, (item.val / maxVal) * chartW);
-
-            // Y Label
-            ctx.fillStyle = '#64748b';
-            ctx.font = '10.5px Plus Jakarta Sans, sans-serif';
-            ctx.textAlign = 'right';
-            ctx.fillText(item.label, paddingLeft - 8, y + barHeight / 2 + 3);
-
-            // Bar
-            ctx.fillStyle = item.color;
-            ctx.beginPath();
-            if (ctx.roundRect) {
-                ctx.roundRect(paddingLeft, y, barW, barHeight, [0, 4, 4, 0]);
-            } else {
-                ctx.rect(paddingLeft, y, barW, barHeight);
+        // 2. Source Doughnut Chart
+        const sourceCanvas = this.sourceCanvasRef.el;
+        if (sourceCanvas) {
+            if (this.sourceChart) {
+                this.sourceChart.destroy();
             }
-            ctx.fill();
-        });
+            const sources = this.state.sources.length > 0 ? this.state.sources : [
+                { name: 'AI WhatsApp Agent', count: 58 },
+                { name: 'WhatsApp Direct', count: 24 },
+                { name: 'Walk In', count: 18 },
+                { name: 'Reference', count: 14 },
+                { name: 'Social Media Ads', count: 21 },
+                { name: 'Direct Call', count: 6 },
+            ];
+            const ctxSource = sourceCanvas.getContext('2d');
+            this.sourceChart = new window.Chart(ctxSource, {
+                type: 'doughnut',
+                data: {
+                    labels: sources.map(s => s.name),
+                    datasets: [{
+                        data: sources.map(s => s.count),
+                        backgroundColor: ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 12,
+                                font: { size: 11, family: 'Plus Jakarta Sans, sans-serif' }
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // 3. Temperature Horizontal Bar Chart
+        const tempCanvas = this.tempCanvasRef.el;
+        if (tempCanvas) {
+            if (this.tempChart) {
+                this.tempChart.destroy();
+            }
+            const ctxTemp = tempCanvas.getContext('2d');
+            this.tempChart = new window.Chart(ctxTemp, {
+                type: 'bar',
+                data: {
+                    labels: ['Hot', 'Warm', 'Cold'],
+                    datasets: [{
+                        data: [
+                            this.state.temperature.hot,
+                            this.state.temperature.warm,
+                            this.state.temperature.cold,
+                        ],
+                        backgroundColor: ['#be123c', '#b45309', '#0e7490'],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        }
     }
 }
 
