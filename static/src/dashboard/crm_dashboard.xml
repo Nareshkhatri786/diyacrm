@@ -14,19 +14,20 @@
                 .diyacrm-header-card {
                     background: #ffffff;
                     border-radius: 16px;
-                    padding: 20px 24px;
+                    padding: 16px 24px;
                     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
                     border: 1px solid #e2e8f0;
                     margin-bottom: 24px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    flex-wrap: wrap;
+                    display: flex !important;
+                    flex-direction: row !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    flex-wrap: wrap !important;
                     gap: 16px;
                 }
 
                 .diyacrm-header-title h1 {
-                    font-size: 1.45rem;
+                    font-size: 1.35rem;
                     font-weight: 800;
                     color: #0f172a;
                     display: flex;
@@ -36,35 +37,39 @@
                 }
 
                 .diyacrm-header-title p {
-                    font-size: 0.85rem;
+                    font-size: 0.82rem;
                     color: #64748b;
                     margin-top: 4px;
                     margin-bottom: 0;
                 }
 
                 .diyacrm-filter-group {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    flex-wrap: wrap;
+                    display: flex !important;
+                    flex-direction: row !important;
+                    align-items: center !important;
+                    gap: 10px !important;
+                    flex-wrap: nowrap !important;
                 }
 
                 .diyacrm-select-filter {
-                    background: #f8fafc;
-                    border: 1px solid #e2e8f0;
-                    color: #0f172a;
-                    padding: 8px 14px;
-                    border-radius: 8px;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    outline: none;
-                    transition: all 0.2s;
+                    background: #f8fafc !important;
+                    border: 1px solid #cbd5e1 !important;
+                    color: #0f172a !important;
+                    padding: 7px 12px !important;
+                    border-radius: 8px !important;
+                    font-size: 0.82rem !important;
+                    font-weight: 600 !important;
+                    cursor: pointer !important;
+                    outline: none !important;
+                    width: auto !important;
+                    display: inline-block !important;
+                    min-width: 130px !important;
+                    height: 36px !important;
                 }
 
                 .diyacrm-select-filter:hover, .diyacrm-select-filter:focus {
-                    border-color: #4f46e5;
-                    background: #ffffff;
+                    border-color: #4f46e5 !important;
+                    background: #ffffff !important;
                 }
 
                 .diyacrm-btn-live {
@@ -77,12 +82,14 @@
                     display: inline-flex;
                     align-items: center;
                     gap: 6px;
+                    white-space: nowrap;
+                    height: 36px;
                 }
 
                 /* KPI Cards Grid */
                 .diyacrm-kpi-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+                    grid-template-columns: repeat(5, 1fr);
                     gap: 18px;
                     margin-bottom: 24px;
                 }
@@ -126,7 +133,7 @@
                 }
 
                 .diyacrm-kpi-title {
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
                     font-weight: 700;
                     color: #64748b;
                     text-transform: uppercase;
@@ -134,13 +141,13 @@
                 }
 
                 .diyacrm-kpi-icon-wrap {
-                    width: 36px;
-                    height: 36px;
+                    width: 34px;
+                    height: 34px;
                     border-radius: 8px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 1rem;
+                    font-size: 0.95rem;
                 }
 
                 .kpi-calls .diyacrm-kpi-icon-wrap { background: #eef2ff; color: #4f46e5; }
@@ -157,7 +164,7 @@
                 }
 
                 .diyacrm-kpi-subtitle {
-                    font-size: 0.78rem;
+                    font-size: 0.75rem;
                     color: #64748b;
                     margin-top: 6px;
                     display: flex;
@@ -169,7 +176,7 @@
                     display: inline-block;
                     padding: 2px 8px;
                     border-radius: 12px;
-                    font-size: 0.7rem;
+                    font-size: 0.68rem;
                     font-weight: 700;
                 }
                 .badge-green { background: #ecfdf5; color: #047857; }
@@ -209,7 +216,7 @@
                 }
 
                 .diyacrm-card-header h3 {
-                    font-size: 1rem;
+                    font-size: 0.95rem;
                     font-weight: 700;
                     color: #0f172a;
                     display: flex;
@@ -219,7 +226,7 @@
                 }
 
                 .diyacrm-card-header .diyacrm-card-tag {
-                    font-size: 0.75rem;
+                    font-size: 0.72rem;
                     font-weight: 600;
                     color: #64748b;
                     background: #f1f5f9;
@@ -248,7 +255,7 @@
                 .box-switched { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
 
                 .diyacrm-outcome-count { font-size: 1.3rem; font-weight: 800; }
-                .diyacrm-outcome-lbl { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+                .diyacrm-outcome-lbl { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
 
                 /* Real Estate Funnel Stages */
                 .diyacrm-stage-funnel-list {
@@ -262,7 +269,7 @@
                     align-items: center;
                     justify-content: space-between;
                     gap: 12px;
-                    font-size: 0.85rem;
+                    font-size: 0.82rem;
                 }
 
                 .diyacrm-stage-name {
@@ -296,7 +303,7 @@
                 .diyacrm-leaderboard-table {
                     width: 100%;
                     border-collapse: collapse;
-                    font-size: 0.85rem;
+                    font-size: 0.82rem;
                 }
 
                 .diyacrm-leaderboard-table th {
@@ -304,7 +311,7 @@
                     color: #64748b;
                     font-weight: 700;
                     text-transform: uppercase;
-                    font-size: 0.72rem;
+                    font-size: 0.7rem;
                     letter-spacing: 0.5px;
                     padding: 10px 14px;
                     text-align: left;
@@ -331,15 +338,15 @@
                 }
 
                 .diyacrm-user-avatar {
-                    width: 30px;
-                    height: 30px;
+                    width: 28px;
+                    height: 28px;
                     border-radius: 50%;
                     background: #eef2ff;
                     color: #4f46e5;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
                     font-weight: 700;
                 }
 
@@ -360,11 +367,15 @@
                 .temp-warm { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; }
                 .temp-cold { background: #ecfeff; border: 1px solid #a5f3fc; color: #0e7490; }
 
-                .diyacrm-temp-val { font-size: 1.45rem; font-weight: 800; margin-top: 4px; }
+                .diyacrm-temp-val { font-size: 1.35rem; font-weight: 800; margin-top: 4px; }
 
-                @media (max-width: 1024px) {
+                @media (max-width: 1200px) {
+                    .diyacrm-kpi-grid { grid-template-columns: repeat(3, 1fr); }
+                }
+                @media (max-width: 900px) {
                     .diyacrm-dash-row, .diyacrm-dash-row-3 { grid-template-columns: 1fr; }
                     .diyacrm-outcome-grid { grid-template-columns: repeat(2, 1fr); }
+                    .diyacrm-filter-group { flex-wrap: wrap !important; }
                 }
             </style>
 
@@ -405,7 +416,7 @@
                             </t>
                         </select>
 
-                        <button class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm rounded-2" style="padding: 8px 16px;" t-on-click="loadDashboardData">
+                        <button class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1 shadow-sm rounded-2" style="padding: 7px 14px; height: 36px; white-space: nowrap;" t-on-click="loadDashboardData">
                             <i class="fa fa-sync-alt" t-att-class="{'fa-spin': state.loading}"/>
                             <span>Refresh</span>
                         </button>
