@@ -2,8 +2,10 @@
 import json
 import logging
 import re
+import odoo
 from odoo import http, fields, SUPERUSER_ID
 from odoo.http import request, Response
+from odoo.orm.registry import Registry
 
 _logger = logging.getLogger(__name__)
 
@@ -73,59 +75,89 @@ class WhatsAppWebhookController(http.Controller):
         '/api/inbound-whatsapp-royal.php',
         '/api/inbound-whatsapp-shreemad.php',
         '/api/inbound-whatsapp-devi.php',
-    ], type='http', auth='public', methods=['POST', 'GET'], csrf=False)
+    ], type='http', auth='none', methods=['POST', 'GET'], csrf=False, save_session=False)
     def handle_whatsapp_webhook(self, **kwargs):
-        # 1. META WEBHOOK VERIFICATION (GET REQUEST)
+        """
+        Ultra-Reliable Universal Webhook Endpoint (Meta Cloud API + Custom Bots)
+        Auth: None (No session/cookie locks, direct WSGI pass-through)
+        """
+        # =========================================================================
+        # 1. META CHALLENGE VERIFICATION (GET REQUEST)
+        # =========================================================================
         if request.httprequest.method == 'GET':
             mode = kwargs.get('hub.mode') or kwargs.get('mode')
             token = kwargs.get('hub.verify_token') or kwargs.get('verify_token') or kwargs.get('token')
             challenge = kwargs.get('hub.challenge') or kwargs.get('challenge')
 
-            if mode and challenge:
-                _logger.info("Meta Webhook Verification: mode=%s, token=%s", mode, token)
-                return Response(str(challenge), status=200, content_type='text/plain')
-
             if challenge:
+                _logger.info("Meta Webhook Verification Approved: mode=%s, challenge=%s", mode, challenge)
                 return Response(str(challenge), status=200, content_type='text/plain')
 
             return Response(
                 json.dumps({
                     'status': 'online',
-                    'service': 'Diya CRM Meta Cloud API & WhatsApp Webhook Engine',
-                    'version': '3.0',
+                    'service': 'Diya CRM WhatsApp Webhook Engine',
+                    'version': '4.0',
                     'verify_token': META_VERIFY_TOKEN
                 }),
                 status=200,
                 content_type='application/json'
             )
 
-        # 2. INBOUND WEBHOOK DATA PROCESSING (POST REQUEST)
+        # =========================================================================
+        # 2. INBOUND DATA INGESTION (POST REQUEST)
+        # =========================================================================
         try:
-            raw_data = request.httprequest.data
-            if raw_data:
+            raw_body = request.httprequest.get_data() or request.httprequest.data
+            if raw_body:
                 try:
-                    payload = json.loads(raw_data.decode('utf-8'))
+                    payload = json.loads(raw_body.decode('utf-8'))
                 except Exception:
                     payload = kwargs
             else:
                 payload = kwargs
 
-            env = request.env(user=SUPERUSER_ID)
+            _logger.info("Diya CRM Inbound Webhook Raw Payload: %s", payload)
 
-            # Check if Meta WhatsApp Cloud API Payload
-            if 'entry' in payload and isinstance(payload['entry'], list):
-                results = self._parse_and_process_meta_payload(env, payload)
-                return Response(json.dumps({'status': 'success', 'processed': len(results), 'details': results}), status=200, content_type='application/json')
+            # Determine Database
+            db_name = request.db or request.httprequest.headers.get('X-Odoo-Db')
+            if not db_name:
+                try:
+                    db_list = odoo.service.db.list_dbs()
+                    if 'diyacrm' in db_list:
+                        db_name = 'diyacrm'
+                    elif 'odoo19' in db_list:
+                        db_name = 'odoo19'
+                    elif db_list:
+                        db_name = db_list[0]
+                    else:
+                        db_name = 'diyacrm'
+                except Exception:
+                    db_name = 'diyacrm'
 
-            # Direct JSON Payload
-            payload['_url_path'] = request.httprequest.path
-            payload['_url_account'] = kwargs.get('account')
-            result = self._process_inbound_lead(env, payload)
-            status_code = 200 if result.get('status') in ['success', 'ignored'] else 400
-            return Response(json.dumps(result), status=status_code, content_type='application/json')
+            registry = Registry(db_name)
+            with registry.cursor() as cr:
+                env = odoo.api.Environment(cr, SUPERUSER_ID, {})
+
+                # Check if Meta WhatsApp Cloud API Payload
+                if 'entry' in payload and isinstance(payload['entry'], list):
+                    results = self._parse_and_process_meta_payload(env, payload)
+                    cr.commit()
+                    return Response(json.dumps({'status': 'success', 'processed': len(results), 'details': results}), status=200, content_type='application/json')
+
+                # Direct / WaMantra / Custom Payload
+                payload['_url_path'] = request.httprequest.path
+                payload['_url_account'] = kwargs.get('account')
+                result = self._process_inbound_lead(env, payload)
+                cr.commit()
+
+                status_code = 200 if result.get('status') in ['success', 'ignored'] else 400
+                return Response(json.dumps(result), status=status_code, content_type='application/json')
+
         except Exception as e:
-            _logger.exception("Diya CRM Webhook Error: %s", str(e))
-            return Response(json.dumps({'status': 'error', 'message': str(e)}), status=500, content_type='application/json')
+            _logger.exception("Diya CRM Webhook Ingestion Exception: %s", str(e))
+            # Always return 200 to Meta so Meta does not disconnect the webhook during edge cases
+            return Response(json.dumps({'status': 'error', 'message': str(e)}), status=200, content_type='application/json')
 
     def _parse_and_process_meta_payload(self, env, payload):
         results = []
@@ -136,24 +168,19 @@ class WhatsAppWebhookController(http.Controller):
                 phone_number_id = metadata.get('phone_number_id', '')
                 display_phone_number = metadata.get('display_phone_number', '')
 
-                # Ignore status delivery receipts (sent / delivered / read updates)
+                # Ignore delivery receipts (statuses) if there are no customer messages
                 if 'statuses' in value and not value.get('messages'):
                     _logger.info("Ignoring Meta status delivery receipt (statuses update)")
                     continue
 
-                # Contacts mapping (Name & wa_id)
                 contacts_map = {}
                 for c in value.get('contacts', []):
                     wa_id = c.get('wa_id')
                     profile_name = c.get('profile', {}).get('name') or "WhatsApp User"
                     if wa_id:
-                        contacts_map[wa_id] = profile_name
+                        contacts_map[str(wa_id)] = profile_name
 
-                # Messages
                 messages = value.get('messages', [])
-                if not messages:
-                    continue
-
                 for msg in messages:
                     from_number = str(msg.get('from', '')).strip()
                     if not from_number:
@@ -281,7 +308,7 @@ class WhatsAppWebhookController(http.Controller):
         message = data.get('message') or data.get('last_message') or data.get('chat_history') or data.get('body') or ''
         clean_mobile_10 = clean_phone_number(raw_phone)
 
-        # Ignore empty test pings with no phone number and no message
+        # Ignore empty test hits without phone number or message
         if not clean_mobile_10 and not raw_phone and not message:
             _logger.info("Ignoring empty webhook payload with no phone or message.")
             return {
