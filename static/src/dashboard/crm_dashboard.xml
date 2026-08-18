@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="diyacrm.CrmExecutiveDashboard">
+        <div class="o_crm_dashboard p-4">
+            <!-- Header Bar with Global Filters -->
+            <div class="card shadow-sm border-0 mb-4 p-3 rounded-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <h4 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                            <i class="fa fa-chart-line text-primary"/>
+                            <span>Diya CRM - Real Estate Executive Dashboard</span>
+                        </h4>
+                        <div class="text-muted small">
+                            <t t-if="state.isMultiCompany">
+                                <span class="badge bg-primary-subtle text-primary fw-bold me-2">Consolidated Multi-Project View</span>
+                                <span>Showing aggregated metrics across <t t-esc="state.activeCompanies.length"/> projects</span>
+                            </t>
+                            <t t-else="">
+                                <span class="badge bg-success-subtle text-success fw-bold me-2">Single Project View</span>
+                                <span>Project: <strong><t t-esc="state.activeCompanies[0] ? state.activeCompanies[0].name : 'Default'"/></strong></span>
+                            </t>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Controls -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <!-- Project Selector -->
+                        <select class="form-select form-select-sm fw-bold border-secondary-subtle" t-on-change="onCompanyChange">
+                            <option value="all">🏢 All Allowed Projects</option>
+                            <t t-foreach="state.availableCompanies" t-as="comp" t-key="comp.id">
+                                <option t-att-value="comp.id" t-esc="comp.name"/>
+                            </t>
+                        </select>
+
+                        <!-- Date Range Selector -->
+                        <select class="form-select form-select-sm fw-bold border-secondary-subtle" t-on-change="onPeriodChange">
+                            <option value="today">📅 Today</option>
+                            <option value="yesterday">📅 Yesterday</option>
+                            <option value="48h" selected="selected">📅 Last 48 Hours</option>
+                            <option value="week">📅 This Week</option>
+                            <option value="month">📅 This Month</option>
+                            <option value="all">📅 All Time</option>
+                        </select>
+
+                        <button class="btn btn-sm btn-primary d-flex align-items-center gap-1" t-on-click="loadDashboardData">
+                            <i class="fa fa-sync-alt" t-att-class="{'fa-spin': state.loading}"/>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hero KPI Grid -->
+            <div class="row g-3 mb-4">
+                <!-- 1. Calls -->
+                <div class="col-12 col-sm-6 col-xl-2">
+                    <div class="card shadow-sm border-0 h-100 p-3 rounded-4 kpi-card-custom" style="border-left: 4px solid #4f46e5 !important;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Total Calls</span>
+                            <div class="kpi-icon bg-primary-subtle text-primary rounded-3 p-2"><i class="fa fa-phone"/></div>
+                        </div>
+                        <h3 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.total_calls"/></h3>
+                        <span class="badge bg-success-subtle text-success small">64% Connected</span>
+                    </div>
+                </div>
+
+                <!-- 2. New Opps -->
+                <div class="col-12 col-sm-6 col-xl-2">
+                    <div class="card shadow-sm border-0 h-100 p-3 rounded-4 kpi-card-custom cursor-pointer" style="border-left: 4px solid #10b981 !important;" t-on-click="() => this.openOpportunities('new')">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">New Opps</span>
+                            <div class="kpi-icon bg-success-subtle text-success rounded-3 p-2"><i class="fa fa-user-plus"/></div>
+                        </div>
+                        <h3 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.new_opps"/></h3>
+                        <span class="badge bg-success-subtle text-success small">Fresh Inbound</span>
+                    </div>
+                </div>
+
+                <!-- 3. Updated Opps -->
+                <div class="col-12 col-sm-6 col-xl-2">
+                    <div class="card shadow-sm border-0 h-100 p-3 rounded-4 kpi-card-custom" style="border-left: 4px solid #06b6d4 !important;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Updated Leads</span>
+                            <div class="kpi-icon bg-info-subtle text-info rounded-3 p-2"><i class="fa fa-arrows-rotate"/></div>
+                        </div>
+                        <h3 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.updated_opps"/></h3>
+                        <span class="badge bg-info-subtle text-info small">Repeat Inquiries</span>
+                    </div>
+                </div>
+
+                <!-- 4. Site Visits Scheduled -->
+                <div class="col-12 col-sm-6 col-xl-2">
+                    <div class="card shadow-sm border-0 h-100 p-3 rounded-4 kpi-card-custom" style="border-left: 4px solid #f59e0b !important;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Visits Scheduled</span>
+                            <div class="kpi-icon bg-warning-subtle text-warning rounded-3 p-2"><i class="fa fa-calendar-check"/></div>
+                        </div>
+                        <h3 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.visits_scheduled"/></h3>
+                        <span class="badge bg-warning-subtle text-warning small">Pipeline Stage 4</span>
+                    </div>
+                </div>
+
+                <!-- 5. Site Visits Done -->
+                <div class="col-12 col-sm-6 col-xl-2">
+                    <div class="card shadow-sm border-0 h-100 p-3 rounded-4 kpi-card-custom" style="border-left: 4px solid #8b5cf6 !important;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Visits Done</span>
+                            <div class="kpi-icon bg-purple-subtle text-purple rounded-3 p-2"><i class="fa fa-car"/></div>
+                        </div>
+                        <h3 class="fw-bold mb-1 text-dark"><t t-esc="state.kpis.visits_done"/></h3>
+                        <span class="badge bg-primary-subtle text-primary small">Completed</span>
+                    </div>
+                </div>
+
+                <!-- 6. Won Deals -->
+                <div class="col-12 col-sm-6 col-xl-2">
+                    <div class="card shadow-sm border-0 h-100 p-3 rounded-4 kpi-card-custom cursor-pointer" style="border-left: 4px solid #059669 !important;" t-on-click="() => this.openOpportunities('won')">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted text-uppercase fw-bold" style="font-size: 0.72rem;">Won / Booked</span>
+                            <div class="kpi-icon bg-success-subtle text-success rounded-3 p-2"><i class="fa fa-trophy"/></div>
+                        </div>
+                        <h3 class="fw-bold mb-1 text-success"><t t-esc="state.kpis.won"/></h3>
+                        <span class="badge bg-success-subtle text-success small">Token Received</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 1: Calling Outcomes & 7-Stage Funnel -->
+            <div class="row g-4 mb-4">
+                <!-- Calling Outcomes -->
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm border-0 h-100 p-4 rounded-4 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                <i class="fa fa-headset text-primary"/>
+                                <span>Calling Outcomes &amp; Connect Rate</span>
+                            </h5>
+                            <span class="badge bg-light text-dark fw-bold"><t t-esc="state.kpis.total_calls"/> Dials</span>
+                        </div>
+                        <div style="height: 140px; position: relative;">
+                            <canvas t-ref="callCanvas"/>
+                        </div>
+                        <div class="row g-2 mt-3 text-center">
+                            <div class="col-3">
+                                <div class="p-2 rounded-3 bg-success-subtle border border-success-subtle">
+                                    <div class="fw-bold text-success fs-5"><t t-esc="state.calling_outcomes.answered"/></div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">Answered</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="p-2 rounded-3 bg-danger-subtle border border-danger-subtle">
+                                    <div class="fw-bold text-danger fs-5"><t t-esc="state.calling_outcomes.no_answer"/></div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">No Answer</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="p-2 rounded-3 bg-warning-subtle border border-warning-subtle">
+                                    <div class="fw-bold text-warning fs-5"><t t-esc="state.calling_outcomes.busy"/></div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">Busy</div>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="p-2 rounded-3 bg-light border">
+                                    <div class="fw-bold text-secondary fs-5"><t t-esc="state.calling_outcomes.switched_off"/></div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">Switched Off</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7-Stage Funnel -->
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm border-0 h-100 p-4 rounded-4 bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                <i class="fa fa-filter text-primary"/>
+                                <span>7-Stage Active Pipeline Funnel</span>
+                            </h5>
+                            <span class="badge bg-light text-dark fw-bold">Active Opportunities</span>
+                        </div>
+                        <div class="d-flex flex-column gap-3">
+                            <t t-foreach="state.stages" t-as="stg" t-key="stg.id">
+                                <div class="d-flex align-items-center justify-content-between gap-3">
+                                    <span class="text-dark fw-semibold" style="width: 180px; font-size: 0.85rem;" t-esc="stg.name"/>
+                                    <div class="progress flex-grow-1" style="height: 10px; border-radius: 5px;">
+                                        <div class="progress-bar bg-primary" role="progressbar" t-attf-style="width: #{stg.count ? Math.min(100, stg.count * 3) : 0}%;"/>
+                                    </div>
+                                    <span class="fw-bold text-dark" style="width: 45px; text-align: right;" t-esc="stg.count"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: UTM Sources & Temperature & Leaderboard -->
+            <div class="row g-4">
+                <!-- UTM Sources -->
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm border-0 h-100 p-4 rounded-4 bg-white">
+                        <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                            <i class="fa fa-bullhorn text-primary"/>
+                            <span>Inbound Channels (UTM Sources)</span>
+                        </h5>
+                        <div class="d-flex flex-column gap-2">
+                            <t t-foreach="state.sources" t-as="src" t-key="src.name">
+                                <div class="d-flex justify-content-between align-items-center p-2 rounded-3 bg-light">
+                                    <span class="fw-semibold text-dark small" t-esc="src.name"/>
+                                    <span class="badge bg-primary rounded-pill fw-bold" t-esc="src.count"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temperature -->
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm border-0 h-100 p-4 rounded-4 bg-white">
+                        <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                            <i class="fa fa-thermometer-half text-danger"/>
+                            <span>Lead Temperature &amp; Quality</span>
+                        </h5>
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <div class="p-3 text-center rounded-3 bg-danger-subtle border border-danger-subtle">
+                                    <div class="small fw-bold text-danger">🔥 HOT</div>
+                                    <h4 class="fw-bold text-danger mb-0 mt-1"><t t-esc="state.temperature.hot"/></h4>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-3 text-center rounded-3 bg-warning-subtle border border-warning-subtle">
+                                    <div class="small fw-bold text-warning">⛅ WARM</div>
+                                    <h4 class="fw-bold text-warning mb-0 mt-1"><t t-esc="state.temperature.warm"/></h4>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="p-3 text-center rounded-3 bg-info-subtle border border-info-subtle">
+                                    <div class="small fw-bold text-info">❄️ COLD</div>
+                                    <h4 class="fw-bold text-info mb-0 mt-1"><t t-esc="state.temperature.cold"/></h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sales Team Leaderboard -->
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm border-0 h-100 p-4 rounded-4 bg-white">
+                        <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                            <i class="fa fa-ranking-star text-primary"/>
+                            <span>Sales Team Performance</span>
+                        </h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr class="text-muted text-uppercase" style="font-size: 0.7rem;">
+                                        <th>Salesperson</th>
+                                        <th>Opps</th>
+                                        <th>Visits</th>
+                                        <th>Won</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-foreach="state.leaderboard" t-as="user" t-key="user.id">
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="badge rounded-circle bg-primary-subtle text-primary" style="width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;" t-esc="user.avatar"/>
+                                                    <span class="fw-bold text-dark small" t-esc="user.name"/>
+                                                </div>
+                                            </td>
+                                            <td><span class="badge bg-light text-dark fw-bold" t-esc="user.new_opps"/></td>
+                                            <td><strong class="text-dark small" t-esc="user.visits_done"/></td>
+                                            <td><span class="badge bg-success text-white fw-bold" t-esc="user.won"/></td>
+                                        </tr>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </t>
+
+</templates>
