@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diya CRM - Real Estate Executive Dashboard</title>
+    <!-- Google Fonts & Font Awesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #3730a3;
+            --primary-light: #eef2ff;
+            --success: #10b981;
+            --success-light: #ecfdf5;
+            --warning: #f59e0b;
+            --warning-light: #fffbeb;
+            --danger: #ef4444;
+            --danger-light: #fef2f2;
+            --info: #06b6d4;
+            --info-light: #ecfeff;
+            --dark: #0f172a;
+            --gray-700: #334155;
+            --gray-500: #64748b;
+            --gray-300: #cbd5e1;
+            --gray-100: #f1f5f9;
+            --gray-50: #f8fafc;
+            --white: #ffffff;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f4f6f9;
+            color: var(--dark);
+            -webkit-font-smoothing: antialiased;
+            padding: 24px;
+        }
+
+        .dashboard-container {
+            max-width: 1540px;
+            margin: 0 auto;
+        }
+
+        /* Top Header & Filters */
+        .header-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title h1 {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-title p {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .select-filter {
+            background: var(--gray-50);
+            border: 1px solid var(--border);
+            color: var(--dark);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .select-filter:hover, .select-filter:focus {
+            border-color: var(--primary);
+            background: var(--white);
+        }
+
+        .btn-live {
+            background: #10b981;
+            color: white;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.03); opacity: 0.9; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* KPI Cards Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .kpi-calls::before { background: var(--primary); }
+        .kpi-new::before { background: var(--success); }
+        .kpi-update::before { background: var(--info); }
+        .kpi-visit::before { background: var(--warning); }
+        .kpi-won::before { background: #8b5cf6; }
+
+        .kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .kpi-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-icon-wrap {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .kpi-calls .kpi-icon-wrap { background: var(--primary-light); color: var(--primary); }
+        .kpi-new .kpi-icon-wrap { background: var(--success-light); color: var(--success); }
+        .kpi-update .kpi-icon-wrap { background: var(--info-light); color: var(--info); }
+        .kpi-visit .kpi-icon-wrap { background: var(--warning-light); color: var(--warning); }
+        .kpi-won .kpi-icon-wrap { background: #f3e8ff; color: #8b5cf6; }
+
+        .kpi-value {
+            font-size: 1.85rem;
+            font-weight: 800;
+            color: var(--dark);
+            line-height: 1.1;
+        }
+
+        .kpi-subtitle {
+            font-size: 0.78rem;
+            color: var(--gray-500);
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .badge-green { background: var(--success-light); color: #047857; }
+        .badge-blue { background: var(--primary-light); color: var(--primary); }
+        .badge-orange { background: var(--warning-light); color: #b45309; }
+
+        /* Dashboard Grid Layout */
+        .dash-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .dash-row-3 {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--gray-100);
+            padding-bottom: 12px;
+        }
+
+        .card-header h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-header .card-tag {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--gray-500);
+            background: var(--gray-100);
+            padding: 3px 10px;
+            border-radius: 6px;
+        }
+
+        /* Outcome Pills Grid */
+        .outcome-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .outcome-box {
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid transparent;
+        }
+
+        .box-answered { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+        .box-noanswer { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .box-busy { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+        .box-switched { background: #f8fafc; border-color: #e2e8f0; color: #475569; }
+
+        .outcome-count { font-size: 1.3rem; font-weight: 800; }
+        .outcome-lbl { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+
+        /* Real Estate Funnel Stages */
+        .stage-funnel-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .stage-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 0.85rem;
+        }
+
+        .stage-name {
+            width: 170px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .stage-bar-wrap {
+            flex-grow: 1;
+            height: 10px;
+            background: var(--gray-100);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .stage-bar {
+            height: 100%;
+            border-radius: 5px;
+            background: var(--primary);
+            transition: width 0.5s ease;
+        }
+
+        .stage-val {
+            width: 50px;
+            text-align: right;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        /* Leaderboard Table */
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .leaderboard-table th {
+            background: var(--gray-50);
+            color: var(--gray-500);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .leaderboard-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        .leaderboard-table tr:hover td {
+            background: var(--gray-50);
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        /* Temperature Grid */
+        .temp-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+        }
+
+        .temp-card {
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .temp-hot { background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; }
+        .temp-warm { background: #fffbeb; border: 1px solid #fde68a; color: #b45309; }
+        .temp-cold { background: #ecfeff; border: 1px solid #a5f3fc; color: #0e7490; }
+
+        .temp-val { font-size: 1.45rem; font-weight: 800; margin-top: 4px; }
+
+        @media (max-width: 1024px) {
+            .dash-row, .dash-row-3 { grid-template-columns: 1fr; }
+            .outcome-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+
+    <!-- 1. Header Bar with Global Filters -->
+    <div class="header-card">
+        <div class="header-title">
+            <h1><i class="fa-solid fa-chart-line text-primary"></i> Diya CRM - Real Estate Executive Dashboard</h1>
+            <p>Live Inbound Webhook, Call Outcomes, Pipeline Stages & Team Performance Analytics</p>
+        </div>
+
+        <div class="filter-group">
+            <span class="btn-live"><i class="fa-solid fa-circle text-white fa-beat"></i> Live Pipeline</span>
+            
+            <select id="projectFilter" class="select-filter" onchange="applyFilters()">
+                <option value="all">🏢 All Projects</option>
+                <option value="royal">👑 Royal Rudraksha</option>
+                <option value="shreemad">🏡 Shreemad Family</option>
+                <option value="devi">🏰 Devi Bungalows</option>
+                <option value="signature">🏢 Signature Properties</option>
+            </select>
+
+            <select id="dateFilter" class="select-filter" onchange="applyFilters()">
+                <option value="today">📅 Today (18 Aug)</option>
+                <option value="yesterday">📅 Yesterday (17 Aug)</option>
+                <option value="48h" selected>📅 Last 48 Hours</option>
+                <option value="week">📅 This Week</option>
+                <option value="month">📅 This Month</option>
+            </select>
+
+            <select id="userFilter" class="select-filter" onchange="applyFilters()">
+                <option value="all">👤 All Sales Team</option>
+                <option value="krushna">Krushna Sing (Royal)</option>
+                <option value="megha">Megha Trivedi (Shreemad)</option>
+                <option value="hemant">Hemant Prajapati (Devi)</option>
+                <option value="priyank">Priyank Patel (Royal)</option>
+                <option value="bhargav">Bhargav Savalya (Shreemad)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 2. Hero KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card kpi-calls">
+            <div class="kpi-header">
+                <span class="kpi-title">Total Calls Logged</span>
+                <div class="kpi-icon-wrap"><i class="fa-solid fa-phone"></i></div>
+            </div>
+            <div class="kpi-value" id="kpiCalls">437</div>
+            <div class="kpi-subtitle">
+                <span class="badge-pill badge-green"><i class="fa-solid fa-check"></i> 64% Connected</span>
+                <span>In selected range</span>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-new">
+            <div class="kpi-header">
+                <span class="kpi-title">New Opps Created</span>
+                <div class="kpi-icon-wrap"><i class="fa-solid fa-user-plus"></i></div>
+            </div>
+            <div class="kpi-value" id="kpiNewOpps">107</div>
+            <div class="kpi-subtitle">
+                <span class="badge-pill badge-blue">Fresh WhatsApp & Webhook</span>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-update">
+            <div class="kpi-header">
+                <span class="kpi-title">Existing Leads Inquired</span>
+                <div class="kpi-icon-wrap"><i class="fa-solid fa-arrows-rotate"></i></div>
+            </div>
+            <div class="kpi-value" id="kpiUpdatedOpps">34</div>
+            <div class="kpi-subtitle">
+                <span class="badge-pill badge-blue">Chatter Timeline Updated</span>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-visit">
+            <div class="kpi-header">
+                <span class="kpi-title">Site Visits Scheduled</span>
+                <div class="kpi-icon-wrap"><i class="fa-solid fa-car"></i></div>
+            </div>
+            <div class="kpi-value" id="kpiVisits">78</div>
+            <div class="kpi-subtitle">
+                <span class="badge-pill badge-orange">39 Visits Completed</span>
+            </div>
+        </div>
+
+        <div class="kpi-card kpi-won">
+            <div class="kpi-header">
+                <span class="kpi-title">Won / Booked</span>
+                <div class="kpi-icon-wrap"><i class="fa-solid fa-trophy"></i></div>
+            </div>
+            <div class="kpi-value" id="kpiWon">7</div>
+            <div class="kpi-subtitle">
+                <span class="badge-pill badge-green">Token Received</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Row 1: Calling Outcomes & 7-Stage Pipeline Funnel -->
+    <div class="dash-row">
+        <!-- Call Outcome Analytics -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-headset text-primary"></i> Calling Outcome Analytics</h3>
+                <span class="card-tag">437 Dials Logged</span>
+            </div>
+            <div style="height: 180px; position: relative;">
+                <canvas id="callOutcomeChart"></canvas>
+            </div>
+            <div class="outcome-grid">
+                <div class="outcome-box box-answered">
+                    <div class="outcome-count" id="outAnswered">281</div>
+                    <div class="outcome-lbl">Answered (64%)</div>
+                </div>
+                <div class="outcome-box box-noanswer">
+                    <div class="outcome-count" id="outNoAnswer">88</div>
+                    <div class="outcome-lbl">No Answer (20%)</div>
+                </div>
+                <div class="outcome-box box-busy">
+                    <div class="outcome-count" id="outBusy">43</div>
+                    <div class="outcome-lbl">Busy (10%)</div>
+                </div>
+                <div class="outcome-box box-switched">
+                    <div class="outcome-count" id="outSwitched">25</div>
+                    <div class="outcome-lbl">Switched Off (6%)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7-Stage Pipeline Funnel -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-filter text-primary"></i> 7-Stage Active Pipeline Funnel</h3>
+                <span class="card-tag">Active Opportunities</span>
+            </div>
+            <div class="stage-funnel-list" id="stageFunnelList">
+                <!-- Dynamically Populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Row 2: Source-Wise Funnel & Lead Temperature -->
+    <div class="dash-row">
+        <!-- Source Breakdown -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-bullhorn text-primary"></i> Lead Inbound Channels (UTM Sources)</h3>
+                <span class="card-tag">Attribution</span>
+            </div>
+            <div style="height: 220px;">
+                <canvas id="sourceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Temperature & Quality -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-fire text-danger"></i> Lead Temperature & Quality Distribution</h3>
+                <span class="card-tag">Buying Intent</span>
+            </div>
+            <div class="temp-grid mb-3">
+                <div class="temp-card temp-hot">
+                    <div>🔥 <strong>HOT</strong> (< 30 Days)</div>
+                    <div class="temp-val" id="tempHot">42 Leads</div>
+                </div>
+                <div class="temp-card temp-warm">
+                    <div>⛅ <strong>WARM</strong> (1-2 Months)</div>
+                    <div class="temp-val" id="tempWarm">68 Leads</div>
+                </div>
+                <div class="temp-card temp-cold">
+                    <div>❄️ <strong>COLD</strong> (Exploring)</div>
+                    <div class="temp-val" id="tempCold">31 Leads</div>
+                </div>
+            </div>
+            <div style="height: 140px;">
+                <canvas id="tempChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Row 3: Site Visit Intelligence & Sales Team Leaderboard -->
+    <div class="dash-row-3">
+        <!-- Sales Team Leaderboard -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-ranking-star text-primary"></i> Sales Executive Leaderboard & Performance</h3>
+                <span class="card-tag">Team KPI Tracker</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Salesperson</th>
+                            <th>Project</th>
+                            <th>Calls Made</th>
+                            <th>New Opps</th>
+                            <th>Visits Done</th>
+                            <th>Won Bookings</th>
+                            <th>Pending Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teamLeaderboard">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Ground Site Visit Intelligence -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-clipboard-check text-primary"></i> Site Visit Ground Insights</h3>
+                <span class="card-tag">Outcome Feedback</span>
+            </div>
+            <div style="font-size: 0.85rem; display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted fw-bold">Finance Mode:</span>
+                        <span class="fw-bold">Loan: 62% | Cash: 38%</span>
+                    </div>
+                    <div class="stage-bar-wrap"><div class="stage-bar" style="width: 62%; background: #06b6d4;"></div></div>
+                </div>
+
+                <div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted fw-bold">Purchase Timeline:</span>
+                        <span class="fw-bold">< 30 Days: 48%</span>
+                    </div>
+                    <div class="stage-bar-wrap"><div class="stage-bar" style="width: 48%; background: #10b981;"></div></div>
+                </div>
+
+                <div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted fw-bold">Budget Comfort:</span>
+                        <span class="fw-bold">Within Budget: 71%</span>
+                    </div>
+                    <div class="stage-bar-wrap"><div class="stage-bar" style="width: 71%; background: #f59e0b;"></div></div>
+                </div>
+
+                <div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted fw-bold">Decision Maker Accompanying:</span>
+                        <span class="fw-bold">With Family / Spouse: 82%</span>
+                    </div>
+                    <div class="stage-bar-wrap"><div class="stage-bar" style="width: 82%; background: #8b5cf6;"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Interactive JS Logic & Mock Datasets -->
+<script>
+    let callChart, sourceChart, tempChart;
+
+    const pipelineStages = [
+        { name: "1. New Lead", count: 85, color: "#3b82f6" },
+        { name: "2. Contacted / Follow-up", count: 142, color: "#06b6d4" },
+        { name: "3. Qualified", count: 64, color: "#6366f1" },
+        { name: "4. Site Visit Scheduled", count: 48, color: "#f59e0b" },
+        { name: "5. Site Visit Done", count: 39, color: "#8b5cf6" },
+        { name: "6. Negotiation / Token", count: 14, color: "#ec4899" },
+        { name: "7. Won / Booked", count: 7, color: "#10b981" }
+    ];
+
+    const teamData = [
+        { name: "Megha Trivedi", project: "Shreemad Family", calls: 148, newOpps: 42, visits: 16, won: 3, pending: 4, avatar: "M" },
+        { name: "Krushna Sing", project: "Royal Rudraksha", calls: 112, newOpps: 34, visits: 11, won: 2, pending: 2, avatar: "K" },
+        { name: "Hemant Prajapati", project: "Devi Bungalows", calls: 86, newOpps: 18, visits: 7, won: 1, pending: 3, avatar: "H" },
+        { name: "Priyank Patel", project: "Royal Rudraksha", calls: 64, newOpps: 10, visits: 4, won: 1, pending: 1, avatar: "P" },
+        { name: "Bhargav Savalya", project: "Shreemad Family", calls: 27, newOpps: 3, visits: 1, won: 0, pending: 0, avatar: "B" },
+    ];
+
+    function renderPipelineFunnel() {
+        const container = document.getElementById('stageFunnelList');
+        container.innerHTML = '';
+        const maxVal = Math.max(...pipelineStages.map(s => s.count));
+
+        pipelineStages.forEach(stg => {
+            const pct = Math.round((stg.count / maxVal) * 100);
+            container.innerHTML += `
+                <div class="stage-row">
+                    <span class="stage-name">${stg.name}</span>
+                    <div class="stage-bar-wrap">
+                        <div class="stage-bar" style="width: ${pct}%; background: ${stg.color};"></div>
+                    </div>
+                    <span class="stage-val">${stg.count}</span>
+                </div>
+            `;
+        });
+    }
+
+    function renderLeaderboard() {
+        const tbody = document.getElementById('teamLeaderboard');
+        tbody.innerHTML = '';
+        teamData.forEach(user => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">${user.avatar}</div>
+                            <span>${user.name}</span>
+                        </div>
+                    </td>
+                    <td><span class="badge-pill badge-blue">${user.project}</span></td>
+                    <td><strong>${user.calls}</strong> <span class="text-muted small">(68%)</span></td>
+                    <td><span class="badge-pill badge-green">+${user.newOpps}</span></td>
+                    <td><strong>${user.visits}</strong></td>
+                    <td><span class="badge-pill badge-green fw-bold">🏆 ${user.won}</span></td>
+                    <td><span class="badge-pill badge-orange">${user.pending} Due</span></td>
+                </tr>
+            `;
+        });
+    }
+
+    function initCharts() {
+        // 1. Call Outcome Bar
+        const ctxCall = document.getElementById('callOutcomeChart').getContext('2d');
+        callChart = new Chart(ctxCall, {
+            type: 'bar',
+            data: {
+                labels: ['Answered', 'No Answer', 'Busy', 'Switched Off'],
+                datasets: [{
+                    label: 'Calls',
+                    data: [281, 88, 43, 25],
+                    backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#64748b'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+            }
+        });
+
+        // 2. Source Doughnut
+        const ctxSource = document.getElementById('sourceChart').getContext('2d');
+        sourceChart = new Chart(ctxSource, {
+            type: 'doughnut',
+            data: {
+                labels: ['AI WhatsApp Agent', 'WhatsApp Direct', 'Walk In', 'Reference', 'Social Media Ads', 'Direct Call'],
+                datasets: [{
+                    data: [58, 24, 18, 14, 21, 6],
+                    backgroundColor: ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } },
+                cutout: '70%'
+            }
+        });
+
+        // 3. Temperature Horizontal Bar
+        const ctxTemp = document.getElementById('tempChart').getContext('2d');
+        tempChart = new Chart(ctxTemp, {
+            type: 'bar',
+            data: {
+                labels: ['Hot', 'Warm', 'Cold'],
+                datasets: [{
+                    data: [42, 68, 31],
+                    backgroundColor: ['#be123c', '#b45309', '#0e7490'],
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' } }, y: { grid: { display: false } } }
+            }
+        });
+    }
+
+    function applyFilters() {
+        const proj = document.getElementById('projectFilter').value;
+        const date = document.getElementById('dateFilter').value;
+
+        // Simulated filter reactivity demo
+        let factor = (date === 'today') ? 0.25 : (date === 'yesterday' ? 0.35 : 1);
+        if (proj === 'royal') factor *= 0.55;
+        if (proj === 'shreemad') factor *= 0.35;
+        if (proj === 'devi') factor *= 0.10;
+
+        document.getElementById('kpiCalls').innerText = Math.round(437 * factor);
+        document.getElementById('kpiNewOpps').innerText = Math.round(107 * factor);
+        document.getElementById('kpiUpdatedOpps').innerText = Math.round(34 * factor);
+        document.getElementById('kpiVisits').innerText = Math.round(78 * factor);
+        document.getElementById('kpiWon').innerText = Math.max(1, Math.round(7 * factor));
+
+        callChart.data.datasets[0].data = [
+            Math.round(281 * factor),
+            Math.round(88 * factor),
+            Math.round(43 * factor),
+            Math.round(25 * factor)
+        ];
+        callChart.update();
+
+        document.getElementById('outAnswered').innerText = Math.round(281 * factor);
+        document.getElementById('outNoAnswer').innerText = Math.round(88 * factor);
+        document.getElementById('outBusy').innerText = Math.round(43 * factor);
+        document.getElementById('outSwitched').innerText = Math.round(25 * factor);
+    }
+
+    window.onload = function() {
+        renderPipelineFunnel();
+        renderLeaderboard();
+        initCharts();
+    };
+</script>
+
+</body>
+</html>
