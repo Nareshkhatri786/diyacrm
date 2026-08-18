@@ -10,7 +10,6 @@ export class CrmExecutiveDashboard extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.companyService = useService("company");
 
         this.callCanvasRef = useRef("callCanvas");
 
