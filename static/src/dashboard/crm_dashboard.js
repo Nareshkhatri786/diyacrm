@@ -8,12 +8,11 @@ export class CrmExecutiveDashboard extends Component {
     static template = "diyacrm.CrmExecutiveDashboard";
 
     setup() {
-        this.rpc = useService("rpc");
+        this.orm = useService("orm");
         this.action = useService("action");
         this.companyService = useService("company");
 
         this.callCanvasRef = useRef("callCanvas");
-        this.sourceCanvasRef = useRef("sourceCanvas");
 
         this.state = useState({
             loading: true,
@@ -59,7 +58,7 @@ export class CrmExecutiveDashboard extends Component {
     async loadDashboardData() {
         this.state.loading = true;
         try {
-            const data = await this.rpc("/diyacrm/dashboard/get_data", {
+            const data = await this.orm.call("crm.lead", "get_dashboard_data", [], {
                 period: this.state.period,
                 company_id: this.state.selectedCompanyId,
                 user_id: this.state.selectedUserId,
@@ -76,7 +75,6 @@ export class CrmExecutiveDashboard extends Component {
             this.state.leaderboard = data.leaderboard || [];
             this.state.loading = false;
 
-            // Update charts if mounted
             setTimeout(() => this.renderCharts(), 50);
         } catch (error) {
             console.error("Failed to load dashboard data:", error);
@@ -115,7 +113,6 @@ export class CrmExecutiveDashboard extends Component {
     }
 
     renderCharts() {
-        // Draw Lightweight Canvas Call Outcome Chart
         const callCanvas = this.callCanvasRef.el;
         if (callCanvas) {
             const ctx = callCanvas.getContext('2d');
@@ -139,21 +136,22 @@ export class CrmExecutiveDashboard extends Component {
                 const x = gap + idx * (barWidth + gap);
                 const y = h - 25 - barHeight;
 
-                // Draw Bar
                 ctx.fillStyle = item.color;
                 ctx.beginPath();
-                ctx.roundRect(x, y, barWidth, barHeight, 6);
+                if (ctx.roundRect) {
+                    ctx.roundRect(x, y, barWidth, barHeight, 6);
+                } else {
+                    ctx.rect(x, y, barWidth, barHeight);
+                }
                 ctx.fill();
 
-                // Draw Value
                 ctx.fillStyle = '#0f172a';
-                ctx.font = 'bold 11px Plus Jakarta Sans, sans-serif';
+                ctx.font = 'bold 11px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(item.val.toString(), x + barWidth / 2, y - 5);
 
-                // Draw Label
                 ctx.fillStyle = '#64748b';
-                ctx.font = '10px Plus Jakarta Sans, sans-serif';
+                ctx.font = '10px sans-serif';
                 ctx.fillText(item.label.substring(0, 7), x + barWidth / 2, h - 8);
             });
         }
