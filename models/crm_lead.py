@@ -148,19 +148,25 @@ class CrmLead(models.Model):
         out_busy = 0
         out_switched = 0
 
+        # Mapping calls per lead ID in period
+        lead_call_count = {}
+
         for lead in target_leads:
-            if lead.last_call_outcome == 'answered':
-                out_answered += 1
-            elif lead.last_call_outcome == 'no_answer':
-                out_noanswer += 1
-            elif lead.last_call_outcome == 'busy':
-                out_busy += 1
-            elif lead.last_call_outcome == 'switched_off':
-                out_switched += 1
+            if lead.last_call_outcome:
+                lead_call_count[lead.id] = lead_call_count.get(lead.id, 0) + 1
+                if lead.last_call_outcome == 'answered':
+                    out_answered += 1
+                elif lead.last_call_outcome == 'no_answer':
+                    out_noanswer += 1
+                elif lead.last_call_outcome == 'busy':
+                    out_busy += 1
+                elif lead.last_call_outcome == 'switched_off':
+                    out_switched += 1
 
         for m in inbound_messages:
             b = (m.body or '').lower()
             if 'call' in b or 'outcome' in b or 'connected' in b or 'answered' in b:
+                lead_call_count[m.res_id] = lead_call_count.get(m.res_id, 0) + 1
                 if 'answered' in b or 'connected' in b:
                     out_answered += 1
                 elif 'no answer' in b or 'not answered' in b or 'missed' in b:
@@ -229,7 +235,7 @@ class CrmLead(models.Model):
         visits_done = stage_data[4]['count']
         won_count = stage_data[6]['count']
 
-        # 10. Team Leaderboard
+        # 10. Team Leaderboard - Exact 1:1 Match with Top Period Calls
         users = self.env['res.users'].search([('company_ids', 'in', company_ids), ('share', '=', False)])
         team_leaderboard = []
         today_date = fields.Date.today()
@@ -251,7 +257,9 @@ class CrmLead(models.Model):
                 ('date_deadline', '<', today_date)
             ])
 
-            u_calls = len(u_leads.filtered(lambda l: l.last_call_outcome))
+            # Calls attributed to this user in selected period matching total_calls
+            u_lead_ids = set(u_leads.ids)
+            u_calls = sum(count for lid, count in lead_call_count.items() if lid in u_lead_ids)
 
             team_leaderboard.append({
                 'id': u.id,
@@ -296,5 +304,5 @@ class CrmLead(models.Model):
                 'cold': temp_cold,
             },
             'sources': [{'name': k, 'count': v} for k, v in sorted(source_counts.items(), key=lambda x: x[1], reverse=True)[:6]],
-            'leaderboard': sorted(team_leaderboard, key=lambda x: (x['won'], x['visits_done'], x['new_opps']), reverse=True),
+            'leaderboard': sorted(team_leaderboard, key=lambda x: (x['won'], x['visits_done'], x['calls'], x['new_opps']), reverse=True),
         }
