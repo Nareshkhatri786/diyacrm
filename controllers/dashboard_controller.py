@@ -110,6 +110,18 @@ class DiyaCrmDashboardController(http.Controller):
             out_busy = int(total_calls * 0.10)
             out_switched = total_calls - (out_answered + out_noanswer + out_busy)
 
+        # Per-user call attribution from messages
+        lead_user_map = {l.id: l.user_id.id for l in all_comp_leads if l.user_id}
+        user_call_counts = {}
+        user_answered_counts = {}
+        for m in call_msgs:
+            uid = lead_user_map.get(m.res_id)
+            if uid:
+                user_call_counts[uid] = user_call_counts.get(uid, 0) + 1
+                b = (m.body or '').lower()
+                if 'answered' in b or 'connected' in b:
+                    user_answered_counts[uid] = user_answered_counts.get(uid, 0) + 1
+
         # 6. Pipeline Stages Breakdown (7 Active Stages)
         stages = env['crm.stage'].search([], order='sequence asc')
         stage_data = []
@@ -143,6 +155,24 @@ class DiyaCrmDashboardController(http.Controller):
         visits_done = len(all_comp_leads.filtered(lambda l: l.active and l.stage_id.id in visit_done_stage.ids))
         won_count = len(all_comp_leads.filtered(lambda l: l.active and l.stage_id.id in won_stage.ids))
 
+        # 9.5 Site Visit Ground Insights
+        past_visit_stages = visit_done_stage | won_stage | stages.filtered(lambda s: 'negotiation' in s.name.lower() or 'token' in s.name.lower())
+        visit_insight_leads = all_comp_leads.filtered(lambda l: l.active and l.stage_id.id in past_visit_stages.ids)
+        sv_total = len(visit_insight_leads) or 1
+        sv_loan = len(visit_insight_leads.filtered(lambda l: l.finance_mode == 'loan'))
+        sv_cash = len(visit_insight_leads.filtered(lambda l: l.finance_mode == 'cash'))
+        sv_finance_total = sv_loan + sv_cash or 1
+        sv_under_30 = len(visit_insight_leads.filtered(lambda l: l.purchase_timeline == 'under_30'))
+        sv_timeline_total = len(visit_insight_leads.filtered(lambda l: l.purchase_timeline)) or 1
+        sv_within_budget = len(visit_insight_leads.filtered(lambda l: l.budget_fit == 'within'))
+        sv_budget_total = len(visit_insight_leads.filtered(lambda l: l.budget_fit)) or 1
+        sv_dm_present = len(visit_insight_leads.filtered(lambda l: l.decision_maker_present))
+
+        # Available salespersons (independent of user_id filter)
+        all_scope_leads = env['crm.lead'].with_context(active_test=False).search([('company_id', 'in', company_ids)])
+        avail_user_ids = list(set(all_scope_leads.mapped('user_id').ids))
+        available_user_records = env['res.users'].browse(avail_user_ids).filtered(lambda u: u.active)
+
         # 10. Team Leaderboard
         users = env['res.users'].search([('company_ids', 'in', company_ids), ('share', '=', False)])
         team_leaderboard = []
@@ -166,8 +196,9 @@ class DiyaCrmDashboardController(http.Controller):
                 ('date_deadline', '<', today_date)
             ])
 
-            # Estimated calls
-            u_calls = int(len(u_leads) * 0.4) if len(u_leads) > 0 else 0
+            u_calls = user_call_counts.get(u.id, 0)
+            u_connected = user_answered_counts.get(u.id, 0)
+            u_connected_pct = round((u_connected / u_calls) * 100) if u_calls > 0 else 0
 
             team_leaderboard.append({
                 'id': u.id,
@@ -175,19 +206,24 @@ class DiyaCrmDashboardController(http.Controller):
                 'avatar': u.name[0].upper() if u.name else 'U',
                 'project': u.company_id.name if u.company_id else 'General',
                 'calls': u_calls,
+                'connected_pct': u_connected_pct,
                 'new_opps': u_new_opps,
                 'visits_done': u_visits,
                 'won': u_won,
                 'pending_overdue': overdue_acts,
             })
 
+        connected_pct = round((out_answered / total_calls) * 100) if total_calls > 0 else 0
+
         return {
             'period': period,
             'is_multi_company': len(active_companies) > 1,
             'active_companies': [{'id': c.id, 'name': c.name} for c in active_companies],
             'available_companies': [{'id': c.id, 'name': c.name} for c in allowed_companies],
+            'available_users': [{'id': u.id, 'name': u.name} for u in available_user_records],
             'kpis': {
-                'total_calls': max(total_calls, len(new_opps) * 2),
+                'total_calls': total_calls,
+                'connected_pct': connected_pct,
                 'new_opps': len(new_opps),
                 'updated_opps': len(updated_lead_ids),
                 'visits_scheduled': visits_scheduled,
@@ -196,15 +232,27 @@ class DiyaCrmDashboardController(http.Controller):
             },
             'calling_outcomes': {
                 'answered': out_answered,
+                'answered_pct': round((out_answered / total_calls) * 100) if total_calls > 0 else 0,
                 'no_answer': out_noanswer,
+                'no_answer_pct': round((out_noanswer / total_calls) * 100) if total_calls > 0 else 0,
                 'busy': out_busy,
+                'busy_pct': round((out_busy / total_calls) * 100) if total_calls > 0 else 0,
                 'switched_off': out_switched,
+                'switched_off_pct': round((out_switched / total_calls) * 100) if total_calls > 0 else 0,
             },
             'stages': stage_data,
             'temperature': {
                 'hot': temp_hot,
                 'warm': temp_warm,
                 'cold': temp_cold,
+            },
+            'site_visit_insights': {
+                'loan_pct': round((sv_loan / sv_finance_total) * 100),
+                'cash_pct': round((sv_cash / sv_finance_total) * 100),
+                'timeline_under_30_pct': round((sv_under_30 / sv_timeline_total) * 100),
+                'budget_within_pct': round((sv_within_budget / sv_budget_total) * 100),
+                'decision_maker_pct': round((sv_dm_present / sv_total) * 100),
+                'total_insights': len(visit_insight_leads),
             },
             'sources': [{'name': k, 'count': v} for k, v in sorted(source_counts.items(), key=lambda x: x[1], reverse=True)[:6]],
             'leaderboard': sorted(team_leaderboard, key=lambda x: (x['won'], x['visits_done'], x['new_opps']), reverse=True),

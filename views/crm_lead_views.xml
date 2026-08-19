@@ -101,6 +101,11 @@
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="lead_temperature" string="Status" placeholder="Select Status..."/>
                 <field name="source_id" string="Source" domain="[('name', 'in', ['Walk In', 'WhatsApp', 'Reference', 'Social Media', 'Direct Call', 'AI WhatsApp Agent', 'Website'])]" options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
+                <separator string="Site Visit Insights" colspan="2"/>
+                <field name="finance_mode" string="Finance Mode"/>
+                <field name="purchase_timeline" string="Purchase Timeline"/>
+                <field name="budget_fit" string="Budget Fit"/>
+                <field name="decision_maker_present" string="Decision Maker Present"/>
             </xpath>
 
             <!-- Hide Expected Closing -->

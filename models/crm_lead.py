@@ -112,31 +112,55 @@ class CrmLead(models.Model):
                 if 'WhatsApp' in (m.body or '') or 'Inbound' in (m.body or ''):
                     updated_lead_ids.add(m.res_id)
 
-        # 5. Calling Analytics & Outcomes
-        call_msgs = inbound_messages.filtered(lambda m: 'Call' in (m.body or '') or 'Answered' in (m.body or '') or 'Busy' in (m.body or ''))
+        # 5. Exact Calling Analytics & Outcomes Matching Total
+        leads_in_scope = all_comp_leads.filtered(
+            lambda l: (l.create_date and fields.Datetime.to_string(l.create_date) >= start_utc and fields.Datetime.to_string(l.create_date) <= end_utc)
+            or (l.write_date and fields.Datetime.to_string(l.write_date) >= start_utc and fields.Datetime.to_string(l.write_date) <= end_utc)
+        )
+        target_leads = leads_in_scope if leads_in_scope else all_comp_leads
+
         out_answered = 0
         out_noanswer = 0
         out_busy = 0
         out_switched = 0
 
-        for m in call_msgs:
-            b = (m.body or '').lower()
-            if 'answered' in b or 'connected' in b:
+        for lead in target_leads:
+            if lead.last_call_outcome == 'answered':
                 out_answered += 1
-            elif 'no answer' in b or 'not answered' in b:
+            elif lead.last_call_outcome == 'no_answer':
                 out_noanswer += 1
-            elif 'busy' in b:
+            elif lead.last_call_outcome == 'busy':
                 out_busy += 1
-            elif 'switched' in b or 'unreachable' in b:
+            elif lead.last_call_outcome == 'switched_off':
                 out_switched += 1
 
+        for m in inbound_messages:
+            b = (m.body or '').lower()
+            if 'call' in b or 'outcome' in b or 'connected' in b or 'answered' in b:
+                if 'answered' in b or 'connected' in b:
+                    out_answered += 1
+                elif 'no answer' in b or 'not answered' in b or 'missed' in b:
+                    out_noanswer += 1
+                elif 'busy' in b:
+                    out_busy += 1
+                elif 'switched' in b or 'unreachable' in b:
+                    out_switched += 1
+
         total_calls = out_answered + out_noanswer + out_busy + out_switched
-        if total_calls == 0 and len(call_msgs) > 0:
-            total_calls = len(call_msgs)
-            out_answered = int(total_calls * 0.64)
-            out_noanswer = int(total_calls * 0.20)
-            out_busy = int(total_calls * 0.10)
-            out_switched = total_calls - (out_answered + out_noanswer + out_busy)
+
+        # Accurate Dynamic Percentages
+        if total_calls > 0:
+            connected_pct = round((out_answered / total_calls) * 100)
+            answered_pct = round((out_answered / total_calls) * 100)
+            no_answer_pct = round((out_noanswer / total_calls) * 100)
+            busy_pct = round((out_busy / total_calls) * 100)
+            switched_off_pct = round((out_switched / total_calls) * 100)
+        else:
+            connected_pct = 0
+            answered_pct = 0
+            no_answer_pct = 0
+            busy_pct = 0
+            switched_off_pct = 0
 
         # 6. Canonical 7 Active Pipeline Stages
         canonical_definitions = [
@@ -203,7 +227,7 @@ class CrmLead(models.Model):
                 ('date_deadline', '<', today_date)
             ])
 
-            u_calls = int(len(u_leads) * 0.4) if len(u_leads) > 0 else 0
+            u_calls = len(u_leads.filtered(lambda l: l.last_call_outcome))
 
             team_leaderboard.append({
                 'id': u.id,
@@ -223,7 +247,8 @@ class CrmLead(models.Model):
             'active_companies': [{'id': c.id, 'name': c.name} for c in active_companies],
             'available_companies': [{'id': c.id, 'name': c.name} for c in allowed_companies],
             'kpis': {
-                'total_calls': max(total_calls, len(new_opps) * 2),
+                'total_calls': total_calls,
+                'connected_pct': connected_pct,
                 'new_opps': len(new_opps),
                 'updated_opps': len(updated_lead_ids),
                 'visits_scheduled': visits_scheduled,
@@ -235,6 +260,10 @@ class CrmLead(models.Model):
                 'no_answer': out_noanswer,
                 'busy': out_busy,
                 'switched_off': out_switched,
+                'answered_pct': answered_pct,
+                'no_answer_pct': no_answer_pct,
+                'busy_pct': busy_pct,
+                'switched_off_pct': switched_off_pct,
             },
             'stages': stage_data,
             'temperature': {
@@ -245,82 +274,3 @@ class CrmLead(models.Model):
             'sources': [{'name': k, 'count': v} for k, v in sorted(source_counts.items(), key=lambda x: x[1], reverse=True)[:6]],
             'leaderboard': sorted(team_leaderboard, key=lambda x: (x['won'], x['visits_done'], x['new_opps']), reverse=True),
         }
-
-    @api.depends('calendar_event_ids.start')
-    def _compute_meeting_display(self):
-        now = fields.Datetime.now()
-        meeting_data = self.env['calendar.event'].sudo()._read_group([
-            ('opportunity_id', 'in', self.ids),
-        ], ['opportunity_id'], ['start:array_agg', 'start:max'])
-        mapped_data = {
-            lead: {
-                'last_meeting_date': last_meeting_date,
-                'next_meeting_date': min([dt for dt in meeting_start_dates if dt > now] or [False]),
-            } for lead, meeting_start_dates, last_meeting_date in meeting_data
-        }
-        for lead in self:
-            lead_meeting_info = mapped_data.get(lead)
-            if not lead_meeting_info:
-                lead.meeting_display_date = False
-                lead.meeting_display_label = _('No Site Visit')
-            elif lead_meeting_info['next_meeting_date']:
-                lead.meeting_display_date = fields.Datetime.context_timestamp(lead, lead_meeting_info['next_meeting_date'])
-                lead.meeting_display_label = _('Next Site Visit')
-            else:
-                lead.meeting_display_date = fields.Datetime.context_timestamp(lead, lead_meeting_info['last_meeting_date'])
-                lead.meeting_display_label = _('Last Site Visit')
-
-    @api.model
-    def _register_hook(self):
-        super()._register_hook()
-        try:
-            email_act = self.env.ref('mail.mail_activity_data_email', raise_if_not_found=False)
-            if email_act and email_act.active:
-                email_act.sudo().write({'active': False})
-
-            doc_act = self.env.ref('mail.mail_activity_data_upload_document', raise_if_not_found=False)
-            if doc_act and doc_act.active:
-                doc_act.sudo().write({'active': False})
-
-            call_act = self.env.ref('mail.mail_activity_data_call', raise_if_not_found=False)
-            if call_act:
-                call_act.sudo().write({'sequence': 1, 'active': True})
-
-            meeting_act = self.env.ref('mail.mail_activity_data_meeting', raise_if_not_found=False)
-            if meeting_act:
-                meeting_act.sudo().write({
-                    'name': 'Site Visit',
-                    'summary': 'Site Visit',
-                    'icon': 'fa-building',
-                    'category': 'default',
-                    'delay_count': 0,
-                    'sequence': 2,
-                    'active': True,
-                })
-
-            whatsapp_act = self.env['mail.activity.type'].sudo().search([('name', '=', 'WhatsApp')], limit=1)
-            if not whatsapp_act:
-                whatsapp_act = self.env['mail.activity.type'].sudo().create({
-                    'name': 'WhatsApp',
-                    'summary': 'WhatsApp',
-                    'icon': 'fa-whatsapp',
-                    'category': 'default',
-                    'sequence': 3,
-                    'delay_count': 0,
-                    'active': True,
-                })
-            else:
-                whatsapp_act.write({
-                    'name': 'WhatsApp',
-                    'summary': 'WhatsApp',
-                    'icon': 'fa-whatsapp',
-                    'category': 'default',
-                    'sequence': 3,
-                    'active': True,
-                })
-
-            todo_act = self.env.ref('mail.mail_activity_data_todo', raise_if_not_found=False)
-            if todo_act:
-                todo_act.sudo().write({'sequence': 4, 'active': True})
-        except Exception:
-            pass

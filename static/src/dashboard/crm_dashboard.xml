@@ -406,6 +406,7 @@
                             <option value="48h" selected="selected">📅 Last 48 Hours</option>
                             <option value="week">📅 This Week</option>
                             <option value="month">📅 This Month</option>
+                            <option value="all">📅 All Time</option>
                         </select>
 
                         <!-- Salesperson Selector -->
@@ -432,7 +433,7 @@
                         </div>
                         <div class="diyacrm-kpi-value"><t t-esc="state.kpis.total_calls"/></div>
                         <div class="diyacrm-kpi-subtitle">
-                            <span class="diyacrm-badge-pill badge-green"><i class="fa fa-check"/> 64% Connected</span>
+                            <span class="diyacrm-badge-pill badge-green"><i class="fa fa-check"/> <t t-esc="state.kpis.connected_pct"/>% Connected</span>
                             <span>In selected range</span>
                         </div>
                     </div>
@@ -496,19 +497,19 @@
                         <div class="diyacrm-outcome-grid">
                             <div class="diyacrm-outcome-box box-answered">
                                 <div class="diyacrm-outcome-count"><t t-esc="state.calling_outcomes.answered"/></div>
-                                <div class="diyacrm-outcome-lbl">Answered (64%)</div>
+                                <div class="diyacrm-outcome-lbl">Answered (<t t-esc="state.calling_outcomes.answered_pct"/>%)</div>
                             </div>
                             <div class="diyacrm-outcome-box box-noanswer">
                                 <div class="diyacrm-outcome-count"><t t-esc="state.calling_outcomes.no_answer"/></div>
-                                <div class="diyacrm-outcome-lbl">No Answer (20%)</div>
+                                <div class="diyacrm-outcome-lbl">No Answer (<t t-esc="state.calling_outcomes.no_answer_pct"/>%)</div>
                             </div>
                             <div class="diyacrm-outcome-box box-busy">
                                 <div class="diyacrm-outcome-count"><t t-esc="state.calling_outcomes.busy"/></div>
-                                <div class="diyacrm-outcome-lbl">Busy (10%)</div>
+                                <div class="diyacrm-outcome-lbl">Busy (<t t-esc="state.calling_outcomes.busy_pct"/>%)</div>
                             </div>
                             <div class="diyacrm-outcome-box box-switched">
                                 <div class="diyacrm-outcome-count"><t t-esc="state.calling_outcomes.switched_off"/></div>
-                                <div class="diyacrm-outcome-lbl">Switched Off (6%)</div>
+                                <div class="diyacrm-outcome-lbl">Switched Off (<t t-esc="state.calling_outcomes.switched_off_pct"/>%)</div>
                             </div>
                         </div>
                     </div>
@@ -603,7 +604,7 @@
                                                 </div>
                                             </td>
                                             <td><span class="diyacrm-badge-pill badge-blue" t-esc="user.project"/></td>
-                                            <td><strong><t t-esc="user.calls"/></strong> <span class="text-muted small" style="font-size: 0.72rem;">(68%)</span></td>
+                                            <td><strong><t t-esc="user.calls"/></strong></td>
                                             <td><span class="diyacrm-badge-pill badge-green">+<t t-esc="user.new_opps"/></span></td>
                                             <td><strong><t t-esc="user.visits_done"/></strong></td>
                                             <td><span class="diyacrm-badge-pill badge-green fw-bold">🏆 <t t-esc="user.won"/></span></td>

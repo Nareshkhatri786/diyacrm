@@ -29,41 +29,32 @@ export class CrmExecutiveDashboard extends Component {
             activeCompanies: [],
             availableCompanies: [],
             kpis: {
-                total_calls: 437,
-                new_opps: 107,
-                updated_opps: 34,
-                visits_scheduled: 78,
-                visits_done: 39,
-                won: 7,
+                total_calls: 0,
+                connected_pct: 0,
+                new_opps: 0,
+                updated_opps: 0,
+                visits_scheduled: 0,
+                visits_done: 0,
+                won: 0,
             },
             calling_outcomes: {
-                answered: 281,
-                no_answer: 88,
-                busy: 43,
-                switched_off: 25,
+                answered: 0,
+                no_answer: 0,
+                busy: 0,
+                switched_off: 0,
+                answered_pct: 0,
+                no_answer_pct: 0,
+                busy_pct: 0,
+                switched_off_pct: 0,
             },
-            stages: [
-                { id: 1, name: "1. New Lead", count: 85, color: "#3b82f6", pct: 60 },
-                { id: 2, name: "2. Contacted / Follow-up", count: 142, color: "#06b6d4", pct: 100 },
-                { id: 3, name: "3. Qualified", count: 64, color: "#6366f1", pct: 45 },
-                { id: 4, name: "4. Site Visit Scheduled", count: 48, color: "#f59e0b", pct: 34 },
-                { id: 5, name: "5. Site Visit Done", count: 39, color: "#8b5cf6", pct: 27 },
-                { id: 6, name: "6. Negotiation / Token", count: 14, color: "#ec4899", pct: 10 },
-                { id: 7, name: "7. Won / Booked", count: 7, color: "#10b981", pct: 5 }
-            ],
+            stages: [],
             temperature: {
-                hot: 42,
-                warm: 68,
-                cold: 31,
+                hot: 0,
+                warm: 0,
+                cold: 0,
             },
             sources: [],
-            leaderboard: [
-                { id: 1, name: "Megha Trivedi", project: "Shreemad Family", calls: 148, new_opps: 42, visits_done: 16, won: 3, pending_overdue: 4, avatar: "M" },
-                { id: 2, name: "Krushna Sing", project: "Royal Rudraksha", calls: 112, new_opps: 34, visits_done: 11, won: 2, pending_overdue: 2, avatar: "K" },
-                { id: 3, name: "Hemant Prajapati", project: "Devi Bungalows", calls: 86, new_opps: 18, visits_done: 7, won: 1, pending_overdue: 3, avatar: "H" },
-                { id: 4, name: "Priyank Patel", project: "Royal Rudraksha", calls: 64, new_opps: 10, visits_done: 4, won: 1, pending_overdue: 1, avatar: "P" },
-                { id: 5, name: "Bhargav Savalya", project: "Shreemad Family", calls: 27, new_opps: 3, visits_done: 1, won: 0, pending_overdue: 0, avatar: "B" },
-            ],
+            leaderboard: [],
         });
 
         onWillStart(async () => {
@@ -115,9 +106,7 @@ export class CrmExecutiveDashboard extends Component {
 
             this.state.temperature = data.temperature;
             this.state.sources = data.sources || [];
-            if (data.leaderboard && data.leaderboard.length > 0) {
-                this.state.leaderboard = data.leaderboard;
-            }
+            this.state.leaderboard = data.leaderboard || [];
             this.state.loading = false;
 
             setTimeout(() => this.initOrUpdateCharts(), 50);
@@ -195,7 +184,7 @@ export class CrmExecutiveDashboard extends Component {
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } },
                         x: { grid: { display: false } }
                     }
                 }
@@ -209,12 +198,7 @@ export class CrmExecutiveDashboard extends Component {
                 this.sourceChart.destroy();
             }
             const sources = this.state.sources.length > 0 ? this.state.sources : [
-                { name: 'AI WhatsApp Agent', count: 58 },
-                { name: 'WhatsApp Direct', count: 24 },
-                { name: 'Walk In', count: 18 },
-                { name: 'Reference', count: 14 },
-                { name: 'Social Media Ads', count: 21 },
-                { name: 'Direct Call', count: 6 },
+                { name: 'Walk In', count: 1 }
             ];
             const ctxSource = sourceCanvas.getContext('2d');
             this.sourceChart = new window.Chart(ctxSource, {
@@ -271,7 +255,7 @@ export class CrmExecutiveDashboard extends Component {
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+                        x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } },
                         y: { grid: { display: false } }
                     }
                 }
