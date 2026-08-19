@@ -39,6 +39,30 @@ class CrmLead(models.Model):
         ('switched_off', 'Switched off'),
     ], string="Last Call Outcome", tracking=True)
 
+    finance_mode = fields.Selection([
+        ('loan', 'Loan'),
+        ('cash', 'Self-Funding / Cash'),
+        ('both', 'Loan + Cash'),
+    ], string="Finance Mode", tracking=True)
+
+    purchase_timeline = fields.Selection([
+        ('immediate', '< 30 Days (Immediate)'),
+        ('1_3_months', '1 - 3 Months'),
+        ('3_6_months', '3 - 6 Months'),
+        ('more_6_months', '> 6 Months'),
+    ], string="Purchase Timeline", tracking=True)
+
+    budget_fit = fields.Selection([
+        ('within', 'Within Budget'),
+        ('slightly_high', 'Slightly Stretchable'),
+        ('over_budget', 'Over Budget'),
+    ], string="Budget Fit", tracking=True)
+
+    decision_maker_present = fields.Selection([
+        ('yes', 'With Family / Spouse (Decision Maker Present)'),
+        ('no', 'Individual Only (Need Follow-up with Family)'),
+    ], string="Decision Maker Accompanying", tracking=True)
+
     @api.model
     def get_dashboard_data(self, period='48h', company_id='all', user_id='all'):
         user_tz = pytz.timezone(self.env.user.tz or 'Asia/Kolkata')
