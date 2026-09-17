@@ -296,26 +296,38 @@ class DiyaCrmCallTrackerController(http.Controller):
                 call_id.replace('/', '_'), int(time.time()))
             filepath = os.path.join(save_dir, filename)
             file_obj.save(filepath)
-            url = 'https://crm.sigprop.in/web/static/diyacrm/recordings/' + filename
+            url = 'https://crm.sigprop.in/recordings/' + filename
             import json
             return request.make_response(
                 json.dumps({"status": "success", "url": url}),
                 headers=[('Content-Type', 'application/json')])
         except Exception as e:
+            _logger.exception("Upload recording error: %s", str(e))
             import json
             return request.make_response(
                 json.dumps({"status": "error", "message": str(e)}),
                 headers=[('Content-Type', 'application/json')])
 
-    @http.route('/api/call_tracker/update_recording', type='json', auth='none',
+    @http.route('/recordings/<string:filename>', type='http', auth='public', methods=['GET'])
+    def stream_recording(self, filename):
+        file_path = os.path.join('/opt/odoo19/custom_addons/diyacrm/static/recordings/', filename)
+        if not os.path.exists(file_path):
+            return request.not_found("Recording not found.")
+        with open(file_path, "rb") as f:
+            data = f.read()
+        return request.make_response(data, headers=[
+            ("Content-Type", "audio/amr"),
+            ("Content-Disposition", f"inline; filename={filename}")
+        ])
+
+    @http.route('/api/call_tracker/update_recording', type='json', auth='public',
                 methods=['POST'], csrf=False)
     def update_recording(self, call_id=None, recording_url=None, **kwargs):
         try:
             if not call_id or not recording_url:
                 return {"status": "error", "message": "Missing params"}
-            env = api.Environment(request.env.cr, SUPERUSER_ID, {})
+            env = request.env(user=SUPERUSER_ID, su=True)
             # Search latest call log message on lead
-            Lead = env['crm.lead'].search([], order='id desc', limit=20)
             target_msg = env['mail.message'].search([
                 ('model', '=', 'crm.lead'),
                 ('body', 'ilike', 'Auto-Synced via Diya CRM Dialer')
@@ -338,4 +350,5 @@ class DiyaCrmCallTrackerController(http.Controller):
                 return {"status": "success", "message": "Recording audio added to chatter"}
             return {"status": "not_found"}
         except Exception as e:
+            _logger.exception("Update recording error: %s", str(e))
             return {"status": "error", "message": str(e)}
