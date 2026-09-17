@@ -96,9 +96,9 @@
 
     const/4 v1, 0x5
 
-    const-string v11, "android.permission.READ_EXTERNAL_STORAGE"
+    const-string v2, "android.permission.READ_EXTERNAL_STORAGE"
 
-    aput-object v11, v0, v1
+    aput-object v2, v0, v1
 
     .local v0, "perms":[Ljava/lang/String;
     goto :goto_0
