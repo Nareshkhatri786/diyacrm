@@ -1055,12 +1055,7 @@
     :goto_type_done
     move-object/from16 v7, p0
 
-    invoke-static {v7, v1}, Lcom/diyacrm/dialer/SimFilter;->shouldRecordCall(Landroid/content/Context;Landroid/database/Cursor;)Z
-
-    move-result v13
-
-    if-eqz v13, :cond_4
-
+    # === DiyaCRM: Skip SimFilter - insert ALL calls for display ===
     move-object/from16 v13, p2
 
     move-object v14, v5

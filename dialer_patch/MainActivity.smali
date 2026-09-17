@@ -468,7 +468,7 @@
 .end method
 
 .method protected onResume()V
-    .locals 3
+    .locals 4
 
     .line 242
     invoke-super {p0}, Landroid/app/Activity;->onResume()V
@@ -486,9 +486,20 @@
 
     invoke-direct {v1, p0}, Lcom/diyacrm/dialer/OfflineDbHelper;-><init>(Landroid/content/Context;)V
 
+    # fetchRecentCallsFromDevice is pure DB - safe on main thread
     invoke-static {p0, v0, v1}, Lcom/diyacrm/dialer/SyncManager;->fetchRecentCallsFromDevice(Landroid/content/Context;Landroid/content/SharedPreferences;Lcom/diyacrm/dialer/OfflineDbHelper;)V
 
-    invoke-static {p0}, Lcom/diyacrm/dialer/SyncManager;->syncPendingCalls(Landroid/content/Context;)V
+    # syncPendingCalls does network - must run on background thread
+    new-instance v2, Ljava/lang/Thread;
+
+    new-instance v3, Lcom/diyacrm/dialer/SyncManager$$ExternalSyntheticLambda0;
+
+    invoke-direct {v3, p0}, Lcom/diyacrm/dialer/SyncManager$$ExternalSyntheticLambda0;-><init>(Landroid/content/Context;)V
+
+    invoke-direct {v2, v3}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;)V
+
+    invoke-virtual {v2}, Ljava/lang/Thread;->start()V
+
     :try_end_res
     .catch Ljava/lang/Exception; {:try_start_res .. :try_end_res} :catch_res
 
