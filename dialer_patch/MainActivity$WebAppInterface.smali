@@ -1094,19 +1094,11 @@
 .end method
 
 .method public syncNow()V
-    .locals 3
+    .locals 2
     .annotation runtime Landroid/webkit/JavascriptInterface;
     .end annotation
 
     .line 140
-    new-instance v0, Lcom/diyacrm/dialer/CallReceiver;
-
-    invoke-direct {v0}, Lcom/diyacrm/dialer/CallReceiver;-><init>()V
-
-    iget-object v1, p0, Lcom/diyacrm/dialer/MainActivity$WebAppInterface;->mContext:Landroid/content/Context;
-
-    invoke-virtual {v0, v1}, Lcom/diyacrm/dialer/CallReceiver;->fetchLatestCallLog(Landroid/content/Context;)V
-
     iget-object v0, p0, Lcom/diyacrm/dialer/MainActivity$WebAppInterface;->mContext:Landroid/content/Context;
 
     invoke-static {v0}, Lcom/diyacrm/dialer/SyncManager;->syncPendingCalls(Landroid/content/Context;)V

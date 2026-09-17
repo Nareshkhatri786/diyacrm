@@ -468,16 +468,10 @@
 .end method
 
 .method protected onResume()V
-    .locals 2
+    .locals 0
 
     .line 242
     invoke-super {p0}, Landroid/app/Activity;->onResume()V
-
-    new-instance v0, Lcom/diyacrm/dialer/CallReceiver;
-
-    invoke-direct {v0}, Lcom/diyacrm/dialer/CallReceiver;-><init>()V
-
-    invoke-virtual {v0, p0}, Lcom/diyacrm/dialer/CallReceiver;->fetchLatestCallLog(Landroid/content/Context;)V
 
     .line 243
     invoke-direct {p0}, Lcom/diyacrm/dialer/MainActivity;->refreshUI()V
