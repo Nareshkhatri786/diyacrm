@@ -412,6 +412,7 @@
     .line 122
     .end local v18    # "typeStr":Ljava/lang/String;
     .restart local v13    # "typeStr":Ljava/lang/String;
+    :goto_3
     invoke-interface {v0}, Landroid/database/Cursor;->close()V
 
     # Always ensure pending calls are synced to Odoo
