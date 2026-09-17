@@ -299,13 +299,13 @@ class DiyaCrmCallTrackerController(http.Controller):
             url = 'https://crm.sigprop.in/recordings/' + filename
             import json
             return request.make_response(
-                json.dumps({"status": "success", "url": url}),
+                json.dumps({"status": "success", "url": url}, separators=(',', ':')),
                 headers=[('Content-Type', 'application/json')])
         except Exception as e:
             _logger.exception("Upload recording error: %s", str(e))
             import json
             return request.make_response(
-                json.dumps({"status": "error", "message": str(e)}),
+                json.dumps({"status": "error", "message": str(e)}, separators=(',', ':')),
                 headers=[('Content-Type', 'application/json')])
 
     @http.route('/recordings/<string:filename>', type='http', auth='public', methods=['GET'])
@@ -323,15 +323,21 @@ class DiyaCrmCallTrackerController(http.Controller):
     @http.route('/api/call_tracker/update_recording', type='json', auth='public',
                 methods=['POST'], csrf=False)
     def update_recording(self, call_id=None, recording_url=None, **kwargs):
+        import time
         try:
             if not call_id or not recording_url:
                 return {"status": "error", "message": "Missing params"}
             env = request.env(user=SUPERUSER_ID, su=True)
-            # Search latest call log message on lead
-            target_msg = env['mail.message'].search([
-                ('model', '=', 'crm.lead'),
-                ('body', 'ilike', 'Auto-Synced via Diya CRM Dialer')
-            ], order='id desc', limit=1)
+            # Search latest call log message on lead (retry up to 4 times to ensure sync_call completed)
+            target_msg = False
+            for _ in range(4):
+                target_msg = env['mail.message'].search([
+                    ('model', '=', 'crm.lead'),
+                    ('body', 'ilike', 'Auto-Synced via Diya CRM Dialer')
+                ], order='id desc', limit=1)
+                if target_msg:
+                    break
+                time.sleep(1.0)
             if target_msg:
                 audio_html = f'''
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">

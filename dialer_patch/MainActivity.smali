@@ -46,7 +46,7 @@
 .end method
 
 .method private checkAndRequestPermissions()V
-    .locals 9
+    .locals 11
 
     .line 66
     :try_start_0
@@ -64,7 +64,11 @@
 
     const-string v5, "android.permission.READ_CALL_LOG"
 
+    const-string v9, "android.permission.RECORD_AUDIO"
+
     const/4 v6, 0x3
+
+    const/4 v10, 0x4
 
     const/4 v7, 0x1
 
@@ -73,7 +77,7 @@
     if-lt v0, v1, :cond_0
 
     .line 67
-    const/4 v0, 0x4
+    const/4 v0, 0x5
 
     :try_start_1
     new-array v0, v0, [Ljava/lang/String;
@@ -84,9 +88,11 @@
 
     aput-object v2, v0, v3
 
+    aput-object v9, v0, v6
+
     const-string v1, "android.permission.POST_NOTIFICATIONS"
 
-    aput-object v1, v0, v6
+    aput-object v1, v0, v10
 
     .local v0, "perms":[Ljava/lang/String;
     goto :goto_0
@@ -94,13 +100,15 @@
     .line 74
     .end local v0    # "perms":[Ljava/lang/String;
     :cond_0
-    new-array v0, v6, [Ljava/lang/String;
+    new-array v0, v10, [Ljava/lang/String;
 
     aput-object v5, v0, v8
 
     aput-object v4, v0, v7
 
     aput-object v2, v0, v3
+
+    aput-object v9, v0, v6
 
     .line 81
     .restart local v0    # "perms":[Ljava/lang/String;

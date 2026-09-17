@@ -330,7 +330,7 @@
     move-object/from16 v2, p1
     invoke-static {v2, v0}, Lcom/diyacrm/dialer/SimFilter;->shouldRecordCall(Landroid/content/Context;Landroid/database/Cursor;)Z
     move-result v2
-    if-nez v2, :cond_4
+    if-eqz v2, :cond_4
     # If shouldRecordCall returned false (0), skip call (:cond_4). If true, continue!
 
     # Stop recording and trigger async upload
@@ -436,6 +436,9 @@
     .end local v19    # "dateLong":J
     .local v3, "prefs":Landroid/content/SharedPreferences;
     :cond_4
+    if-eqz v0, :cond_c_close
+    invoke-interface {v0}, Landroid/database/Cursor;->close()V
+    :cond_c_close
     move-object/from16 v17, v3
 
     .end local v3    # "prefs":Landroid/content/SharedPreferences;
@@ -573,7 +576,7 @@
     new-instance v1, Lcom/diyacrm/dialer/CallReceiver$$ExternalSyntheticLambda0;
     invoke-direct {v1, p0, p1}, Lcom/diyacrm/dialer/CallReceiver$$ExternalSyntheticLambda0;-><init>(Lcom/diyacrm/dialer/CallReceiver;Landroid/content/Context;)V
 
-    const-wide/16 v2, 0x5dc
+    const-wide/16 v2, 0x9c4
 
     invoke-virtual {v0, v1, v2, v3}, Landroid/os/Handler;->postDelayed(Ljava/lang/Runnable;J)Z
 
