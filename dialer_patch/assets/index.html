@@ -159,8 +159,12 @@
 
         <!-- Tab 2: Logs -->
         <div id="tabLogs" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 4px;">
+                <span style="font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">Recent SIM Calls</span>
+                <button onclick="loadCallLogs()" style="background: #e2e8f0; color: #0f172a; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px;">🔄 Refresh Logs</button>
+            </div>
             <div class="card" id="logsContainer" style="padding: 14px;">
-                <div style="text-align: center; color: #64748b; font-size: 13px; padding: 20px;">No recent SIM calls recorded yet.</div>
+                <div style="text-align: center; color: #64748b; font-size: 13px; padding: 20px;">Loading call logs...</div>
             </div>
         </div>
 
@@ -256,7 +260,7 @@
                 let logs = JSON.parse(logsJson || "[]");
                 let c = document.getElementById('logsContainer');
                 if (!logs || logs.length === 0) {
-                    c.innerHTML = '<div style="text-align: center; color: #64748b; font-size: 13px; padding: 20px;">No recent SIM calls recorded yet.</div>';
+                    c.innerHTML = '<div style="text-align: center; color: #64748b; font-size: 13px; padding: 20px;">No recent SIM calls recorded yet.<br><small style="color: #94a3b8; font-size: 11px;">Make a call and tap <b>🔄 Refresh Logs</b></small></div>';
                     return;
                 }
                 let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';

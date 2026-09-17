@@ -468,11 +468,31 @@
 .end method
 
 .method protected onResume()V
-    .locals 0
+    .locals 3
 
     .line 242
     invoke-super {p0}, Landroid/app/Activity;->onResume()V
 
+    :try_start_res
+    const-string v0, "DiyaCRM_Prefs"
+
+    const/4 v1, 0x0
+
+    invoke-virtual {p0, v0, v1}, Lcom/diyacrm/dialer/MainActivity;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+
+    move-result-object v0
+
+    new-instance v1, Lcom/diyacrm/dialer/OfflineDbHelper;
+
+    invoke-direct {v1, p0}, Lcom/diyacrm/dialer/OfflineDbHelper;-><init>(Landroid/content/Context;)V
+
+    invoke-static {p0, v0, v1}, Lcom/diyacrm/dialer/SyncManager;->fetchRecentCallsFromDevice(Landroid/content/Context;Landroid/content/SharedPreferences;Lcom/diyacrm/dialer/OfflineDbHelper;)V
+
+    invoke-static {p0}, Lcom/diyacrm/dialer/SyncManager;->syncPendingCalls(Landroid/content/Context;)V
+    :try_end_res
+    .catch Ljava/lang/Exception; {:try_start_res .. :try_end_res} :catch_res
+
+    :catch_res
     .line 243
     invoke-direct {p0}, Lcom/diyacrm/dialer/MainActivity;->refreshUI()V
 

@@ -898,7 +898,7 @@
     return-void
 .end method
 
-.method private static fetchRecentCallsFromDevice(Landroid/content/Context;Landroid/content/SharedPreferences;Lcom/diyacrm/dialer/OfflineDbHelper;)V
+.method public static fetchRecentCallsFromDevice(Landroid/content/Context;Landroid/content/SharedPreferences;Lcom/diyacrm/dialer/OfflineDbHelper;)V
     .locals 21
     .param p0, "context"    # Landroid/content/Context;
     .param p1, "prefs"    # Landroid/content/SharedPreferences;
@@ -919,7 +919,7 @@
 
     const/4 v5, 0x0
 
-    const-string v6, "date DESC LIMIT 5"
+    const-string v6, "date DESC LIMIT 30"
 
     invoke-virtual/range {v1 .. v6}, Landroid/content/ContentResolver;->query(Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
 

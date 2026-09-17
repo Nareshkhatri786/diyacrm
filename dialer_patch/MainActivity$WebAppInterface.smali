@@ -859,28 +859,38 @@
 .end method
 
 .method public getRecentLogs()Ljava/lang/String;
-    .locals 2
+    .locals 4
     .annotation runtime Landroid/webkit/JavascriptInterface;
     .end annotation
 
     .line 146
-    new-instance v0, Lcom/diyacrm/dialer/OfflineDbHelper;
+    iget-object v0, p0, Lcom/diyacrm/dialer/MainActivity$WebAppInterface;->mContext:Landroid/content/Context;
 
-    iget-object v1, p0, Lcom/diyacrm/dialer/MainActivity$WebAppInterface;->mContext:Landroid/content/Context;
+    const-string v1, "DiyaCRM_Prefs"
 
-    invoke-direct {v0, v1}, Lcom/diyacrm/dialer/OfflineDbHelper;-><init>(Landroid/content/Context;)V
+    const/4 v2, 0x0
+
+    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+
+    move-result-object v1
+
+    new-instance v2, Lcom/diyacrm/dialer/OfflineDbHelper;
+
+    invoke-direct {v2, v0}, Lcom/diyacrm/dialer/OfflineDbHelper;-><init>(Landroid/content/Context;)V
 
     .line 147
-    .local v0, "db":Lcom/diyacrm/dialer/OfflineDbHelper;
-    invoke-virtual {v0}, Lcom/diyacrm/dialer/OfflineDbHelper;->getRecentCallsJson()Lorg/json/JSONArray;
+    .local v2, "db":Lcom/diyacrm/dialer/OfflineDbHelper;
+    invoke-static {v0, v1, v2}, Lcom/diyacrm/dialer/SyncManager;->fetchRecentCallsFromDevice(Landroid/content/Context;Landroid/content/SharedPreferences;Lcom/diyacrm/dialer/OfflineDbHelper;)V
 
-    move-result-object v1
+    invoke-virtual {v2}, Lcom/diyacrm/dialer/OfflineDbHelper;->getRecentCallsJson()Lorg/json/JSONArray;
 
-    invoke-virtual {v1}, Lorg/json/JSONArray;->toString()Ljava/lang/String;
+    move-result-object v3
 
-    move-result-object v1
+    invoke-virtual {v3}, Lorg/json/JSONArray;->toString()Ljava/lang/String;
 
-    return-object v1
+    move-result-object v3
+
+    return-object v3
 .end method
 
 .method public login(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
