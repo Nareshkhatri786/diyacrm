@@ -287,23 +287,34 @@ class DiyaCrmCallTrackerController(http.Controller):
     def upload_recording(self, **kwargs):
         import os, time
         try:
-            call_id = kwargs.get('call_id', '')
+            call_id = kwargs.get('call_id', '') or request.httprequest.headers.get('X-Call-Id', '')
             file_obj = request.httprequest.files.get('file')
-            if not file_obj or not call_id:
-                return request.make_response(
-                    '{"status":"error","message":"Missing file or call_id"}',
-                    headers=[('Content-Type', 'application/json')])
-
             save_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
             os.makedirs(save_dir, exist_ok=True)
-            orig_name = getattr(file_obj, 'filename', '') or ''
-            ext = os.path.splitext(orig_name)[1].lower()
-            if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg']:
-                ext = '.aac' if 'aac' in orig_name.lower() else ('.m4a' if 'm4a' in orig_name.lower() else ('.mp3' if 'mp3' in orig_name.lower() else '.amr'))
-            filename = 'call_{}_{}{}'.format(
-                call_id.replace('/', '_'), int(time.time()), ext)
-            filepath = os.path.join(save_dir, filename)
-            file_obj.save(filepath)
+
+            if file_obj:
+                orig_name = getattr(file_obj, 'filename', '') or ''
+                ext = os.path.splitext(orig_name)[1].lower()
+                if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg']:
+                    ext = '.aac' if 'aac' in orig_name.lower() else ('.m4a' if 'm4a' in orig_name.lower() else ('.mp3' if 'mp3' in orig_name.lower() else '.amr'))
+                filename = f"call_{call_id.replace('/', '_')}_{int(time.time())}{ext}"
+                filepath = os.path.join(save_dir, filename)
+                file_obj.save(filepath)
+            else:
+                raw_data = request.httprequest.data
+                if not raw_data or not call_id:
+                    return request.make_response(
+                        '{"status":"error","message":"Missing file or call_id"}',
+                        headers=[('Content-Type', 'application/json')])
+                orig_name = request.httprequest.headers.get('X-Filename', '') or 'recording.aac'
+                ext = os.path.splitext(orig_name)[1].lower()
+                if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg']:
+                    ext = '.aac' if 'aac' in orig_name.lower() else ('.m4a' if 'm4a' in orig_name.lower() else ('.mp3' if 'mp3' in orig_name.lower() else '.amr'))
+                filename = f"call_{call_id.replace('/', '_')}_{int(time.time())}{ext}"
+                filepath = os.path.join(save_dir, filename)
+                with open(filepath, 'wb') as f:
+                    f.write(raw_data)
+
             url = 'https://crm.sigprop.in/recordings/' + filename
             import json
             return request.make_response(

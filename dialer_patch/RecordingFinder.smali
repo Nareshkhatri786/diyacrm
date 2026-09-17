@@ -507,3 +507,277 @@
 
     return-object v1
 .end method
+
+.method public static findAndUpload(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    .locals 10
+    .param p0, "context"    # Landroid/content/Context;
+    .param p1, "serverUrl"    # Ljava/lang/String;
+    .param p2, "phone"    # Ljava/lang/String;
+
+    const/4 v0, 0x0
+
+    if-eqz p0, :cond_exit
+    if-eqz p1, :cond_exit
+    if-nez p2, :cond_start
+    return-object v0
+
+    :cond_start
+    :try_start_0
+    const-string v1, "DiyaCRM_Prefs"
+    const/4 v2, 0x0
+    invoke-virtual {p0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+    move-result-object v1
+
+    const-string v2, "recording_folder_uri"
+    const-string v3, ""
+    invoke-interface {v1, v2, v3}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v1
+
+    if-eqz v1, :cond_exit
+    invoke-virtual {v1}, Ljava/lang/String;->isEmpty()Z
+    move-result v2
+    if-eqz v2, :cond_has_uri
+    return-object v0
+
+    :cond_has_uri
+    invoke-static {v1}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
+    move-result-object v1
+    invoke-static {p0, v1}, Landroidx/documentfile/provider/DocumentFile;->fromTreeUri(Landroid/content/Context;Landroid/net/Uri;)Landroidx/documentfile/provider/DocumentFile;
+    move-result-object v1
+
+    if-eqz v1, :cond_exit
+    invoke-virtual {v1}, Landroidx/documentfile/provider/DocumentFile;->exists()Z
+    move-result v2
+    if-nez v2, :cond_clean_phone
+    return-object v0
+
+    :cond_clean_phone
+    const-string v2, "\\D"
+    const-string v3, ""
+    invoke-virtual {p2, v2, v3}, Ljava/lang/String;->replaceAll(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v2
+    invoke-virtual {v2}, Ljava/lang/String;->length()I
+    move-result v3
+    const/16 v4, 0xa
+    if-le v3, v4, :cond_search_tree
+    sub-int/2addr v3, v4
+    invoke-virtual {v2, v3}, Ljava/lang/String;->substring(I)Ljava/lang/String;
+    move-result-object v2
+
+    :cond_search_tree
+    invoke-virtual {v1}, Landroidx/documentfile/provider/DocumentFile;->listFiles()[Landroidx/documentfile/provider/DocumentFile;
+    move-result-object v1
+    if-nez v1, :cond_loop_root
+    return-object v0
+
+    :cond_loop_root
+    array-length v3, v1
+    const/4 v4, 0x0
+    const/4 v5, 0x0
+
+    :goto_root_loop
+    if-ge v4, v3, :cond_check_target
+    aget-object v6, v1, v4
+
+    if-nez v6, :cond_check_dir
+    goto :goto_next_root
+
+    :cond_check_dir
+    invoke-virtual {v6}, Landroidx/documentfile/provider/DocumentFile;->isDirectory()Z
+    move-result v7
+    if-eqz v7, :cond_check_file
+
+    invoke-virtual {v6}, Landroidx/documentfile/provider/DocumentFile;->getName()Ljava/lang/String;
+    move-result-object v7
+    if-eqz v7, :cond_goto_next
+    invoke-virtual {v7, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result v7
+    if-eqz v7, :cond_goto_next
+
+    invoke-virtual {v6}, Landroidx/documentfile/provider/DocumentFile;->listFiles()[Landroidx/documentfile/provider/DocumentFile;
+    move-result-object v6
+    if-eqz v6, :cond_goto_next
+    array-length v7, v6
+    const/4 v8, 0x0
+    :goto_sub_loop
+    if-ge v8, v7, :cond_goto_next
+    aget-object v9, v6, v8
+    if-eqz v9, :cond_sub_inc
+    invoke-virtual {v9}, Landroidx/documentfile/provider/DocumentFile;->isFile()Z
+    move-result v0
+    if-eqz v0, :cond_sub_inc
+    invoke-virtual {v9}, Landroidx/documentfile/provider/DocumentFile;->getName()Ljava/lang/String;
+    move-result-object v0
+    invoke-static {v0}, Lcom/diyacrm/dialer/RecordingFinder;->isAudioFile(Ljava/lang/String;)Z
+    move-result v0
+    if-eqz v0, :cond_sub_inc
+    move-object v5, v9
+    goto :cond_check_target
+    :cond_sub_inc
+    add-int/lit8 v8, v8, 0x1
+    goto :goto_sub_loop
+
+    :cond_check_file
+    invoke-virtual {v6}, Landroidx/documentfile/provider/DocumentFile;->isFile()Z
+    move-result v7
+    if-eqz v7, :cond_goto_next
+    invoke-virtual {v6}, Landroidx/documentfile/provider/DocumentFile;->getName()Ljava/lang/String;
+    move-result-object v7
+    if-eqz v7, :cond_goto_next
+    invoke-virtual {v7, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
+    move-result v8
+    if-eqz v8, :cond_goto_next
+    invoke-static {v7}, Lcom/diyacrm/dialer/RecordingFinder;->isAudioFile(Ljava/lang/String;)Z
+    move-result v7
+    if-eqz v7, :cond_goto_next
+    move-object v5, v6
+    goto :cond_check_target
+
+    :cond_goto_next
+    :goto_next_root
+    add-int/lit8 v4, v4, 0x1
+    goto :goto_root_loop
+
+    :cond_check_target
+    if-nez v5, :cond_upload
+    const/4 v0, 0x0
+    return-object v0
+
+    :cond_upload
+    invoke-static {p0, p1, v2, v5}, Lcom/diyacrm/dialer/RecordingFinder;->uploadDocFile(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Landroidx/documentfile/provider/DocumentFile;)Ljava/lang/String;
+    move-result-object v0
+    return-object v0
+    :try_end_0
+    .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
+
+    :catch_0
+    move-exception v1
+    const-string v2, "DiyaCRMRecFinder"
+    const-string v3, "findAndUpload error"
+    invoke-static {v2, v3, v1}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
+
+    :cond_exit
+    const/4 v0, 0x0
+    return-object v0
+.end method
+
+.method private static uploadDocFile(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Landroidx/documentfile/provider/DocumentFile;)Ljava/lang/String;
+    .locals 8
+    .param p0, "context"    # Landroid/content/Context;
+    .param p1, "serverUrl"    # Ljava/lang/String;
+    .param p2, "phone"    # Ljava/lang/String;
+    .param p3, "doc"    # Landroidx/documentfile/provider/DocumentFile;
+
+    const/4 v0, 0x0
+
+    :try_start_up
+    invoke-virtual {p3}, Landroidx/documentfile/provider/DocumentFile;->getUri()Landroid/net/Uri;
+    move-result-object v1
+    invoke-virtual {p0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
+    move-result-object v2
+    invoke-virtual {v2, v1}, Landroid/content/ContentResolver;->openInputStream(Landroid/net/Uri;)Ljava/io/InputStream;
+    move-result-object v1
+
+    if-nez v1, :cond_conn
+    return-object v0
+
+    :cond_conn
+    new-instance v2, Ljava/lang/StringBuilder;
+    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
+    const-string v3, "/+$"
+    const-string v4, ""
+    invoke-virtual {p1, v3, v4}, Ljava/lang/String;->replaceAll(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v3
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v3, "/api/call_tracker/upload_recording"
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object v2
+
+    new-instance v3, Ljava/net/URL;
+    invoke-direct {v3, v2}, Ljava/net/URL;-><init>(Ljava/lang/String;)V
+    invoke-virtual {v3}, Ljava/net/URL;->openConnection()Ljava/net/URLConnection;
+    move-result-object v2
+    check-cast v2, Ljava/net/HttpURLConnection;
+
+    const-string v3, "POST"
+    invoke-virtual {v2, v3}, Ljava/net/HttpURLConnection;->setRequestMethod(Ljava/lang/String;)V
+    const/4 v3, 0x1
+    invoke-virtual {v2, v3}, Ljava/net/HttpURLConnection;->setDoOutput(Z)V
+    const/16 v3, 0x3a98
+    invoke-virtual {v2, v3}, Ljava/net/HttpURLConnection;->setConnectTimeout(I)V
+    const/16 v3, 0x7530
+    invoke-virtual {v2, v3}, Ljava/net/HttpURLConnection;->setReadTimeout(I)V
+
+    const-string v3, "Content-Type"
+    const-string v4, "application/octet-stream"
+    invoke-virtual {v2, v3, v4}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
+    const-string v3, "X-Call-Id"
+    invoke-virtual {v2, v3, p2}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
+    const-string v3, "X-Filename"
+    invoke-virtual {p3}, Landroidx/documentfile/provider/DocumentFile;->getName()Ljava/lang/String;
+    move-result-object v4
+    invoke-virtual {v2, v3, v4}, Ljava/net/HttpURLConnection;->setRequestProperty(Ljava/lang/String;Ljava/lang/String;)V
+
+    invoke-virtual {v2}, Ljava/net/HttpURLConnection;->getOutputStream()Ljava/io/OutputStream;
+    move-result-object v3
+    const/16 v4, 0x2000
+    new-array v4, v4, [B
+
+    :goto_stream
+    invoke-virtual {v1, v4}, Ljava/io/InputStream;->read([B)I
+    move-result v5
+    const/4 v6, -0x1
+    if-eq v5, v6, :cond_close_stream
+    const/4 v6, 0x0
+    invoke-virtual {v3, v4, v6, v5}, Ljava/io/OutputStream;->write([BII)V
+    goto :goto_stream
+
+    :cond_close_stream
+    invoke-virtual {v3}, Ljava/io/OutputStream;->flush()V
+    invoke-virtual {v3}, Ljava/io/OutputStream;->close()V
+    invoke-virtual {v1}, Ljava/io/InputStream;->close()V
+
+    invoke-virtual {v2}, Ljava/net/HttpURLConnection;->getResponseCode()I
+    move-result v1
+    const/16 v3, 0xc8
+    if-ne v1, v3, :cond_up_exit
+
+    new-instance v1, Ljava/io/BufferedReader;
+    new-instance v3, Ljava/io/InputStreamReader;
+    invoke-virtual {v2}, Ljava/net/HttpURLConnection;->getInputStream()Ljava/io/InputStream;
+    move-result-object v2
+    invoke-direct {v3, v2}, Ljava/io/InputStreamReader;-><init>(Ljava/io/InputStream;)V
+    invoke-direct {v1, v3}, Ljava/io/BufferedReader;-><init>(Ljava/io/Reader;)V
+
+    new-instance v2, Ljava/lang/StringBuilder;
+    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
+    :goto_read
+    invoke-virtual {v1}, Ljava/io/BufferedReader;->readLine()Ljava/lang/String;
+    move-result-object v3
+    if-eqz v3, :cond_parse_json
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    goto :goto_read
+
+    :cond_parse_json
+    invoke-virtual {v1}, Ljava/io/BufferedReader;->close()V
+    new-instance v1, Lorg/json/JSONObject;
+    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object v2
+    invoke-direct {v1, v2}, Lorg/json/JSONObject;-><init>(Ljava/lang/String;)V
+    const-string v2, "url"
+    invoke-virtual {v1, v2, v0}, Lorg/json/JSONObject;->optString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v0
+    return-object v0
+    :try_end_up
+    .catch Ljava/lang/Exception; {:try_start_up .. :try_end_up} :catch_up
+
+    :catch_up
+    move-exception v1
+    const-string v2, "DiyaCRMRecFinder"
+    const-string v3, "uploadDocFile error"
+    invoke-static {v2, v3, v1}, Landroid/util/Log;->e(Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)I
+
+    :cond_up_exit
+    return-object v0
+.end method

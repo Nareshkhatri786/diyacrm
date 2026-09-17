@@ -1153,13 +1153,25 @@
 # ===== End SIM Selection Bridge Methods =====
 
 .method public getRecordingFolder()Ljava/lang/String;
-    .locals 1
+    .locals 3
     .annotation runtime Landroid/webkit/JavascriptInterface;
     .end annotation
 
     iget-object v0, p0, Lcom/diyacrm/dialer/MainActivity$WebAppInterface;->mContext:Landroid/content/Context;
 
-    invoke-static {v0}, Lcom/diyacrm/dialer/RecordingFinder;->getCustomFolder(Landroid/content/Context;)Ljava/lang/String;
+    const-string v1, "DiyaCRM_Prefs"
+
+    const/4 v2, 0x0
+
+    invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+
+    move-result-object v0
+
+    const-string v1, "recording_folder_uri"
+
+    const-string v2, ""
+
+    invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getString(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v0
 
@@ -1175,6 +1187,30 @@
     iget-object v0, p0, Lcom/diyacrm/dialer/MainActivity$WebAppInterface;->mContext:Landroid/content/Context;
 
     invoke-static {v0, p1}, Lcom/diyacrm/dialer/RecordingFinder;->setCustomFolder(Landroid/content/Context;Ljava/lang/String;)V
+
+    return-void
+.end method
+
+.method public pickRecordingFolder()V
+    .locals 3
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    new-instance v0, Landroid/content/Intent;
+
+    const-string v1, "android.intent.action.OPEN_DOCUMENT_TREE"
+
+    invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
+
+    const/16 v1, 0x43
+
+    invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
+
+    iget-object v1, p0, Lcom/diyacrm/dialer/MainActivity$WebAppInterface;->this$0:Lcom/diyacrm/dialer/MainActivity;
+
+    const/16 v2, 0x26ad
+
+    invoke-virtual {v1, v0, v2}, Lcom/diyacrm/dialer/MainActivity;->startActivityForResult(Landroid/content/Intent;I)V
 
     return-void
 .end method
