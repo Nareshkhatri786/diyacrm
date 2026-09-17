@@ -96,7 +96,7 @@
 
     const/4 v1, 0x5
 
-    const-string v11, "android.permission.READ_MEDIA_AUDIO"
+    const-string v11, "android.permission.READ_EXTERNAL_STORAGE"
 
     aput-object v11, v0, v1
 
