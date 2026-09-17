@@ -515,7 +515,12 @@
     :try_end_res
     .catch Ljava/lang/Exception; {:try_start_res .. :try_end_res} :catch_res
 
+    goto :goto_res_done
+
     :catch_res
+    move-exception v0
+
+    :goto_res_done
     .line 243
     invoke-direct {p0}, Lcom/diyacrm/dialer/MainActivity;->refreshUI()V
 
@@ -558,7 +563,12 @@
     :try_end_saf
     .catch Ljava/lang/Exception; {:try_start_saf .. :try_end_saf} :catch_saf
 
+    goto :goto_saf_done
+
     :catch_saf
+    move-exception v1
+
+    :goto_saf_done
     const-string v1, "DiyaCRM_Prefs"
 
     const/4 v2, 0x0
