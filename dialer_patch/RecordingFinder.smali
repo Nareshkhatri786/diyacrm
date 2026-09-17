@@ -319,6 +319,36 @@
 
     if-nez v3, :cond_1
 
+    # Check customFolder/<phone> subfolder first (Infinix style)
+    new-instance v3, Ljava/lang/StringBuilder;
+
+    invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
+
+    invoke-virtual {v3, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    const-string v4, "/"
+
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v3, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+
+    invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+
+    move-result-object v3
+
+    new-instance v4, Ljava/io/File;
+
+    invoke-direct {v4, v3}, Ljava/io/File;-><init>(Ljava/lang/String;)V
+
+    invoke-static {v4, v2, p2, p3}, Lcom/diyacrm/dialer/RecordingFinder;->scanDirectory(Ljava/io/File;Ljava/lang/String;J)Ljava/lang/String;
+
+    move-result-object v3
+
+    if-eqz v3, :cond_cf_done
+
+    return-object v3
+
+    :cond_cf_done
     new-instance v3, Ljava/io/File;
 
     invoke-direct {v3, p0}, Ljava/io/File;-><init>(Ljava/lang/String;)V

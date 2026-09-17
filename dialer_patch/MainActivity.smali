@@ -77,7 +77,7 @@
     if-lt v0, v1, :cond_0
 
     .line 67
-    const/4 v0, 0x5
+    const/4 v0, 0x6
 
     :try_start_1
     new-array v0, v0, [Ljava/lang/String;
@@ -94,13 +94,21 @@
 
     aput-object v1, v0, v10
 
+    const/4 v1, 0x5
+
+    const-string v11, "android.permission.READ_MEDIA_AUDIO"
+
+    aput-object v11, v0, v1
+
     .local v0, "perms":[Ljava/lang/String;
     goto :goto_0
 
     .line 74
     .end local v0    # "perms":[Ljava/lang/String;
     :cond_0
-    new-array v0, v10, [Ljava/lang/String;
+    const/4 v0, 0x5
+
+    new-array v0, v0, [Ljava/lang/String;
 
     aput-object v5, v0, v8
 
@@ -109,6 +117,10 @@
     aput-object v2, v0, v3
 
     aput-object v9, v0, v6
+
+    const-string v1, "android.permission.READ_EXTERNAL_STORAGE"
+
+    aput-object v1, v0, v10
 
     .line 81
     .restart local v0    # "perms":[Ljava/lang/String;
