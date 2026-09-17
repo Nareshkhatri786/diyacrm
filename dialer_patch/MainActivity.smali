@@ -515,86 +515,10 @@
     :try_end_res
     .catch Ljava/lang/Exception; {:try_start_res .. :try_end_res} :catch_res
 
-    goto :goto_res_done
-
     :catch_res
-    move-exception v0
-
-    :goto_res_done
     .line 243
     invoke-direct {p0}, Lcom/diyacrm/dialer/MainActivity;->refreshUI()V
 
     .line 244
-    return-void
-.end method
-
-.method protected onActivityResult(IILandroid/content/Intent;)V
-    .locals 4
-    .param p1, "requestCode"    # I
-    .param p2, "resultCode"    # I
-    .param p3, "data"    # Landroid/content/Intent;
-
-    invoke-super {p0, p1, p2, p3}, Landroid/app/Activity;->onActivityResult(IILandroid/content/Intent;)V
-
-    const/16 v0, 0x26ad
-
-    if-ne p1, v0, :cond_exit
-
-    const/4 v0, -0x1
-
-    if-ne p2, v0, :cond_exit
-
-    if-eqz p3, :cond_exit
-
-    invoke-virtual {p3}, Landroid/content/Intent;->getData()Landroid/net/Uri;
-
-    move-result-object v0
-
-    if-eqz v0, :cond_exit
-
-    :try_start_saf
-    invoke-virtual {p0}, Lcom/diyacrm/dialer/MainActivity;->getContentResolver()Landroid/content/ContentResolver;
-
-    move-result-object v1
-
-    const/4 v2, 0x3
-
-    invoke-virtual {v1, v0, v2}, Landroid/content/ContentResolver;->takePersistableUriPermission(Landroid/net/Uri;I)V
-    :try_end_saf
-    .catch Ljava/lang/Exception; {:try_start_saf .. :try_end_saf} :catch_saf
-
-    goto :goto_saf_done
-
-    :catch_saf
-    move-exception v1
-
-    :goto_saf_done
-    const-string v1, "DiyaCRM_Prefs"
-
-    const/4 v2, 0x0
-
-    invoke-virtual {p0, v1, v2}, Lcom/diyacrm/dialer/MainActivity;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
-
-    move-result-object v1
-
-    invoke-interface {v1}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences$Editor;
-
-    move-result-object v1
-
-    const-string v2, "recording_folder_uri"
-
-    invoke-virtual {v0}, Landroid/net/Uri;->toString()Ljava/lang/String;
-
-    move-result-object v3
-
-    invoke-interface {v1, v2, v3}, Landroid/content/SharedPreferences$Editor;->putString(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;
-
-    move-result-object v1
-
-    invoke-interface {v1}, Landroid/content/SharedPreferences$Editor;->apply()V
-
-    invoke-direct {p0}, Lcom/diyacrm/dialer/MainActivity;->refreshUI()V
-
-    :cond_exit
     return-void
 .end method

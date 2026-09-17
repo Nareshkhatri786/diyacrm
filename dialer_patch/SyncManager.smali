@@ -298,15 +298,10 @@
     move-object/from16 v22, v11
 
     .end local v11    # "rdb":Landroid/database/sqlite/SQLiteDatabase;
+    .local v22, "rdb":Landroid/database/sqlite/SQLiteDatabase;
     move/from16 v11, v23
 
-    move-object/from16 v4, p0
-
-    invoke-static {v4, v3, v6}, Lcom/diyacrm/dialer/RecordingFinder;->findAndUpload(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
-
-    move-result-object v12
-
-    invoke-static/range {v5 .. v12}, Lcom/diyacrm/dialer/SyncManager;->sendCallToOdoo(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IILjava/lang/String;)Z
+    invoke-static/range {v5 .. v11}, Lcom/diyacrm/dialer/SyncManager;->sendCallToOdoo(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;II)Z
 
     move-result v5
 
@@ -401,7 +396,7 @@
     return-void
 .end method
 
-.method private static sendCallToOdoo(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;IILjava/lang/String;)Z
+.method private static sendCallToOdoo(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;II)Z
     .locals 21
     .param p0, "serverUrl"    # Ljava/lang/String;
     .param p1, "phone"    # Ljava/lang/String;
@@ -410,7 +405,6 @@
     .param p4, "startTime"    # Ljava/lang/String;
     .param p5, "userId"    # I
     .param p6, "companyId"    # I
-    .param p7, "recordingUrl"    # Ljava/lang/String;
 
     .line 74
     const-string v0, "result"
@@ -553,15 +547,6 @@
     :try_start_7
     invoke-virtual {v5, v6, v12}, Lorg/json/JSONObject;->put(Ljava/lang/String;I)Lorg/json/JSONObject;
 
-    if-eqz p7, :cond_no_rec
-
-    const-string v6, "recording_url"
-
-    move-object/from16 v13, p7
-
-    invoke-virtual {v5, v6, v13}, Lorg/json/JSONObject;->put(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;
-
-    :cond_no_rec
     .line 91
     new-instance v6, Lorg/json/JSONObject;
 
