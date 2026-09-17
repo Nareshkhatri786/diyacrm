@@ -544,84 +544,46 @@
     .param p1, "context"    # Landroid/content/Context;
     .param p2, "state"    # I
 
-    .line 45
-    sget v0, Lcom/diyacrm/dialer/CallReceiver;->lastState:I
+    const/4 v0, 0x2
 
-    if-ne v0, p2, :cond_0
+    if-ne p2, v0, :cond_state_1
 
-    return-void
+    # === OFFHOOK (2): Start recording ===
+    invoke-static {p1}, Lcom/diyacrm/dialer/CallRecorder;->start(Landroid/content/Context;)V
+    goto :goto_state_done
 
-    .line 47
-    :cond_0
+    :cond_state_1
     const/4 v0, 0x1
 
-    packed-switch p2, :pswitch_data_0
+    if-ne p2, v0, :cond_state_0
 
-    goto :goto_0
-
-    .line 53
-    :pswitch_0
-    # === DiyaCRM: Start recording on OFFHOOK ===
-    invoke-static {p1}, Lcom/diyacrm/dialer/CallRecorder;->start(Landroid/content/Context;)V
-    # === End recording start ===
-    goto :goto_0
-
-    .line 49
-    :pswitch_1
+    # === RINGING (1): Incoming call ===
     sput-boolean v0, Lcom/diyacrm/dialer/CallReceiver;->isIncoming:Z
+    goto :goto_state_done
 
-    .line 50
-    goto :goto_0
+    :cond_state_0
+    if-nez p2, :cond_goto_done
 
-    .line 56
-    :pswitch_2
-    sget v1, Lcom/diyacrm/dialer/CallReceiver;->lastState:I
-
-    const/4 v2, 0x2
-
-    if-eq v1, v2, :cond_1
-
-    sget v1, Lcom/diyacrm/dialer/CallReceiver;->lastState:I
-
-    if-ne v1, v0, :cond_2
-
-    .line 57
-    :cond_1
+    # === IDLE (0): Call Ended! ALWAYS fetch call log & sync ===
     new-instance v0, Landroid/os/Handler;
-
     invoke-static {}, Landroid/os/Looper;->getMainLooper()Landroid/os/Looper;
-
     move-result-object v1
-
     invoke-direct {v0, v1}, Landroid/os/Handler;-><init>(Landroid/os/Looper;)V
 
     new-instance v1, Lcom/diyacrm/dialer/CallReceiver$$ExternalSyntheticLambda0;
-
     invoke-direct {v1, p0, p1}, Lcom/diyacrm/dialer/CallReceiver$$ExternalSyntheticLambda0;-><init>(Lcom/diyacrm/dialer/CallReceiver;Landroid/content/Context;)V
 
     const-wide/16 v2, 0x5dc
 
     invoke-virtual {v0, v1, v2, v3}, Landroid/os/Handler;->postDelayed(Ljava/lang/Runnable;J)Z
 
-    .line 59
-    :cond_2
     const/4 v0, 0x0
-
     sput-boolean v0, Lcom/diyacrm/dialer/CallReceiver;->isIncoming:Z
 
-    .line 62
-    :goto_0
+    :goto_state_done
+    :cond_goto_done
     sput p2, Lcom/diyacrm/dialer/CallReceiver;->lastState:I
-
-    .line 63
     return-void
-
-    :pswitch_data_0
-    .packed-switch 0x0
-        :pswitch_2
-        :pswitch_1
-        :pswitch_0
-    .end packed-switch
 .end method
 
 
@@ -650,6 +612,8 @@
     const/4 v1, 0x0
 
     sput-boolean v1, Lcom/diyacrm/dialer/CallReceiver;->isIncoming:Z
+
+    invoke-static {p1}, Lcom/diyacrm/dialer/CallRecorder;->start(Landroid/content/Context;)V
 
     goto :goto_1
 
