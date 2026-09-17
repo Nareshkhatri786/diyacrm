@@ -43,7 +43,7 @@
     return-void
 .end method
 
-.method private fetchLatestCallLog(Landroid/content/Context;)V
+.method public fetchLatestCallLog(Landroid/content/Context;)V
     .locals 21
     .param p1, "context"    # Landroid/content/Context;
 
