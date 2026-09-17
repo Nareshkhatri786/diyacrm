@@ -300,7 +300,9 @@
     .end local v11    # "rdb":Landroid/database/sqlite/SQLiteDatabase;
     move/from16 v11, v23
 
-    invoke-static {p0, v3, v6}, Lcom/diyacrm/dialer/RecordingFinder;->findAndUpload(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    move-object/from16 v4, p0
+
+    invoke-static {v4, v3, v6}, Lcom/diyacrm/dialer/RecordingFinder;->findAndUpload(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object v12
 
