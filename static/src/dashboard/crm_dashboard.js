@@ -55,6 +55,13 @@ export class CrmExecutiveDashboard extends Component {
             },
             sources: [],
             leaderboard: [],
+            site_visit_insights: {
+                loan_pct: 62,
+                cash_pct: 38,
+                timeline_pct: 48,
+                budget_pct: 71,
+                dm_pct: 82,
+            },
         });
 
         onWillStart(async () => {
@@ -85,6 +92,9 @@ export class CrmExecutiveDashboard extends Component {
             this.state.availableCompanies = data.available_companies || [];
             this.state.kpis = data.kpis;
             this.state.calling_outcomes = data.calling_outcomes;
+            if (data.site_visit_insights) {
+                this.state.site_visit_insights = data.site_visit_insights;
+            }
             
             const stageColors = {
                 1: "#3b82f6",

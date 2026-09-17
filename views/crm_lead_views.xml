@@ -6,6 +6,11 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.quick_create_opportunity_form"/>
         <field name="arch" type="xml">
+            <!-- Hide Company Row (icon + field) -->
+            <xpath expr="//field[@name='commercial_partner_id']/parent::div" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
             <!-- Hide Contact Row (icon + field) -->
             <xpath expr="//field[@name='partner_id']/parent::div" position="attributes">
                 <attribute name="invisible">1</attribute>
@@ -28,11 +33,22 @@
                 <attribute name="string">Phone</attribute>
             </xpath>
 
-            <!-- Add Area, Source, and Status as clean full-width rows -->
+            <!-- Hide Expected Revenue amount, keep Priority stars only -->
+            <xpath expr="//field[@name='expected_revenue']/parent::div/parent::div" position="replace">
+                <div class="d-flex align-items-center ps-1" colspan="2">
+                    <field name="priority" class="oe_inline mb-0" nolabel="1" widget="priority"/>
+                </div>
+            </xpath>
+
+            <!-- Add Area, Unit Type, Source, and Status as clean full-width rows -->
             <xpath expr="//field[@name='phone']/parent::div" position="after">
                 <div class="d-flex align-items-center" colspan="2">
                     <i class="fa fa-map-marker" title="Area" aria-label="Area"/>
                     <field name="area" string="Area" placeholder="Area" nolabel="1" class="o_field_highlight w-100 mb-0"/>
+                </div>
+                <div class="d-flex align-items-center" colspan="2">
+                    <i class="fa fa-home" title="Unit Type" aria-label="Unit Type"/>
+                    <field name="unit_type" string="Unit Type" placeholder="Unit Type" nolabel="1" class="o_field_highlight w-100 mb-0" options="{'no_create': True, 'no_open': True}"/>
                 </div>
                 <div class="d-flex align-items-center" colspan="2">
                     <i class="fa fa-bullhorn" title="Source" aria-label="Source"/>
@@ -42,16 +58,6 @@
                     <i class="fa fa-thermometer-half" title="Status" aria-label="Status"/>
                     <field name="lead_temperature" string="Status" placeholder="Status" nolabel="1" class="o_field_highlight w-100 mb-0"/>
                 </div>
-            </xpath>
-
-            <!-- Hide Expected Revenue only, Keep Priority Star in Quick Create -->
-            <xpath expr="//field[@name='expected_revenue']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-
-            <!-- Hide Company field from Quick Create -->
-            <xpath expr="//field[@name='company_id']" position="attributes">
-                <attribute name="invisible">1</attribute>
             </xpath>
         </field>
     </record>
@@ -68,57 +74,56 @@
             </xpath>
 
             <!-- Hide Expected Revenue & Probability Header Block -->
-            <xpath expr="//h2[hasclass('row')]" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//field[@name='expected_revenue']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//field[@name='probability']" position="attributes">
+            <xpath expr="//div[hasclass('oe_title')]/h2" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Hide BOTH Partner / Contact Fields in Detail Form -->
-            <xpath expr="//field[@name='partner_id']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="(//field[@name='partner_id'])[2]" position="attributes">
+            <!-- Hide Contact Field -->
+            <xpath expr="//group[@name='opportunity_partner']/field[@name='partner_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Hide Email Field -->
-            <xpath expr="//field[@name='email_from']" position="attributes">
+            <!-- Hide Email Field & Label -->
+            <xpath expr="//group[@name='opportunity_partner']/label[@for='email_from']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
-            <xpath expr="//label[@for='email_from']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//field[@name='email_from']/parent::div" position="attributes">
+            <xpath expr="//group[@name='opportunity_partner']/div[field[@name='email_from']]" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Add Area after Phone -->
+            <!-- Left Column: Add Area & Unit Type after Phone -->
             <xpath expr="//field[@name='phone']/parent::div" position="after">
                 <field name="area" placeholder="Select Area..."/>
+                <field name="unit_type" placeholder="Select Unit Type..." string="Unit Type"/>
             </xpath>
 
-            <!-- Add Editable Status & Source in Right Column -->
+            <!-- Right Column: Add Status & Source after Salesperson -->
+                        <!-- Restrict Salesperson to only show team members of current company -->
+            <xpath expr="//field[@name='user_id']" position="attributes">
+                <attribute name="domain">[('company_ids', 'in', [company_id]), ('share', '=', False)]</attribute>
+                <attribute name="options">{'no_create': True, 'no_create_edit': True, 'no_open': True}</attribute>
+            </xpath>
+
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="lead_temperature" string="Status" placeholder="Select Status..."/>
                 <field name="source_id" string="Source" domain="[('name', 'in', ['Walk In', 'WhatsApp', 'Reference', 'Social Media', 'Direct Call', 'AI WhatsApp Agent', 'Website'])]" options="{'no_create_edit': True, 'no_create': True, 'no_open': True}"/>
-                <separator string="Site Visit Insights" colspan="2"/>
-                <field name="finance_mode" string="Finance Mode"/>
-                <field name="purchase_timeline" string="Purchase Timeline"/>
-                <field name="budget_fit" string="Budget Fit"/>
-                <field name="decision_maker_present" string="Decision Maker Present"/>
             </xpath>
 
-            <!-- Hide Expected Closing -->
+            <!-- Expected Closing Label -> Priority Label -->
             <xpath expr="//label[@for='date_deadline']" position="attributes">
-                <attribute name="invisible">1</attribute>
+                <attribute name="for">priority</attribute>
+                <attribute name="string">Priority</attribute>
             </xpath>
+
+            <!-- Hide Date Deadline, keep Priority Stars -->
             <xpath expr="//field[@name='date_deadline']" position="attributes">
                 <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <!-- Tags Field: Apply Company Filter & Block Creation -->
+            <xpath expr="//field[@name='tag_ids']" position="attributes">
+                <attribute name="domain">[('company_ids', 'in', [company_id])]</attribute>
+                <attribute name="options">{'color_field': 'color', 'no_create': True, 'no_quick_create': True, 'no_create_edit': True}</attribute>
             </xpath>
         </field>
     </record>
@@ -135,30 +140,21 @@
                     help="This bar allows to filter the opportunities based on scheduled activities."/>
             </xpath>
 
+            <!-- Hide Expected Revenue in Kanban Cards -->
+            <xpath expr="//div[hasclass('o_kanban_card_crm_lead_revenue')]" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
             <!-- Ensure lead_temperature is loaded -->
             <xpath expr="//field[@name='probability']" position="after">
                 <field name="lead_temperature"/>
-            </xpath>
-
-            <!-- Hide duplicate contact_name and partner_name from Kanban Card -->
-            <xpath expr="//field[@name='contact_name']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//field[@name='partner_name']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-
-            <!-- Ensure Priority Stars are visible with priority widget -->
-            <xpath expr="//field[@name='priority']" position="attributes">
-                <attribute name="widget">priority</attribute>
-                <attribute name="invisible">0</attribute>
             </xpath>
 
             <!-- Name on Top-Left and Status Badge on Top-Right -->
             <xpath expr="//field[@name='name']" position="replace">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="fw-bold fs-5 text-dark text-truncate me-2"><field name="name"/></span>
-                    <field name="lead_temperature" widget="badge" decoration-danger="lead_temperature == 'hot'" decoration-warning="lead_temperature == 'warm'" decoration-info="lead_temperature == 'cold'" class="flex-shrink-0"/>
+                    <span class="small fw-bold text-dark flex-shrink-0"><field name="lead_temperature"/></span>
                 </div>
             </xpath>
         </field>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_site_visit_desk_form" model="ir.ui.view">
+        <field name="name">crm.site.visit.desk.form</field>
+        <field name="model">crm.site.visit.desk</field>
+        <field name="arch" type="xml">
+            <form string="Site Visit Reception Desk">
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <h2 class="text-primary fw-bold">Site Visit Reception Desk</h2>
+                        <p class="text-muted">Enter 10-digit mobile to find existing client or check-in a new walk-in visitor.</p>
+                    </div>
+                    <group>
+                        <group string="Visitor Phone Search">
+                            <field name="phone" placeholder="10-digit mobile e.g. 9876543210" style="font-size:16px; font-weight:bold;"/>
+                            <field name="company_id" options="{&quot;no_create&quot;: true}"/>
+                            <field name="visit_date"/>
+                        </group>
+                        <group string="Visitor Details">
+                            <field name="visitor_name" placeholder="Client Full Name"/>
+                            <field name="user_id" options="{&quot;no_create&quot;: true}"/>
+                            <field name="unit_type"/>
+                        </group>
+                    </group>
+
+                    <field name="is_existing" invisible="1"/>
+                    <field name="existing_lead_id" invisible="1"/>
+                    <field name="existing_info" widget="html" nolabel="1"/>
+
+                    <group string="Client Interest and Follow-up">
+                        <group>
+                            <field name="lead_priority" widget="radio" options="{&quot;horizontal&quot;: true}"/>
+                        </group>
+                        <group>
+                            <field name="follow_up_date"/>
+                            <field name="follow_up_note" placeholder="e.g. Will come with family, needs financial details..."/>
+                        </group>
+                    </group>
+
+                    <group string="Visit Notes / Discussion">
+                        <field name="notes" placeholder="What was discussed? Requirements, budget, objections, interested in which unit..." nolabel="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_checkin" string="Check-In and Send WhatsApp" type="object" class="btn-primary"/>
+                    <button special="cancel" string="Cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_crm_site_visit_desk" model="ir.actions.act_window">
+        <field name="name">Site Visit Desk</field>
+        <field name="res_model">crm.site.visit.desk</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_crm_site_visit_desk_sales"
+              name="Site Visit Desk"
+              parent="crm.crm_menu_sales"
+              action="action_crm_site_visit_desk"
+              sequence="0"/>
+
+    <menuitem id="menu_crm_site_visit_desk_top"
+              name="Site Visit Desk"
+              parent="crm.crm_menu_root"
+              action="action_crm_site_visit_desk"
+              sequence="2"/>
+</odoo>

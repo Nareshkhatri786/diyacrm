@@ -8,5 +8,9 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .vscode/
-.idea/
-*.swp
+# Archives and temporary backups
+*.tar.gz
+*.bak_*
+static/recordings/
+static/downloads/dialer_backup_*.apk
+static/downloads/*.tar.gz

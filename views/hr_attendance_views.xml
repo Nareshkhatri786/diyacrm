@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="hr_attendance_view_tree_inherit_diyacrm" model="ir.ui.view">
+        <field name="name">hr.attendance.list.inherit.diyacrm</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.view_attendance_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='check_in']" position="before">
+                <field name="in_photo" widget="image" optional="show" string="Selfie"/>
+            </xpath>
+            <xpath expr="//field[@name='check_in']" position="after">
+                <field name="in_distance" optional="show" string="In Distance (m)"/>
+                <field name="in_geofence_status" widget="badge" decoration-success="in_geofence_status == 'inside'" decoration-danger="in_geofence_status == 'outside'" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="hr_attendance_view_form_inherit_diyacrm" model="ir.ui.view">
+        <field name="name">hr.attendance.form.inherit.diyacrm</field>
+        <field name="model">hr.attendance</field>
+        <field name="inherit_id" ref="hr_attendance.hr_attendance_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Selfie and GPS Geofence Verification" col="2">
+                    <group string="Check-In Verification">
+                        <field name="in_photo" widget="image" class="oe_avatar" style="width: 140px; height: 140px; border-radius: 12px;"/>
+                        <field name="in_distance" string="Distance from Site (m)"/>
+                        <field name="in_geofence_status" widget="badge" decoration-success="in_geofence_status == 'inside'" decoration-danger="in_geofence_status == 'outside'"/>
+                        <field name="in_map_url" widget="url" text="View on Google Maps" invisible="not in_map_url"/>
+                    </group>
+                    <group string="Check-Out Verification">
+                        <field name="out_photo" widget="image" class="oe_avatar" style="width: 140px; height: 140px; border-radius: 12px;"/>
+                        <field name="out_distance" string="Distance from Site (m)"/>
+                        <field name="out_geofence_status" widget="badge" decoration-success="out_geofence_status == 'inside'" decoration-danger="out_geofence_status == 'outside'"/>
+                        <field name="out_map_url" widget="url" text="View on Google Maps" invisible="not out_map_url"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

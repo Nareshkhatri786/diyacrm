@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Blocks -->
+    <record id="tag_a_block" model="crm.tag"><field name="name">A-Block</field></record>
+    <record id="tag_b_block" model="crm.tag"><field name="name">B-Block</field></record>
+    <record id="tag_c_block" model="crm.tag"><field name="name">C-Block</field></record>
+    <record id="tag_d_block" model="crm.tag"><field name="name">D-Block</field></record>
+
+    <!-- The 1st sq yards -->
+    <record id="tag_265_sqyd" model="crm.tag"><field name="name">265 sq yards</field></record>
+    <record id="tag_270_sqyd" model="crm.tag"><field name="name">270 sq yards</field></record>
+    <record id="tag_275_sqyd" model="crm.tag"><field name="name">275 sq yards</field></record>
+
+    <!-- Shreemad sq yards -->
+    <record id="tag_285_sqyd" model="crm.tag"><field name="name">285 sq yards</field></record>
+    <record id="tag_290_sqyd" model="crm.tag"><field name="name">290 sq yards</field></record>
+    <record id="tag_315_sqyd" model="crm.tag"><field name="name">315 sq yards</field></record>
+    <record id="tag_380_sqyd" model="crm.tag"><field name="name">380 sq yards</field></record>
+    <record id="tag_400_sqyd" model="crm.tag"><field name="name">400 sq yards</field></record>
+
+    <!-- Royal sq yards -->
+    <record id="tag_230_sqyd" model="crm.tag"><field name="name">230 sq yards</field></record>
+    <record id="tag_240_sqyd" model="crm.tag"><field name="name">240 sq yards</field></record>
+    <record id="tag_242_sqyd" model="crm.tag"><field name="name">242 sq yards</field></record>
+    <record id="tag_298_sqyd" model="crm.tag"><field name="name">298 sq yards</field></record>
+    <record id="tag_318_sqyd" model="crm.tag"><field name="name">318 sq yards</field></record>
+    <record id="tag_434_sqyd" model="crm.tag"><field name="name">434 sq yards</field></record>
+
+    <!-- Devi sq yards -->
+    <record id="tag_85_sqyd"  model="crm.tag"><field name="name">85 sq yards</field></record>
+    <record id="tag_90_sqyd"  model="crm.tag"><field name="name">90 sq yards</field></record>
+    <record id="tag_110_sqyd" model="crm.tag"><field name="name">110 sq yards</field></record>
+</odoo>

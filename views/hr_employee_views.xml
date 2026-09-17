@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_employee_form_inherit_diyacrm_geofence" model="ir.ui.view">
+        <field name="name">hr.employee.form.inherit.diyacrm.geofence</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="hr.view_employee_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="📍 Attendance &amp; 150m Geofencing" name="attendance_geofence">
+                    <group>
+                        <group string="Site Coordinates (Target Location)">
+                            <field name="work_latitude" placeholder="e.g. 23.075412"/>
+                            <field name="work_longitude" placeholder="e.g. 72.632145"/>
+                            <field name="geofence_radius" string="Allowed Radius (Meters)"/>
+                        </group>
+                        <group string="Enforcement Rules">
+                            <field name="require_selfie"/>
+                            <field name="require_geofence"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

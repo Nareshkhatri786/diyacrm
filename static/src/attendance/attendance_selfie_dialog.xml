@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="diyacrm.AttendanceSelfieDialog">
+        <div class="modal d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.8); z-index: 1060; backdrop-filter: blur(4px);">
+            <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                    
+                    <div class="modal-header border-0 px-4 pt-4 pb-2 text-white" t-attf-style="background: {{ state.isCheckedIn ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #4f46e5, #3b82f6)' }};">
+                        <div>
+                            <h5 class="modal-title fw-bold mb-1 d-flex align-items-center gap-2">
+                                <i t-attf-class="fa {{ state.isCheckedIn ? 'fa-sign-out' : 'fa-sign-in' }}"/>
+                                <t t-esc="state.isCheckedIn ? 'Attendance Check Out' : 'Attendance Check In'"/>
+                            </h5>
+                            <p class="small mb-0 opacity-75">
+                                <t t-esc="state.employeeName || 'Verifying location &amp; selfie...'"/>
+                            </p>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" aria-label="Close" t-on-click="closeModal"/>
+                    </div>
+
+                    <div class="modal-body p-4 bg-light">
+                        <div class="position-relative bg-dark rounded-4 overflow-hidden mb-3 shadow-inner" style="aspect-ratio: 4/3; min-height: 260px; display: flex; align-items: center; justify-content: center;">
+                            <video t-ref="videoRef" autoplay="1" playsinline="1" t-att-class="{ 'd-none': state.capturedPhoto || state.cameraError }" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"/>
+                            <img t-if="state.capturedPhoto" t-att-src="state.capturedPhoto" style="width: 100%; height: 100%; object-fit: cover;"/>
+                            
+                            <div t-if="state.cameraLoading" class="text-white text-center p-3">
+                                <i class="fa fa-circle-o-notch fa-spin fa-2x mb-2 text-primary"/>
+                                <p class="small mb-0">Starting Front Camera...</p>
+                            </div>
+                            
+                            <div t-if="state.cameraError" class="text-white text-center p-4 bg-danger bg-opacity-75 h-100 d-flex flex-column justify-content-center">
+                                <i class="fa fa-camera-retro fa-3x mb-2"/>
+                                <h6 class="fw-bold mb-1">Camera Access Blocked</h6>
+                                <p class="small mb-2 opacity-90"><t t-esc="state.cameraErrorMsg"/></p>
+                                <button class="btn btn-sm btn-light fw-bold mx-auto" t-on-click="startCamera">
+                                    <i class="fa fa-refresh me-1"/> Retry Camera
+                                </button>
+                            </div>
+
+                            <button t-if="!state.capturedPhoto and !state.cameraError and !state.cameraLoading" type="button" class="btn btn-light rounded-circle position-absolute bottom-0 start-50 translate-middle-x mb-3 shadow-lg border border-3 border-primary" style="width: 54px; height: 54px;" t-on-click="capturePhoto" title="Capture Selfie">
+                                <i class="fa fa-camera text-primary fs-5"/>
+                            </button>
+
+                            <button t-if="state.capturedPhoto" type="button" class="btn btn-dark btn-sm rounded-pill position-absolute bottom-0 end-0 m-3 shadow" t-on-click="retakePhoto">
+                                <i class="fa fa-refresh me-1"/> Retake
+                            </button>
+                        </div>
+
+                        <div class="card border-0 p-3 rounded-3 mb-2" t-attf-style="background: {{ state.geoStatusColor }};">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="fs-4">
+                                    <i t-attf-class="fa {{ state.geoIcon }}"/>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold fs-6 mb-0 text-dark">
+                                        <t t-esc="state.geoTitle"/>
+                                    </div>
+                                    <div class="small text-muted">
+                                        <t t-esc="state.geoDescription"/>
+                                    </div>
+                                </div>
+                                <button t-if="state.geoError" class="btn btn-sm btn-outline-dark" t-on-click="fetchLocation">
+                                    <i class="fa fa-refresh"/>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div t-if="state.distance !== null" class="d-flex justify-content-between align-items-center px-1 mb-2">
+                            <span class="small text-muted">Distance to Site:</span>
+                            <span t-attf-class="badge rounded-pill {{ state.isWithinGeofence ? 'bg-success' : 'bg-danger' }} fs-7 py-1 px-3">
+                                📍 <t t-esc="state.distance"/> meters (Max: <t t-esc="state.allowedRadius"/>m)
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 p-4 pt-0 bg-light d-flex gap-2">
+                        <button type="button" class="btn btn-light rounded-pill flex-grow-1 py-2 fw-semibold" t-on-click="closeModal">
+                            Cancel
+                        </button>
+                        <button type="button" class="btn rounded-pill flex-grow-1 py-2 fw-bold text-white shadow" t-attf-style="background: {{ state.isCheckedIn ? '#dc2626' : '#4f46e5' }};" t-att-disabled="!state.canSubmit or state.submitting" t-on-click="submitAttendance">
+                            <i t-if="state.submitting" class="fa fa-circle-o-notch fa-spin me-1"/>
+                            <i t-else="" t-attf-class="fa {{ state.isCheckedIn ? 'fa-sign-out' : 'fa-sign-in' }} me-1"/>
+                            <t t-if="state.submitting">Processing...</t>
+                            <t t-else="">
+                                <t t-esc="state.isCheckedIn ? 'Confirm Check Out' : 'Confirm Check In'"/>
+                            </t>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

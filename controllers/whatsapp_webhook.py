@@ -1,3 +1,29 @@
+
+def format_whatsapp_phone(raw_phone):
+    """
+    Smart Phone Formatter:
+    - Indian Mobile (12 digits starting with 91 & next digit 6/7/8/9, or 10 digits): 
+      Returns clean 10-digit number (e.g. 9876543210) for direct SIM calling.
+    - International Number:
+      Returns with '+' and country code (e.g. +14155552671, +971501234567).
+    """
+    if not raw_phone:
+        return ""
+    digits = "".join(filter(str.isdigit, str(raw_phone)))
+    
+    # 12-digit Indian number starting with 91
+    if len(digits) == 12 and digits.startswith("91") and digits[2] in "6789":
+        return digits[2:]
+    # 11-digit Indian number starting with 0
+    elif len(digits) == 11 and digits.startswith("0") and digits[1] in "6789":
+        return digits[1:]
+    # Pure 10-digit Indian mobile number
+    elif len(digits) == 10 and digits[0] in "6789":
+        return digits
+    # International number (outside India)
+    else:
+        return f"+{digits}" if digits else ""
+
 # -*- coding: utf-8 -*-
 import json
 import logging
@@ -9,11 +35,19 @@ from odoo.orm.registry import Registry
 
 _logger = logging.getLogger(__name__)
 
-# Default Meta Webhook Verify Token
 META_VERIFY_TOKEN = "diyacrm_secret_token"
 
-# Phone Number IDs & Keywords Mapping to Companies & Dedicated Users
 COMPANY_RULES = {
+    'the1st': {
+        'company_name': 'The 1st Residency',
+        'phone_number_ids': ['1305619522636450'],
+        'phone_numbers': ['7575863338', '917575863338', '+917575863338'],
+        'keywords': ['the 1st', 'the1st', '1st', 'residency', 'the first'],
+        'default_salesperson': {
+            'name': 'Heer Savaliya',
+            'login': 'Heer',
+        }
+    },
     'royal': {
         'company_name': 'Royal Rudraksha',
         'phone_number_ids': ['1224814500716320', '122101071140010719'],
@@ -31,7 +65,7 @@ COMPANY_RULES = {
         'keywords': ['shreemad', 'family'],
         'default_salesperson': {
             'name': 'Megha Trivedi',
-            'login': 'megha.trivedi@diyacrm.com',
+            'login': 'Megha',
         }
     },
     'devi': {
@@ -51,7 +85,7 @@ COMPANY_RULES = {
         'keywords': ['signature'],
         'default_salesperson': {
             'name': 'Megha Trivedi',
-            'login': 'megha.trivedi@diyacrm.com',
+            'login': 'Megha',
         }
     }
 }
@@ -75,38 +109,16 @@ class WhatsAppWebhookController(http.Controller):
         '/api/inbound-whatsapp-royal.php',
         '/api/inbound-whatsapp-shreemad.php',
         '/api/inbound-whatsapp-devi.php',
+        '/api/inbound-whatsapp-the1st.php',
     ], type='http', auth='none', methods=['POST', 'GET'], csrf=False, save_session=False)
     def handle_whatsapp_webhook(self, **kwargs):
-        """
-        Ultra-Reliable Universal Webhook Endpoint (Meta Cloud API + Custom Bots)
-        Auth: None (No session/cookie locks, direct WSGI pass-through)
-        """
-        # =========================================================================
-        # 1. META CHALLENGE VERIFICATION (GET REQUEST)
-        # =========================================================================
         if request.httprequest.method == 'GET':
             mode = kwargs.get('hub.mode') or kwargs.get('mode')
-            token = kwargs.get('hub.verify_token') or kwargs.get('verify_token') or kwargs.get('token')
             challenge = kwargs.get('hub.challenge') or kwargs.get('challenge')
-
             if challenge:
-                _logger.info("Meta Webhook Verification Approved: mode=%s, challenge=%s", mode, challenge)
                 return Response(str(challenge), status=200, content_type='text/plain')
+            return Response(json.dumps({'status': 'online', 'service': 'Diya CRM WhatsApp Webhook Engine', 'version': '4.1'}), status=200, content_type='application/json')
 
-            return Response(
-                json.dumps({
-                    'status': 'online',
-                    'service': 'Diya CRM WhatsApp Webhook Engine',
-                    'version': '4.0',
-                    'verify_token': META_VERIFY_TOKEN
-                }),
-                status=200,
-                content_type='application/json'
-            )
-
-        # =========================================================================
-        # 2. INBOUND DATA INGESTION (POST REQUEST)
-        # =========================================================================
         try:
             raw_body = request.httprequest.get_data() or request.httprequest.data
             if raw_body:
@@ -117,35 +129,16 @@ class WhatsAppWebhookController(http.Controller):
             else:
                 payload = kwargs
 
-            _logger.info("Diya CRM Inbound Webhook Raw Payload: %s", payload)
-
-            # Determine Database
-            db_name = request.db or request.httprequest.headers.get('X-Odoo-Db')
-            if not db_name:
-                try:
-                    db_list = odoo.service.db.list_dbs()
-                    if 'diyacrm' in db_list:
-                        db_name = 'diyacrm'
-                    elif 'odoo19' in db_list:
-                        db_name = 'odoo19'
-                    elif db_list:
-                        db_name = db_list[0]
-                    else:
-                        db_name = 'diyacrm'
-                except Exception:
-                    db_name = 'diyacrm'
-
+            db_name = request.db or request.httprequest.headers.get('X-Odoo-Db') or 'diyacrm'
             registry = Registry(db_name)
             with registry.cursor() as cr:
                 env = odoo.api.Environment(cr, SUPERUSER_ID, {})
 
-                # Check if Meta WhatsApp Cloud API Payload
                 if 'entry' in payload and isinstance(payload['entry'], list):
                     results = self._parse_and_process_meta_payload(env, payload)
                     cr.commit()
                     return Response(json.dumps({'status': 'success', 'processed': len(results), 'details': results}), status=200, content_type='application/json')
 
-                # Direct / WaMantra / Custom Payload
                 payload['_url_path'] = request.httprequest.path
                 payload['_url_account'] = kwargs.get('account')
                 result = self._process_inbound_lead(env, payload)
@@ -156,7 +149,6 @@ class WhatsAppWebhookController(http.Controller):
 
         except Exception as e:
             _logger.exception("Diya CRM Webhook Ingestion Exception: %s", str(e))
-            # Always return 200 to Meta so Meta does not disconnect the webhook during edge cases
             return Response(json.dumps({'status': 'error', 'message': str(e)}), status=200, content_type='application/json')
 
     def _parse_and_process_meta_payload(self, env, payload):
@@ -168,9 +160,7 @@ class WhatsAppWebhookController(http.Controller):
                 phone_number_id = metadata.get('phone_number_id', '')
                 display_phone_number = metadata.get('display_phone_number', '')
 
-                # Ignore delivery receipts (statuses) if there are no customer messages
                 if 'statuses' in value and not value.get('messages'):
-                    _logger.info("Ignoring Meta status delivery receipt (statuses update)")
                     continue
 
                 contacts_map = {}
@@ -210,7 +200,7 @@ class WhatsAppWebhookController(http.Controller):
                         'recipientPhoneNumberId': phone_number_id,
                         'display_phone_number': display_phone_number,
                         'name': customer_name,
-                        'phone': f"+{from_number}" if not from_number.startswith('+') else from_number,
+                        'phone': format_whatsapp_phone(from_number),
                         'message': text_body,
                         'source': 'AI WhatsApp Agent',
                     }
@@ -238,7 +228,9 @@ class WhatsAppWebhookController(http.Controller):
 
         matched_key = None
 
-        if 'royal' in url_path or 'royal' in account_param:
+        if 'the1st' in url_path or '1st' in url_path or 'the1st' in account_param or '1st' in account_param:
+            matched_key = 'the1st'
+        elif 'royal' in url_path or 'royal' in account_param:
             matched_key = 'royal'
         elif 'shreemad' in url_path or 'shreemad' in account_param:
             matched_key = 'shreemad'
@@ -292,12 +284,9 @@ class WhatsAppWebhookController(http.Controller):
                 'company_id': company.id,
                 'company_ids': [(6, 0, all_companies.ids)],
             })
-            _logger.info("Auto-created dedicated Salesperson: %s (%s)", user.name, user.login)
         else:
             if company.id not in user.company_ids.ids:
-                user.write({
-                    'company_ids': [(4, company.id)],
-                })
+                user.write({'company_ids': [(4, company.id)]})
 
         return user
 
@@ -308,20 +297,13 @@ class WhatsAppWebhookController(http.Controller):
         message = data.get('message') or data.get('last_message') or data.get('chat_history') or data.get('body') or ''
         clean_mobile_10 = clean_phone_number(raw_phone)
 
-        # Ignore empty test hits without phone number or message
         if not clean_mobile_10 and not raw_phone and not message:
-            _logger.info("Ignoring empty webhook payload with no phone or message.")
-            return {
-                'status': 'ignored',
-                'message': 'Empty webhook payload with no phone number or message'
-            }
+            return {'status': 'ignored', 'message': 'Empty webhook payload'}
 
-        # 1. Determine Company & Rule
         company, rule = self._determine_company_and_rule(env, data)
         company_id = company.id
         company_name = company.name
 
-        # 2. Extract Lead Info
         name = data.get('name') or data.get('customer_name') or data.get('contact_name')
         email = data.get('email') or False
         area = data.get('area') or False
@@ -329,11 +311,9 @@ class WhatsAppWebhookController(http.Controller):
         if not name:
             name = f"WhatsApp Lead ({clean_mobile_10})" if clean_mobile_10 else "New WhatsApp Lead"
 
-        # 3. Determine Dedicated Salesperson
         salesperson_param = data.get('salesperson') or data.get('user') or data.get('assigned_to')
         assigned_user = self._get_or_create_salesperson(env, company, rule, salesperson_param)
 
-        # 4. Source & Status
         raw_source = str(data.get('source') or 'AI WhatsApp Agent').strip()
         utm_source = env['utm.source'].search([('name', '=ilike', raw_source)], limit=1) or env['utm.source'].search([('name', '=ilike', 'AI WhatsApp Agent')], limit=1) or env['utm.source'].search([('name', '=ilike', 'WhatsApp')], limit=1)
         if not utm_source:
@@ -345,7 +325,6 @@ class WhatsAppWebhookController(http.Controller):
         stage_new = env['crm.stage'].search([('name', '=ilike', 'New Lead')], limit=1) or env['crm.stage'].search([], order='sequence asc', limit=1)
         call_act_type = env['mail.activity.type'].search([('name', '=', 'Call')], limit=1) or env.ref('mail.mail_activity_data_call')
 
-        # 5. Check Existing Lead ONLY in THIS Company
         existing_lead = None
         if clean_mobile_10:
             existing_lead = env['crm.lead'].with_context(active_test=False).search([
@@ -355,18 +334,13 @@ class WhatsAppWebhookController(http.Controller):
 
         lead_action = "created"
 
-        # CASE A: Lead Exists & is ACTIVE
         if existing_lead and existing_lead.active:
             lead = existing_lead
             lead_action = "updated_active"
-            _logger.info("Found ACTIVE existing lead ID %s in %s. Updating timeline...", lead.id, company_name)
-            
             if message:
                 body_html = f"""
                 <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 10px; border-radius: 4px;">
-                    <p style="margin: 0 0 5px 0; color: #166534; font-weight: bold;">
-                        📱 New WhatsApp Message:
-                    </p>
+                    <p style="margin: 0 0 5px 0; color: #166534; font-weight: bold;">📱 New WhatsApp Message:</p>
                     <div style="color: #1f2937; white-space: pre-wrap;">{message}</div>
                 </div>
                 """
@@ -388,89 +362,55 @@ class WhatsAppWebhookController(http.Controller):
                 note="Client sent a new message via WhatsApp. Please check and reply."
             )
 
-            return {
-                'status': 'success',
-                'action': lead_action,
-                'lead_id': lead.id,
-                'lead_name': lead.name,
-                'phone': lead.phone,
-                'project': company_name,
-                'assigned_to': lead.user_id.name if lead.user_id else assigned_user.name,
-                'stage': lead.stage_id.name if lead.stage_id else 'New Lead',
-                'status_temperature': lead.lead_temperature,
-                'message': 'Existing active lead updated with new WhatsApp message'
-            }
+            return {'status': 'success', 'action': lead_action, 'lead_id': lead.id, 'lead_name': lead.name, 'phone': lead.phone, 'project': company_name, 'assigned_to': lead.user_id.name if lead.user_id else assigned_user.name}
 
-        # CASE B: Lead Exists & is LOST -> RE-OPEN TO NEW LEAD
         elif existing_lead and not existing_lead.active:
             lead = existing_lead
             lead_action = "reopened_from_lost"
-            _logger.info("Found LOST lead ID %s in %s. RE-OPENING to New Lead...", lead.id, company_name)
-
+            target_user = lead.user_id if lead.user_id else assigned_user
             lead.write({
                 'active': True,
-                'stage_id': stage_new.id if stage_new else False,
+                'stage_id': stage_new.id if stage_new else 5,
                 'probability': False,
                 'lost_reason_id': False,
-                'user_id': assigned_user.id,
-                'lead_temperature': lead_temp,
+                'user_id': target_user.id,
+                'lead_temperature': 'hot',
             })
 
-            reopen_body = f"""
-            <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 10px; border-radius: 4px; margin-bottom: 8px;">
-                <p style="margin: 0; color: #1e40af; font-weight: bold;">
-                    🔄 Lead RE-OPENED from Lost! (New WhatsApp Inquiry Received)
-                </p>
-                <p style="margin: 4px 0 0 0; color: #1e3a8a; font-size: 12px;">
-                    Assigned to: <strong>{assigned_user.name}</strong>
-                </p>
-            </div>
-            """
             if message:
-                reopen_body += f"""
-                <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 10px; border-radius: 4px;">
+                body_html = f"""
+                <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 10px; border-radius: 4px; margin-bottom: 6px;">
+                    <div style="color: #991b1b; font-weight: 800; font-size: 13px;">🔥 RE-ENQUIRY FROM LOST CLIENT!</div>
+                    <div style="font-size: 11px; color: #b91c1c; margin-bottom: 6px;">Lead has been auto-revived from Lost to Active Pipeline.</div>
                     <p style="margin: 0 0 5px 0; color: #166534; font-weight: bold;">📱 WhatsApp Message:</p>
                     <div style="color: #1f2937; white-space: pre-wrap;">{message}</div>
                 </div>
                 """
-
-            env['mail.message'].create({
-                'model': 'crm.lead',
-                'res_id': lead.id,
-                'message_type': 'comment',
-                'subtype_id': env.ref('mail.mt_comment').id,
-                'author_id': assigned_user.partner_id.id,
-                'body': reopen_body,
-            })
+                env['mail.message'].create({
+                    'model': 'crm.lead',
+                    'res_id': lead.id,
+                    'message_type': 'comment',
+                    'subtype_id': env.ref('mail.mt_comment').id,
+                    'author_id': target_user.partner_id.id,
+                    'body': body_html,
+                })
 
             lead.activity_schedule(
                 act_type_xmlid=None,
                 activity_type_id=call_act_type.id,
-                summary="Re-opened Lead - Call Immediately",
+                summary="🔥 URGENT RE-ENQUIRY: Lost Client Sent WhatsApp!",
                 date_deadline=fields.Date.today(),
-                user_id=assigned_user.id,
-                note="Lost client has sent a new WhatsApp inquiry. Please call back immediately."
+                user_id=target_user.id,
+                note=f"Client sent WhatsApp message: '{message}'. Please call back immediately!"
             )
 
-            return {
-                'status': 'success',
-                'action': lead_action,
-                'lead_id': lead.id,
-                'lead_name': lead.name,
-                'phone': lead.phone,
-                'project': company_name,
-                'assigned_to': assigned_user.name,
-                'stage': stage_new.name if stage_new else 'New Lead',
-                'status_temperature': lead.lead_temperature,
-                'message': 'Lost lead successfully re-opened and assigned to dedicated salesperson'
-            }
+            return {'status': 'success', 'action': lead_action, 'lead_id': lead.id, 'lead_name': lead.name, 'phone': lead.phone, 'project': company_name, 'assigned_to': target_user.name}
 
-        # CASE C: Brand NEW Lead Creation
         else:
             lead_vals = {
                 'name': name,
                 'contact_name': name,
-                'phone': raw_phone,
+                'phone': format_whatsapp_phone(raw_phone),
                 'email_from': email,
                 'type': 'opportunity',
                 'company_id': company_id,
@@ -494,9 +434,7 @@ class WhatsAppWebhookController(http.Controller):
             if message:
                 body_html = f"""
                 <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 10px; border-radius: 4px;">
-                    <p style="margin: 0 0 5px 0; color: #166534; font-weight: bold;">
-                        📱 Inbound WhatsApp Message:
-                    </p>
+                    <p style="margin: 0 0 5px 0; color: #166534; font-weight: bold;">📱 Inbound WhatsApp Message:</p>
                     <div style="color: #1f2937; white-space: pre-wrap;">{message}</div>
                 </div>
                 """
@@ -518,15 +456,4 @@ class WhatsAppWebhookController(http.Controller):
                 note="Lead received via WhatsApp bot. Please call immediately."
             )
 
-            return {
-                'status': 'success',
-                'action': lead_action,
-                'lead_id': lead.id,
-                'lead_name': lead.name,
-                'phone': lead.phone,
-                'project': company_name,
-                'assigned_to': assigned_user.name,
-                'stage': stage_new.name if stage_new else 'New Lead',
-                'status_temperature': lead.lead_temperature,
-                'message': 'New lead created and assigned to dedicated salesperson'
-            }
+            return {'status': 'success', 'action': lead_action, 'lead_id': lead.id, 'lead_name': lead.name, 'phone': lead.phone, 'project': company_name, 'assigned_to': assigned_user.name}

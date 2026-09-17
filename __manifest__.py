@@ -1,35 +1,37 @@
 {
-    'name': 'Diya CRM',
-    'version': '1.0',
-    'category': 'Sales/CRM',
-    'summary': 'Custom CRM Enhancements, Telecalling Dashboard and Tweaks for Diya CRM',
-    'description': """
-        Diya CRM Custom Addon
-        =====================
-        This module manages all customizations, new fields, live executive dashboard, 
-        and UI tweaks for CRM without touching core Odoo files.
-    """,
-    'author': 'Diya CRM',
-    'website': 'https://www.diyacrm.com',
-    'license': 'LGPL-3',
-    'depends': ['base', 'crm', 'mail', 'utm', 'calendar'],
-    'data': [
-        'data/utm_source_data.xml',
-        'data/mail_activity_type_data.xml',
-        'views/crm_lead_views.xml',
-        'views/mail_activity_views.xml',
-        'views/crm_dashboard_views.xml',
+    "name": "Diya CRM",
+    "version": "1.2",
+    "category": "Sales/CRM",
+    "summary": "Custom CRM Enhancements, Telecalling Dashboard, Selfie Camera & 150m GPS Geofenced Attendance",
+    "description": "Comprehensive CRM & Attendance enhancements for Diya CRM without touching core Odoo files.",
+    "author": "Diya CRM",
+    "website": "https://www.diyacrm.com",
+    "license": "LGPL-3",
+    "depends": ["base", "crm", "mail", "utm", "calendar", "hr", "hr_attendance"],
+    "data": [
+        "data/utm_source_data.xml",
+        "data/mail_activity_type_data.xml",
+        "data/crm_tag_data.xml",
+        "views/crm_lead_views.xml",
+        "views/mail_activity_views.xml",
+        "views/crm_dashboard_views.xml",
+        "views/hr_attendance_views.xml",
+        "views/hr_employee_views.xml",
     ],
-    'assets': {
-        'web.assets_backend': [
-            'diyacrm/static/src/css/crm_custom.css',
-            'diyacrm/static/src/core/web/activity_markasdone_patch.xml',
-            'diyacrm/static/src/core/web/activity_markasdone_patch.js',
-            'diyacrm/static/src/dashboard/crm_dashboard.xml',
-            'diyacrm/static/src/dashboard/crm_dashboard.js',
+    "assets": {
+        "web.assets_backend": [
+            "diyacrm/static/src/css/crm_custom.css",
+            "diyacrm/static/src/core/web/activity_markasdone_patch.xml",
+            "diyacrm/static/src/core/web/activity_markasdone_patch.js",
+            "diyacrm/static/src/dashboard/crm_dashboard.xml",
+            "diyacrm/static/src/dashboard/crm_dashboard.js",
+            "diyacrm/static/src/attendance/attendance_selfie_dialog.xml",
+            "diyacrm/static/src/attendance/attendance_selfie_dialog.js",
+            "diyacrm/static/src/attendance/attendance_systray_patch.js",
         ],
     },
-    'installable': True,
-    'application': True,
-    'auto_install': False,
+    "post_init_hook": "post_init_hook",
+    "installable": True,
+    "application": True,
+    "auto_install": False,
 }

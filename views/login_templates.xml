@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="custom_login_layout_inherit" inherit_id="web.login_layout">
+        <!-- Change Browser Tab Title -->
+        <xpath expr="//t[@t-set='html_data']" position="after">
+            <t t-set="title">Signature Properties | CRM Portal</t>
+        </xpath>
+
+        <!-- Replace Powered by Odoo with Powered by Signature Properties -->
+        <xpath expr="//a[contains(@href, 'odoo.com')]" position="replace">
+            <span class="text-muted">Powered by <b>Signature Properties</b></span>
+        </xpath>
+    </template>
+</odoo>

@@ -626,33 +626,33 @@
                             <div>
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-muted fw-bold">Finance Mode:</span>
-                                    <span class="fw-bold">Loan: 62% | Cash: 38%</span>
+                                    <span class="fw-bold">Loan: <t t-esc="state.site_visit_insights.loan_pct"/>% | Cash: <t t-esc="state.site_visit_insights.cash_pct"/>%</span>
                                 </div>
-                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" style="width: 62%; background: #06b6d4;"/></div>
+                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" t-att-style="'width: ' + state.site_visit_insights.loan_pct + '%; background: #06b6d4;'"/></div>
                             </div>
 
                             <div>
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-muted fw-bold">Purchase Timeline:</span>
-                                    <span class="fw-bold">&lt; 30 Days: 48%</span>
+                                    <span class="fw-bold">&lt; 30 Days: <t t-esc="state.site_visit_insights.timeline_pct"/>%</span>
                                 </div>
-                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" style="width: 48%; background: #10b981;"/></div>
+                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" t-att-style="'width: ' + state.site_visit_insights.timeline_pct + '%; background: #10b981;'"/></div>
                             </div>
 
                             <div>
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-muted fw-bold">Budget Comfort:</span>
-                                    <span class="fw-bold">Within Budget: 71%</span>
+                                    <span class="fw-bold">Within Budget: <t t-esc="state.site_visit_insights.budget_pct"/>%</span>
                                 </div>
-                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" style="width: 71%; background: #f59e0b;"/></div>
+                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" t-att-style="'width: ' + state.site_visit_insights.budget_pct + '%; background: #f59e0b;'"/></div>
                             </div>
 
                             <div>
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-muted fw-bold">Decision Maker Accompanying:</span>
-                                    <span class="fw-bold">With Family / Spouse: 82%</span>
+                                    <span class="fw-bold">With Family / Spouse: <t t-esc="state.site_visit_insights.dm_pct"/>%</span>
                                 </div>
-                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" style="width: 82%; background: #8b5cf6;"/></div>
+                                <div class="diyacrm-stage-bar-wrap"><div class="diyacrm-stage-bar" t-att-style="'width: ' + state.site_visit_insights.dm_pct + '%; background: #8b5cf6;'"/></div>
                             </div>
                         </div>
                     </div>
