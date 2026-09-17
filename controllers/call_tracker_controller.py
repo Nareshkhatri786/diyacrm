@@ -201,8 +201,10 @@ class DiyaCrmCallTrackerController(http.Controller):
             if lead_was_lost:
                 lost_badge = '<span style="background: #dcfce7; color: #166534; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 4px; margin-left: 6px;">[REVIVED RE-ENQUIRY]</span>' if is_client_incoming else '<span style="background: #fee2e2; color: #dc2626; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 4px; margin-left: 6px;">[LOST LEAD]</span>'
 
-            
             audio_player_html = ""
+            if not recording_url:
+                recording_url = self._find_recording_on_server(phone_number, start_time)
+
             if recording_url:
                 audio_player_html = f'''
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
@@ -314,7 +316,7 @@ class DiyaCrmCallTrackerController(http.Controller):
                 json.dumps({"status": "error", "message": str(e)}, separators=(',', ':')),
                 headers=[('Content-Type', 'application/json')])
 
-    @http.route('/recordings/<string:filename>', type='http', auth='public', methods=['GET'])
+    @http.route('/recordings/<path:filename>', type='http', auth='public', methods=['GET'])
     def stream_recording(self, filename):
         file_path = os.path.join('/opt/odoo19/custom_addons/diyacrm/static/recordings/', filename)
         if not os.path.exists(file_path):
@@ -336,6 +338,89 @@ class DiyaCrmCallTrackerController(http.Controller):
             ("Content-Disposition", f"inline; filename={filename}"),
             ("Accept-Ranges", "bytes")
         ])
+
+    def _find_recording_on_server(self, phone_number, start_time=None):
+        import os, re
+        base_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
+        if not os.path.exists(base_dir):
+            return None
+        clean_phone = re.sub(r'\D', '', str(phone_number or ''))
+        if len(clean_phone) > 10:
+            clean_phone = clean_phone[-10:]
+        if not clean_phone:
+            return None
+
+        audio_exts = ('.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg')
+        matches = []
+        try:
+            for root, dirs, files in os.walk(base_dir):
+                for f in files:
+                    if f.lower().endswith(audio_exts):
+                        full_path = os.path.join(root, f)
+                        rel_path = os.path.relpath(full_path, base_dir).replace('\\', '/')
+                        if clean_phone in rel_path:
+                            mtime = os.path.getmtime(full_path)
+                            matches.append((rel_path, mtime))
+            if matches:
+                matches.sort(key=lambda x: x[1], reverse=True)
+                return 'https://crm.sigprop.in/recordings/' + matches[0][0]
+        except Exception as e:
+            _logger.warning("Error searching server recording: %s", str(e))
+        return None
+
+    @http.route('/api/call_tracker/sync_server_recordings', type='json', auth='public', methods=['POST'], csrf=False)
+    def sync_server_recordings(self, **kwargs):
+        import os, re
+        base_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
+        if not os.path.exists(base_dir):
+            return {"status": "no_dir"}
+        env = request.env(user=SUPERUSER_ID, su=True)
+        messages = env['mail.message'].search([
+            ('model', '=', 'crm.lead'),
+            ('body', 'ilike', 'Auto-Synced via Diya CRM Dialer')
+        ], order='id desc', limit=50)
+
+        audio_exts = ('.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg')
+        all_recordings = []
+        for root, dirs, files in os.walk(base_dir):
+            for f in files:
+                if f.lower().endswith(audio_exts):
+                    full_p = os.path.join(root, f)
+                    rel_p = os.path.relpath(full_p, base_dir).replace('\\', '/')
+                    all_recordings.append((rel_p, os.path.getmtime(full_p)))
+        all_recordings.sort(key=lambda x: x[1], reverse=True)
+
+        linked_count = 0
+        for msg in messages:
+            if 'Call Recording:' in (msg.body or ''):
+                continue
+            lead = env['crm.lead'].browse(msg.res_id)
+            phone = lead.phone or lead.mobile or ''
+            clean_phone = re.sub(r'\D', '', str(phone))
+            if len(clean_phone) > 10:
+                clean_phone = clean_phone[-10:]
+            if not clean_phone:
+                continue
+
+            for rel_p, mtime in all_recordings:
+                if clean_phone in rel_p:
+                    rec_url = 'https://crm.sigprop.in/recordings/' + rel_p
+                    ext = os.path.splitext(rel_p)[1].lower()
+                    mime = 'audio/aac' if ext == '.aac' else ('audio/mp4' if ext == '.m4a' else 'audio/mpeg')
+                    player = f'''
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+                        <span style="font-size: 12px; font-weight: 700; color: #334155;">🔊 Call Recording:</span>
+                        <div style="margin-top: 4px;">
+                            <audio controls style="width: 100%; height: 32px; outline: none;" preload="metadata">
+                                <source src="{rec_url}" type="{mime}">
+                            </audio>
+                        </div>
+                    </div>
+                    '''
+                    msg.body = Markup(msg.body.replace('Auto-Synced via Diya CRM Dialer', player + 'Auto-Synced via Diya CRM Dialer'))
+                    linked_count += 1
+                    break
+        return {"status": "success", "linked": linked_count}
 
     @http.route('/api/call_tracker/update_recording', type='json', auth='public',
                 methods=['POST'], csrf=False)
