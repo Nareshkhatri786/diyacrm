@@ -1142,3 +1142,30 @@
 
 # ===== End SIM Selection Bridge Methods =====
 
+.method public getRecordingFolder()Ljava/lang/String;
+    .locals 1
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    iget-object v0, p0, Lcom/diyacrm/dialer/MainActivity$WebAppInterface;->mContext:Landroid/content/Context;
+
+    invoke-static {v0}, Lcom/diyacrm/dialer/RecordingFinder;->getCustomFolder(Landroid/content/Context;)Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+.end method
+
+.method public setRecordingFolder(Ljava/lang/String;)V
+    .locals 1
+    .param p1, "folderPath"    # Ljava/lang/String;
+    .annotation runtime Landroid/webkit/JavascriptInterface;
+    .end annotation
+
+    iget-object v0, p0, Lcom/diyacrm/dialer/MainActivity$WebAppInterface;->mContext:Landroid/content/Context;
+
+    invoke-static {v0, p1}, Lcom/diyacrm/dialer/RecordingFinder;->setCustomFolder(Landroid/content/Context;Ljava/lang/String;)V
+
+    return-void
+.end method
+

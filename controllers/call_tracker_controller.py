@@ -208,9 +208,11 @@ class DiyaCrmCallTrackerController(http.Controller):
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
                         <span style="font-size: 12px; font-weight: 700; color: #334155;">🔊 Call Recording:</span>
                         <div style="margin-top: 4px;">
-                            <audio controls style="width: 100%; height: 32px; outline: none;" preload="none">
-                                <source src="{recording_url}" type="audio/amr">
+                            <audio controls style="width: 100%; height: 32px; outline: none;" preload="metadata">
+                                <source src="{recording_url}" type="audio/aac">
                                 <source src="{recording_url}" type="audio/mp4">
+                                <source src="{recording_url}" type="audio/mpeg">
+                                <source src="{recording_url}" type="audio/amr">
                                 Your browser does not support the audio element.
                             </audio>
                         </div>
@@ -292,8 +294,12 @@ class DiyaCrmCallTrackerController(http.Controller):
 
             save_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
             os.makedirs(save_dir, exist_ok=True)
-            filename = 'call_{}_{}.amr'.format(
-                call_id.replace('/', '_'), int(time.time()))
+            orig_name = getattr(file_obj, 'filename', '') or ''
+            ext = os.path.splitext(orig_name)[1].lower()
+            if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg']:
+                ext = '.aac' if 'aac' in orig_name.lower() else ('.m4a' if 'm4a' in orig_name.lower() else ('.mp3' if 'mp3' in orig_name.lower() else '.amr'))
+            filename = 'call_{}_{}{}'.format(
+                call_id.replace('/', '_'), int(time.time()), ext)
             filepath = os.path.join(save_dir, filename)
             file_obj.save(filepath)
             url = 'https://crm.sigprop.in/recordings/' + filename
@@ -315,9 +321,20 @@ class DiyaCrmCallTrackerController(http.Controller):
             return request.not_found("Recording not found.")
         with open(file_path, "rb") as f:
             data = f.read()
+        ext = os.path.splitext(filename)[1].lower()
+        mime_map = {
+            '.aac': 'audio/aac',
+            '.m4a': 'audio/mp4',
+            '.mp3': 'audio/mpeg',
+            '.amr': 'audio/amr',
+            '.wav': 'audio/wav',
+            '.ogg': 'audio/ogg',
+        }
+        content_type = mime_map.get(ext, 'audio/aac')
         return request.make_response(data, headers=[
-            ("Content-Type", "audio/amr"),
-            ("Content-Disposition", f"inline; filename={filename}")
+            ("Content-Type", content_type),
+            ("Content-Disposition", f"inline; filename={filename}"),
+            ("Accept-Ranges", "bytes")
         ])
 
     @http.route('/api/call_tracker/update_recording', type='json', auth='public',
@@ -343,9 +360,11 @@ class DiyaCrmCallTrackerController(http.Controller):
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
                         <span style="font-size: 12px; font-weight: 700; color: #334155;">🔊 Call Recording:</span>
                         <div style="margin-top: 4px;">
-                            <audio controls style="width: 100%; height: 32px; outline: none;" preload="none">
-                                <source src="{recording_url}" type="audio/amr">
+                            <audio controls style="width: 100%; height: 32px; outline: none;" preload="metadata">
+                                <source src="{recording_url}" type="audio/aac">
                                 <source src="{recording_url}" type="audio/mp4">
+                                <source src="{recording_url}" type="audio/mpeg">
+                                <source src="{recording_url}" type="audio/amr">
                                 Your browser does not support the audio element.
                             </audio>
                         </div>

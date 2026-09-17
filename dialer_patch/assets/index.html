@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Diya CRM Dialer</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: #f8fafc; color: #1e293b; padding: 16px; min-height: 100vh; display: flex; flex-direction: column; }
+        .card { background: #ffffff; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 20px; margin-bottom: 16px; }
+        .input-group { margin-bottom: 14px; text-align: left; }
+        .input-label { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 4px; display: block; }
+        .form-input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1.5px solid #cbd5e1; font-size: 15px; outline: none; background: #f8fafc; }
+        .form-input:focus { border-color: #2563eb; background: #ffffff; }
+        .btn-primary { width: 100%; padding: 14px; border-radius: 14px; background: #2563eb; color: #ffffff; font-size: 16px; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .btn-primary:active { background: #1d4ed8; }
+        
+        /* Dialer Grid */
+        .dial-display { width: 100%; border: none; text-align: center; font-size: 28px; font-weight: 700; color: #0f172a; background: transparent; outline: none; margin-bottom: 12px; }
+        .dial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; justify-items: center; max-width: 300px; margin: 0 auto; }
+        .dial-btn { width: 68px; height: 68px; border-radius: 50%; background: #f1f5f9; border: 1px solid #e2e8f0; font-size: 24px; font-weight: 700; color: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
+        .dial-btn:active { background: #cbd5e1; transform: scale(0.94); }
+        .sub-dial { font-size: 9px; font-weight: 600; color: #94a3b8; margin-top: -3px; }
+        .call-btn { width: 72px; height: 72px; border-radius: 50%; background: #16a34a; color: #ffffff; font-size: 28px; border: none; box-shadow: 0 6px 16px rgba(22,163,74,0.4); display: flex; align-items: center; justify-content: center; cursor: pointer; margin-top: 10px; }
+        .call-btn:active { background: #15803d; transform: scale(0.95); }
+
+        /* Tabs */
+        .tabs { display: flex; background: #e2e8f0; border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+        .tab-btn { flex: 1; padding: 10px; border-radius: 10px; border: none; background: transparent; font-weight: 600; font-size: 14px; color: #64748b; cursor: pointer; }
+        .tab-btn.active { background: #ffffff; color: #2563eb; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .badge-success { background: #dcfce7; color: #15803d; }
+        .badge-warning { background: #fef3c7; color: #b45309; }
+
+        /* SIM Selector */
+        .sim-selector { display: flex; gap: 8px; margin-top: 4px; }
+        .sim-opt { flex: 1; padding: 10px 6px; border-radius: 12px; border: 2px solid #e2e8f0; background: #f8fafc; text-align: center; font-size: 12px; font-weight: 700; color: #64748b; cursor: pointer; }
+        .sim-opt.selected { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. LOGIN SCREEN (Visible by default until verified) -->
+    <div id="loginView" style="max-width: 380px; margin: 30px auto; width: 100%;">
+        <div class="card" style="text-align: center;">
+            <div style="width: 64px; height: 64px; border-radius: 50%; background: #2563eb; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(37,99,235,0.3);">
+                📞
+            </div>
+            <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 4px;">Diya CRM Dialer</h2>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 24px;">Sign In to auto-sync SIM calls with CRM</p>
+
+            <div class="input-group">
+                <label class="input-label">CRM Server URL</label>
+                <input type="text" id="serverUrl" class="form-input" value="https://crm.sigprop.in">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Username / Login ID</label>
+                <input type="text" id="username" class="form-input" placeholder="e.g. Megha / Hemant / Heer">
+            </div>
+
+            <div class="input-group" style="margin-bottom: 24px;">
+                <label class="input-label">Password</label>
+                <input type="password" id="password" class="form-input" placeholder="••••••••">
+            </div>
+
+            <button class="btn-primary" onclick="doLogin()">Sign In to CRM</button>
+        </div>
+    </div>
+
+    <!-- 2. MAIN DASHBOARD & DIALER -->
+    <div id="mainView" style="display: none; max-width: 420px; margin: 0 auto; width: 100%;">
+        
+        <!-- Header User Profile -->
+        <div class="card" style="padding: 14px 18px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 id="headerName" style="font-size: 17px; font-weight: 800;">Staff Member</h3>
+                    <div id="headerCompany" style="color: #15803d; font-size: 12px; font-weight: 700; margin-top: 2px;">🏢 Company</div>
+                </div>
+                <button onclick="doLogout()" style="background: #f1f5f9; border: none; padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; color: #dc2626; cursor: pointer;">
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Sync & Tracker Live Status -->
+        <div class="card" style="padding: 12px 18px; margin-bottom: 12px; display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 10px; height: 10px; border-radius: 50%; background: #16a34a;"></div>
+                <div>
+                    <div style="font-size: 13px; font-weight: 700;">Live Call Tracker Active</div>
+                    <div id="unsyncedCount" style="font-size: 11px; color: #64748b;">0 pending calls</div>
+                </div>
+            </div>
+            <button onclick="triggerSync()" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                Sync Now
+            </button>
+        </div>
+
+
+        <!-- SIM Tracker Selection -->
+        <div class="card" style="padding: 14px 18px; margin-bottom: 12px;" id="simCard">
+            <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 8px;">📶 SIM TO TRACK FOR CRM</div>
+            <div class="sim-selector" id="simSelector">
+                <div class="sim-opt selected" id="simOpt_all" onclick="selectSim(-1)">📱 Both SIMs</div>
+                <div class="sim-opt" id="simOpt_1" onclick="selectSim(0)">SIM 1<br><span style="font-size:10px;color:#94a3b8">Business</span></div>
+                <div class="sim-opt" id="simOpt_2" onclick="selectSim(1)">SIM 2<br><span style="font-size:10px;color:#94a3b8">Business</span></div>
+            </div>
+        </div>
+
+        <!-- Recording Folder Selection -->
+        <div class="card" style="padding: 14px 18px; margin-bottom: 12px;" id="folderCard">
+            <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">📁 CALL RECORDING FOLDER</div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="text" id="recFolderInput" class="form-input" style="font-size: 11.5px; padding: 8px 12px;" placeholder="Auto-Detect (Infinix, Samsung, Vivo, Xiaomi)">
+                <button onclick="saveRecFolder()" style="background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;">Save</button>
+            </div>
+            <div style="font-size: 10.5px; color: #94a3b8; margin-top: 4px;">Leaves blank for Auto-Detect (Infinix, Samsung, Xiaomi, Vivo).</div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" id="tabBtnDialer" onclick="showTab('dialer')">📞 Dialer</button>
+            <button class="tab-btn" id="tabBtnLogs" onclick="showTab('logs')">📋 Call Logs</button>
+        </div>
+
+        <!-- Tab 1: Dialer -->
+        <div id="tabDialer">
+            <div class="card" style="text-align: center; padding: 20px 14px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 10px;">
+                    <input type="tel" id="dialDisplay" class="dial-display" placeholder="Enter number" readonly>
+                    <button onclick="deleteDigit()" style="background: transparent; border: none; font-size: 22px; color: #64748b; cursor: pointer; padding: 4px;">⌫</button>
+                </div>
+
+                <div class="dial-grid">
+                    <button class="dial-btn" onclick="appendDigit('1')">1<span class="sub-dial">&nbsp;</span></button>
+                    <button class="dial-btn" onclick="appendDigit('2')">2<span class="sub-dial">ABC</span></button>
+                    <button class="dial-btn" onclick="appendDigit('3')">3<span class="sub-dial">DEF</span></button>
+
+                    <button class="dial-btn" onclick="appendDigit('4')">4<span class="sub-dial">GHI</span></button>
+                    <button class="dial-btn" onclick="appendDigit('5')">5<span class="sub-dial">JKL</span></button>
+                    <button class="dial-btn" onclick="appendDigit('6')">6<span class="sub-dial">MNO</span></button>
+
+                    <button class="dial-btn" onclick="appendDigit('7')">7<span class="sub-dial">PQRS</span></button>
+                    <button class="dial-btn" onclick="appendDigit('8')">8<span class="sub-dial">TUV</span></button>
+                    <button class="dial-btn" onclick="appendDigit('9')">9<span class="sub-dial">WXYZ</span></button>
+
+                    <button class="dial-btn" onclick="appendDigit('*')">*<span class="sub-dial">&nbsp;</span></button>
+                    <button class="dial-btn" onclick="appendDigit('0')">0<span class="sub-dial">+</span></button>
+                    <button class="dial-btn" onclick="appendDigit('#')">#<span class="sub-dial">&nbsp;</span></button>
+                </div>
+
+                <div style="display: flex; justify-content: center; margin-top: 10px;">
+                    <button class="call-btn" onclick="makeCall()">📞</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Logs -->
+        <div id="tabLogs" style="display: none;">
+            <div class="card" id="logsContainer" style="padding: 14px;">
+                <div style="text-align: center; color: #64748b; font-size: 13px; padding: 20px;">No recent SIM calls recorded yet.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function checkInitAuth() {
+            if (window.AndroidBridge && window.AndroidBridge.getAuthInfo) {
+                try {
+                    let info = JSON.parse(window.AndroidBridge.getAuthInfo() || "{}");
+                    updateUIState(info.isLoggedIn, info.userName, info.companyName, info.unsynced);
+                } catch(e) {}
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', checkInitAuth);
+        setTimeout(checkInitAuth, 300);
+        setTimeout(loadSimSelection, 500);
+
+        function showTab(t) {
+            if (t === 'dialer') {
+                document.getElementById('tabBtnDialer').classList.add('active');
+                document.getElementById('tabBtnLogs').classList.remove('active');
+                document.getElementById('tabDialer').style.display = 'block';
+                document.getElementById('tabLogs').style.display = 'none';
+            } else {
+                document.getElementById('tabBtnDialer').classList.remove('active');
+                document.getElementById('tabBtnLogs').classList.add('active');
+                document.getElementById('tabDialer').style.display = 'none';
+                document.getElementById('tabLogs').style.display = 'block';
+                loadCallLogs();
+            }
+        }
+
+        function appendDigit(d) {
+            document.getElementById('dialDisplay').value += d;
+        }
+
+        function deleteDigit() {
+            let v = document.getElementById('dialDisplay').value;
+            document.getElementById('dialDisplay').value = v.substring(0, v.length - 1);
+        }
+
+        function makeCall() {
+            let num = document.getElementById('dialDisplay').value.trim();
+            if (num && window.AndroidBridge) {
+                window.AndroidBridge.makePhoneCall(num);
+            }
+        }
+
+        function doLogin() {
+            let s = document.getElementById('serverUrl').value.trim();
+            let u = document.getElementById('username').value.trim();
+            let p = document.getElementById('password').value.trim();
+            if (!u || !p) {
+                alert("Please enter Username and Password");
+                return;
+            }
+            if (window.AndroidBridge) {
+                window.AndroidBridge.login(s, u, p);
+            }
+        }
+
+        function doLogout() {
+            if (confirm("Are you sure you want to logout?") && window.AndroidBridge) {
+                window.AndroidBridge.logout();
+            }
+        }
+
+        function triggerSync() {
+            if (window.AndroidBridge) {
+                window.AndroidBridge.syncNow();
+                setTimeout(loadCallLogs, 1000);
+            }
+        }
+
+        function updateUIState(isLoggedIn, userName, companyName, unsynced) {
+            if (isLoggedIn) {
+                document.getElementById('loginView').style.display = 'none';
+                document.getElementById('mainView').style.display = 'block';
+                document.getElementById('headerName').innerText = userName || "Staff Member";
+                document.getElementById('headerCompany').innerText = "🏢 " + (companyName || "CRM Company");
+                document.getElementById('unsyncedCount').innerText = (unsynced || 0) + " pending calls in queue";
+            } else {
+                document.getElementById('loginView').style.display = 'block';
+                document.getElementById('mainView').style.display = 'none';
+            }
+        }
+
+        function loadCallLogs() {
+            if (window.AndroidBridge) {
+                let logsJson = window.AndroidBridge.getRecentLogs();
+                let logs = JSON.parse(logsJson || "[]");
+                let c = document.getElementById('logsContainer');
+                if (!logs || logs.length === 0) {
+                    c.innerHTML = '<div style="text-align: center; color: #64748b; font-size: 13px; padding: 20px;">No recent SIM calls recorded yet.</div>';
+                    return;
+                }
+                let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+                logs.forEach(l => {
+                    let badge = l.synced ? '<span class="badge badge-success">Synced</span>' : '<span class="badge badge-warning">Queued</span>';
+                    let typeTxt = l.type.includes('out') ? '↗ Outgoing' : '↙ Incoming';
+                    if (l.type.includes('miss')) typeTxt = '✕ Missed';
+                    html += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+                            <div>
+                                <div style="font-weight: 700; font-size: 15px; color: #0f172a;">${l.phone}</div>
+                                <div style="font-size: 12px; color: #64748b;">${typeTxt} &bull; ${l.duration}s &bull; ${l.start_time}</div>
+                            </div>
+                            <div>${badge}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                c.innerHTML = html;
+            }
+        }
+
+        function selectSim(slot) {
+            // Update UI
+            document.getElementById('simOpt_all').classList.toggle('selected', slot === -1);
+            document.getElementById('simOpt_1').classList.toggle('selected', slot === 0);
+            document.getElementById('simOpt_2').classList.toggle('selected', slot === 1);
+            // Call Android bridge
+            if (window.AndroidBridge && window.AndroidBridge.setTrackedSim) {
+                window.AndroidBridge.setTrackedSim(slot);
+            }
+        }
+
+        function loadSimSelection() {
+            if (window.AndroidBridge && window.AndroidBridge.getTrackedSim) {
+                try {
+                    let slot = window.AndroidBridge.getTrackedSim();
+                    document.getElementById('simOpt_all').classList.toggle('selected', slot === -1);
+                    document.getElementById('simOpt_1').classList.toggle('selected', slot === 0);
+                    document.getElementById('simOpt_2').classList.toggle('selected', slot === 1);
+                } catch(e) {}
+            }
+            loadFolderSelection();
+        }
+
+        function loadFolderSelection() {
+            if (window.AndroidBridge && window.AndroidBridge.getRecordingFolder) {
+                try {
+                    let f = window.AndroidBridge.getRecordingFolder();
+                    if (f) document.getElementById('recFolderInput').value = f;
+                } catch(e) {}
+            }
+        }
+
+        function saveRecFolder() {
+            let f = document.getElementById('recFolderInput').value.trim();
+            if (window.AndroidBridge && window.AndroidBridge.setRecordingFolder) {
+                window.AndroidBridge.setRecordingFolder(f);
+                alert("Recording folder saved: " + (f || "Auto-Detect"));
+            }
+        }
+
+    </script>
+</body>
+</html>

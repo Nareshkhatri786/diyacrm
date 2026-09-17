@@ -333,10 +333,23 @@
     if-eqz v2, :cond_4
     # If shouldRecordCall returned false (0), skip call (:cond_4). If true, continue!
 
-    # Stop recording and trigger async upload
+    # Stop internal recorder just in case
     invoke-static {}, Lcom/diyacrm/dialer/CallRecorder;->stop()Ljava/lang/String;
+
+    # Look for in-built OEM call recording (Infinix, Samsung, Xiaomi, Vivo, etc.)
+    move-object/from16 v2, p1
+    move-wide/from16 v7, v19
+    invoke-static {v2, v4, v7, v8}, Lcom/diyacrm/dialer/RecordingFinder;->findRecordingForCall(Landroid/content/Context;Ljava/lang/String;J)Ljava/lang/String;
+    move-result-object v2
+    if-eqz v2, :cond_use_fallback_rec
+    move-object/from16 v3, p1
+    invoke-static {v3, v2, v10}, Lcom/diyacrm/dialer/UploadManager;->uploadFileAsync(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V
+    goto :goto_rec_done
+
+    :cond_use_fallback_rec
     move-object/from16 v2, p1
     invoke-static {v2, v10}, Lcom/diyacrm/dialer/UploadManager;->uploadRecordingAsync(Landroid/content/Context;Ljava/lang/String;)V
+    :goto_rec_done
     # === End DiyaCRM Injection ===
 
     invoke-virtual/range {v9 .. v16}, Lcom/diyacrm/dialer/OfflineDbHelper;->insertCall(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;II)Z
