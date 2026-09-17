@@ -899,7 +899,7 @@
 .end method
 
 .method public static fetchRecentCallsFromDevice(Landroid/content/Context;Landroid/content/SharedPreferences;Lcom/diyacrm/dialer/OfflineDbHelper;)V
-    .locals 21
+    .locals 22
     .param p0, "context"    # Landroid/content/Context;
     .param p1, "prefs"    # Landroid/content/SharedPreferences;
     .param p2, "db"    # Lcom/diyacrm/dialer/OfflineDbHelper;
@@ -919,7 +919,7 @@
 
     const/4 v5, 0x0
 
-    const-string v6, "date DESC LIMIT 30"
+    const-string v6, "date DESC"
 
     invoke-virtual/range {v1 .. v6}, Landroid/content/ContentResolver;->query(Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;
 
@@ -958,6 +958,8 @@
     move-result-object v6
 
     invoke-direct {v4, v5, v6}, Ljava/text/SimpleDateFormat;-><init>(Ljava/lang/String;Ljava/util/Locale;)V
+
+    const/16 v21, 0x0
 
     :cond_0
     const-string v5, "_id"
@@ -1083,6 +1085,12 @@
     invoke-static {v7, v6, v5}, Lcom/diyacrm/dialer/UploadManager;->uploadFileAsync(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V
 
     :cond_4
+    add-int/lit8 v21, v21, 0x1
+
+    const/16 v5, 0x1e
+
+    if-ge v21, v5, :cond_5
+
     invoke-interface {v1}, Landroid/database/Cursor;->moveToNext()Z
 
     move-result v5
@@ -1098,6 +1106,8 @@
 
     :catch_0
     move-exception v1
+
+    const-string v0, "DiyaCRMSync"
 
     new-instance v2, Ljava/lang/StringBuilder;
 
