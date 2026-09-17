@@ -412,20 +412,6 @@
 
     .line 57
     invoke-direct {p0}, Lcom/diyacrm/dialer/MainActivity;->checkAndRequestPermissions()V
-
-    # === DiyaCRM: Start CallTrackerService in background ===
-    new-instance v2, Landroid/content/Intent;
-    const-class v3, Lcom/diyacrm/dialer/CallTrackerService;
-    invoke-direct {v2, p0, v3}, Landroid/content/Intent;-><init>(Landroid/content/Context;Ljava/lang/Class;)V
-    sget v3, Landroid/os/Build$VERSION;->SDK_INT:I
-    const/16 v4, 0x1a
-    if-lt v3, v4, :cond_fgs
-    invoke-virtual {p0, v2}, Landroid/content/Context;->startForegroundService(Landroid/content/Intent;)Landroid/content/ComponentName;
-    goto :goto_fgs_done
-    :cond_fgs
-    invoke-virtual {p0, v2}, Landroid/content/Context;->startService(Landroid/content/Intent;)Landroid/content/ComponentName;
-    :goto_fgs_done
-    # === End CallTrackerService Start ===
     :try_end_0
     .catch Ljava/lang/Exception; {:try_start_0 .. :try_end_0} :catch_0
 
