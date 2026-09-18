@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DiyaSync</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: #f8fafc; color: #1e293b; padding: 16px; min-height: 100vh; display: flex; flex-direction: column; }
+        .card { background: #ffffff; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 20px; margin-bottom: 14px; }
+        .input-group { margin-bottom: 14px; text-align: left; }
+        .input-label { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 5px; display: block; }
+        .form-input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1.5px solid #cbd5e1; font-size: 15px; outline: none; background: #f8fafc; }
+        .form-input:focus { border-color: #2563eb; background: #ffffff; }
+        .btn-primary { width: 100%; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #ffffff; font-size: 16px; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 7px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .btn-secondary:active { background: #e2e8f0; }
+        .pulse-dot { width: 10px; height: 10px; border-radius: 50%; background: #16a34a; display: inline-block; animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(22, 163, 74, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+        }
+        .log-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 12.5px; }
+        .log-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. LOGIN SCREEN -->
+    <div id="loginView" style="max-width: 380px; margin: 30px auto; width: 100%;">
+        <div class="card" style="text-align: center;">
+            <div style="width: 68px; height: 68px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 30px; margin-bottom: 14px; box-shadow: 0 6px 16px rgba(37,99,235,0.35);">
+                🔄
+            </div>
+            <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 4px;">DiyaSync</h2>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 24px;">Auto-Sync Call Recordings to Odoo CRM</p>
+
+            <div class="input-group">
+                <label class="input-label">CRM Server URL</label>
+                <input type="text" id="serverUrl" class="form-input" value="https://crm.sigprop.in">
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Staff Login / ID</label>
+                <input type="text" id="username" class="form-input" placeholder="e.g. Megha / Hemant / Heer">
+            </div>
+
+            <div class="input-group" style="margin-bottom: 24px;">
+                <label class="input-label">Password</label>
+                <input type="password" id="password" class="form-input" placeholder="••••••••">
+            </div>
+
+            <button class="btn-primary" onclick="doLogin()">Sign In &amp; Connect</button>
+        </div>
+    </div>
+
+    <!-- 2. MAIN DASHBOARD -->
+    <div id="mainView" style="display: none; max-width: 420px; margin: 0 auto; width: 100%;">
+        
+        <!-- Header User Profile -->
+        <div class="card" style="padding: 16px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 id="headerName" style="font-size: 18px; font-weight: 800; color: #0f172a;">Staff Member</h3>
+                    <div id="headerCompany" style="color: #15803d; font-size: 12.5px; font-weight: 700; margin-top: 2px;">🏢 Company</div>
+                </div>
+                <button onclick="doLogout()" style="background: #fee2e2; border: none; padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; color: #dc2626; cursor: pointer;">
+                    Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- 1-Click Folder Picker Card -->
+        <div class="card" style="padding: 16px 20px;">
+            <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                📁 CALL RECORDINGS FOLDER
+            </div>
+            <div id="folderStatusDiv">
+                <!-- Dynamically updated by JS -->
+            </div>
+        </div>
+
+        <!-- Live Sync Status -->
+        <div class="card" style="padding: 16px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="pulse-dot"></span>
+                    <div>
+                        <div style="font-size: 13.5px; font-weight: 800; color: #0f172a;">Background Sync Active</div>
+                        <div id="syncSummary" style="font-size: 11.5px; color: #64748b; margin-top: 2px;">0 recordings synced</div>
+                    </div>
+                </div>
+                <button onclick="doSyncNow()" id="btnSyncNow" style="background: #eff6ff; color: #2563eb; border: 1.5px solid #bfdbfe; padding: 8px 14px; border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                    🔄 Sync Now
+                </button>
+            </div>
+            <div id="lastSyncStatus" style="font-size: 11px; color: #94a3b8; margin-top: 10px;">Checking folder every few minutes...</div>
+        </div>
+
+        <!-- Recent Uploads Log -->
+        <div class="card" style="padding: 16px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Recently Synced Recordings</span>
+                <button onclick="loadLogs()" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;">Refresh</button>
+            </div>
+            <div id="logsContainer">
+                <div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 14px;">No recordings uploaded yet.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function checkInit() {
+            if (window.DiyaBridge && window.DiyaBridge.getAuthInfo) {
+                try {
+                    let info = JSON.parse(window.DiyaBridge.getAuthInfo() || "{}");
+                    updateUI(info);
+                } catch(e) {}
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', checkInit);
+        setTimeout(checkInit, 300);
+
+        function updateUI(info) {
+            if (info.isLoggedIn) {
+                document.getElementById('loginView').style.display = 'none';
+                document.getElementById('mainView').style.display = 'block';
+                document.getElementById('headerName').innerText = info.userName || "Staff Member";
+                document.getElementById('headerCompany').innerText = "🏢 " + (info.companyName || "Company");
+                document.getElementById('syncSummary').innerText = (info.syncCount || 0) + " recordings synced";
+                
+                // Folder status
+                let folderDiv = document.getElementById('folderStatusDiv');
+                if (info.hasFolder) {
+                    folderDiv.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 12px 14px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 20px;">✅</span>
+                                <div>
+                                    <div style="font-size: 13px; font-weight: 700; color: #166534;">Folder Linked</div>
+                                    <div style="font-size: 11px; color: #15803d;">Recordings auto-sync to CRM</div>
+                                </div>
+                            </div>
+                            <button onclick="pickFolder()" class="btn-secondary" style="background: white; border-color: #bbf7d0; color: #166534;">Change</button>
+                        </div>
+                    `;
+                } else {
+                    folderDiv.innerHTML = `
+                        <button onclick="pickFolder()" style="width: 100%; padding: 14px; background: #eff6ff; border: 2px dashed #3b82f6; border-radius: 14px; color: #1d4ed8; font-size: 13.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <span>📁</span> Select Recording Folder (PhoneRecord)
+                        </button>
+                        <div style="font-size: 11.5px; color: #64748b; margin-top: 6px; text-align: center;">Tap once &amp; select <b>Music &gt; PhoneRecord</b> &rarr; tap "Use this folder"</div>
+                    `;
+                }
+
+                loadLogs();
+            } else {
+                document.getElementById('loginView').style.display = 'block';
+                document.getElementById('mainView').style.display = 'none';
+            }
+        }
+
+        function doLogin() {
+            let u = document.getElementById('username').value.trim();
+            let p = document.getElementById('password').value.trim();
+            let s = document.getElementById('serverUrl').value.trim();
+            if (!u || !p) {
+                alert("Please enter username and password");
+                return;
+            }
+            if (window.DiyaBridge && window.DiyaBridge.login) {
+                window.DiyaBridge.login(s, u, p);
+            }
+        }
+
+        function doLogout() {
+            if (confirm("Logout from DiyaSync?")) {
+                if (window.DiyaBridge && window.DiyaBridge.logout) {
+                    window.DiyaBridge.logout();
+                }
+            }
+        }
+
+        function pickFolder() {
+            if (window.DiyaBridge && window.DiyaBridge.pickFolder) {
+                window.DiyaBridge.pickFolder();
+            }
+        }
+
+        function doSyncNow() {
+            let btn = document.getElementById('btnSyncNow');
+            btn.innerText = "Syncing...";
+            btn.disabled = true;
+            if (window.DiyaBridge && window.DiyaBridge.syncNow) {
+                window.DiyaBridge.syncNow();
+            }
+            setTimeout(function() {
+                btn.innerText = "🔄 Sync Now";
+                btn.disabled = false;
+                checkInit();
+            }, 3000);
+        }
+
+        function loadLogs() {
+            if (window.DiyaBridge && window.DiyaBridge.getRecentLogs) {
+                try {
+                    let logs = JSON.parse(window.DiyaBridge.getRecentLogs() || "[]");
+                    let container = document.getElementById('logsContainer');
+                    if (!logs || logs.length === 0) {
+                        container.innerHTML = '<div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 14px;">No recordings uploaded yet.</div>';
+                        return;
+                    }
+                    let html = '';
+                    logs.slice(0, 10).forEach(function(l) {
+                        html += `
+                            <div class="log-item">
+                                <div>
+                                    <div style="font-weight: 700; color: #1e293b;">📞 ${l.phone || 'Call Recording'}</div>
+                                    <div style="font-size: 11px; color: #64748b;">${l.filename || ''}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span style="background: #dcfce7; color: #15803d; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px;">CRM Synced</span>
+                                    <div style="font-size: 10.5px; color: #94a3b8; margin-top: 2px;">${l.time || ''}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } catch(e) {}
+            }
+        }
+
+        // Bridge callbacks from Android
+        function onLoginSuccess() { checkInit(); }
+        function onLoginFailed(msg) { alert(msg || "Login failed"); }
+        function onSyncFinished(uploadedCount) {
+            document.getElementById('lastSyncStatus').innerText = "Last sync: Just now (" + uploadedCount + " new uploaded)";
+            checkInit();
+        }
+    </script>
+</body>
+</html>
