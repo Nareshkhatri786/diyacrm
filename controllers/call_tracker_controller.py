@@ -439,17 +439,6 @@ class DiyaCrmCallTrackerController(http.Controller):
                         # Merge recording directly into the Call Log card!
                         new_b = str(recent_dialer_msg.body).replace('Auto-Synced via Diya CRM Dialer', btn_html + 'Auto-Synced via Diya CRM Dialer')
                         recent_dialer_msg.write({'body': Markup(new_b)})
-                        if raw_bytes:
-                            try:
-                                import base64
-                                env['ir.attachment'].create({
-                                    'name': filename,
-                                    'datas': base64.b64encode(raw_bytes),
-                                    'res_model': 'mail.message',
-                                    'res_id': recent_dialer_msg.id,
-                                })
-                            except Exception:
-                                pass
                     else:
                         existing_msg = env['mail.message'].search([
                             ('res_id', '=', lead.id),
@@ -493,9 +482,6 @@ class DiyaCrmCallTrackerController(http.Controller):
                                 "subtype_xmlid": "mail.mt_note",
                                 "author_id": user.partner_id.id if user else False,
                             }
-                            if raw_bytes:
-                                post_kwargs["attachments"] = [(filename, raw_bytes)]
-
                             lead.message_post(**post_kwargs)
 
             import json
@@ -942,6 +928,22 @@ class DiyaCrmCallTrackerController(http.Controller):
                         rel_p = os.path.relpath(fp, base_dir).replace('\\', '/')
                         recordings.append((rel_p, f, os.path.getmtime(fp)))
         recordings.sort(key=lambda x: x[2], reverse=True)
+
+        # Delete existing audio attachments so the big square card in chatter disappears!
+        audio_attachments = env['ir.attachment'].search([
+            ('res_model', 'in', ['crm.lead', 'mail.message']),
+            '|', '|', '|',
+            ('name', 'ilike', '.aac'),
+            ('name', 'ilike', '.m4a'),
+            ('name', 'ilike', '.mp3'),
+            ('name', 'ilike', '.amr')
+        ])
+        att_deleted = len(audio_attachments)
+        if audio_attachments:
+            try:
+                audio_attachments.unlink()
+            except Exception:
+                pass
 
         seen_lead_time = set()
         for msg in messages:
