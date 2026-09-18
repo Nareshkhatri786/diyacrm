@@ -285,20 +285,65 @@ class DiyaCrmCallTrackerController(http.Controller):
     @http.route('/api/call_tracker/upload_recording', type='http', auth='none',
                 methods=['POST'], csrf=False)
     def upload_recording(self, **kwargs):
-        import os, time
+        import os, time, re
         try:
-            call_id = kwargs.get('call_id', '') or request.httprequest.headers.get('X-Call-Id', '')
-            file_obj = request.httprequest.files.get('file')
-            save_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
-            os.makedirs(save_dir, exist_ok=True)
+            env = request.env(user=SUPERUSER_ID, su=True)
+            headers = request.httprequest.headers
 
+            call_id = kwargs.get('call_id', '') or headers.get('X-Call-Id', '')
+            user_id = kwargs.get('user_id', '') or headers.get('X-User-Id', '')
+            company_id = kwargs.get('company_id', '') or headers.get('X-Company-Id', '')
+
+            # 1. Resolve Staff User & Company
+            user = False
+            if user_id:
+                try:
+                    target_u = env["res.users"].browse(int(user_id))
+                    if target_u.exists() and target_u.login != "public":
+                        user = target_u
+                except Exception:
+                    pass
+
+            if not user:
+                user = env["res.users"].search([("share", "=", False), ("login", "!=", "admin")], limit=1)
+
+            company = False
+            if company_id:
+                try:
+                    c = env["res.company"].browse(int(company_id))
+                    if c.exists():
+                        company = c
+                except Exception:
+                    pass
+            if not company:
+                company = user.company_id if user else env.company
+
+            def slugify(text):
+                cleaned = re.sub(r'[^a-zA-Z0-9_-]', '_', str(text or 'Unknown')).strip('_')
+                return cleaned or 'General'
+
+            comp_slug = slugify(company.name)
+            user_slug = slugify(user.name or user.login)
+
+            # 2. Extract clean 10-digit phone
+            digits = re.sub(r'\D', '', str(call_id or ''))
+            phone_10 = digits[-10:] if len(digits) >= 10 else (digits or 'Unknown')
+
+            # 3. Create nested folder structure:
+            # /opt/odoo19/custom_addons/diyacrm/static/recordings/[Company]/[User]/[Phone]/
+            save_base_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
+            target_dir = os.path.join(save_base_dir, comp_slug, user_slug, phone_10)
+            os.makedirs(target_dir, exist_ok=True)
+
+            file_obj = request.httprequest.files.get('file')
             if file_obj:
                 orig_name = getattr(file_obj, 'filename', '') or ''
                 ext = os.path.splitext(orig_name)[1].lower()
                 if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg']:
                     ext = '.aac' if 'aac' in orig_name.lower() else ('.m4a' if 'm4a' in orig_name.lower() else ('.mp3' if 'mp3' in orig_name.lower() else '.amr'))
-                filename = f"call_{call_id.replace('/', '_')}_{int(time.time())}{ext}"
-                filepath = os.path.join(save_dir, filename)
+                clean_orig = re.sub(r'[^a-zA-Z0-9_.-]', '_', orig_name) if orig_name else f"rec_{int(time.time())}{ext}"
+                filename = clean_orig if clean_orig.endswith(ext) else f"{clean_orig}{ext}"
+                filepath = os.path.join(target_dir, filename)
                 file_obj.save(filepath)
             else:
                 raw_data = request.httprequest.data
@@ -306,19 +351,96 @@ class DiyaCrmCallTrackerController(http.Controller):
                     return request.make_response(
                         '{"status":"error","message":"Missing file or call_id"}',
                         headers=[('Content-Type', 'application/json')])
-                orig_name = request.httprequest.headers.get('X-Filename', '') or 'recording.aac'
+                orig_name = headers.get('X-Filename', '') or 'recording.aac'
                 ext = os.path.splitext(orig_name)[1].lower()
                 if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg']:
                     ext = '.aac' if 'aac' in orig_name.lower() else ('.m4a' if 'm4a' in orig_name.lower() else ('.mp3' if 'mp3' in orig_name.lower() else '.amr'))
-                filename = f"call_{call_id.replace('/', '_')}_{int(time.time())}{ext}"
-                filepath = os.path.join(save_dir, filename)
+                clean_orig = re.sub(r'[^a-zA-Z0-9_.-]', '_', orig_name) if orig_name else f"rec_{int(time.time())}{ext}"
+                filename = clean_orig if clean_orig.endswith(ext) else f"{clean_orig}{ext}"
+                filepath = os.path.join(target_dir, filename)
                 with open(filepath, 'wb') as f:
                     f.write(raw_data)
 
-            url = 'https://crm.sigprop.in/recordings/' + filename
+            # Ensure proper read permissions for web streaming
+            try:
+                os.chmod(filepath, 0o664)
+            except Exception:
+                pass
+
+            relative_path = f"{comp_slug}/{user_slug}/{phone_10}/{filename}"
+            url = f"https://crm.sigprop.in/recordings/{relative_path}"
+
+            # 4. Auto-attach to CRM Lead Chatter
+            lead_id = False
+            lead_name = False
+            if phone_10 and phone_10 != 'Unknown':
+                Lead = env["crm.lead"].with_context(active_test=False)
+                domain = [
+                    "|",
+                    ("phone", "ilike", phone_10),
+                    ("name", "ilike", phone_10)
+                ]
+                matching_leads = Lead.search([("company_id", "=", company.id)] + domain, order="write_date desc", limit=1)
+                if not matching_leads:
+                    matching_leads = Lead.search(domain, order="write_date desc", limit=1)
+
+                if matching_leads:
+                    lead = matching_leads[0]
+                    lead_id = lead.id
+                    lead_name = lead.name
+                    # Check if audio already embedded for this URL to prevent duplicate posts
+                    existing_msg = env['mail.message'].search([
+                        ('res_id', '=', lead.id),
+                        ('model', '=', 'crm.lead'),
+                        ('body', 'ilike', url)
+                    ], limit=1)
+
+                    if not existing_msg:
+                        chatter_audio = Markup(f'''
+                            <div style="padding: 10px 14px; border-left: 4px solid #2563eb; background: #f8fafc; border-radius: 6px; margin: 4px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <span style="font-weight: 700; color: #2563eb; font-size: 13.5px;">
+                                        🔊 Call Recording Auto-Attached
+                                    </span>
+                                    <span style="font-weight: 700; color: #1e40af; background: #dbeafe; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                                        {company.name}
+                                    </span>
+                                </div>
+                                <div style="font-size: 12px; color: #475569; margin-top: 5px;">
+                                    <b>Staff:</b> {user.name} &nbsp;|&nbsp; <b>Client:</b> {phone_10}
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    <audio controls style="width: 100%; height: 32px; outline: none;" preload="metadata">
+                                        <source src="{url}" type="audio/aac">
+                                        <source src="{url}" type="audio/mp4">
+                                        <source src="{url}" type="audio/mpeg">
+                                        <source src="{url}" type="audio/amr">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                                <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                                    Auto-Synced via DiyaSync to {comp_slug}/{user_slug}
+                                </div>
+                            </div>
+                        ''')
+                        lead.message_post(
+                            body=chatter_audio,
+                            message_type="comment",
+                            subtype_xmlid="mail.mt_note",
+                            author_id=user.partner_id.id if user else False
+                        )
+
             import json
             return request.make_response(
-                json.dumps({"status": "success", "url": url}, separators=(',', ':')),
+                json.dumps({
+                    "status": "success",
+                    "url": url,
+                    "company": company.name,
+                    "user": user.name,
+                    "lead_id": lead_id,
+                    "lead_name": lead_name,
+                    "folder": f"{comp_slug}/{user_slug}/{phone_10}"
+                }, separators=(',', ':')),
                 headers=[('Content-Type', 'application/json')])
         except Exception as e:
             _logger.exception("Upload recording error: %s", str(e))
