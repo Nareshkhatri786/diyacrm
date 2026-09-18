@@ -210,12 +210,12 @@ class DiyaCrmCallTrackerController(http.Controller):
                 player_url = f"https://crm.sigprop.in/play_recording?file={rel_p}"
                 audio_player_html = f'''
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
-                                ▶️ Play Recording
+                        <div style="margin-top: 4px;">
+                            <a href="{player_url}" target="_blank" style="display: inline-block; padding: 7px 16px; background-color: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; border: 1px solid #1d4ed8; margin-right: 8px;">
+                                <span style="color: #ffffff !important; font-weight: bold;">▶️ Play Recording</span>
                             </a>
-                            <a href="{recording_url}" download style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 11.5px; font-weight: 600;">
-                                ⬇️ Download
+                            <a href="{recording_url}" download style="display: inline-block; padding: 7px 12px; background-color: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 11.5px; font-weight: bold;">
+                                <span style="color: #334155 !important; font-weight: bold;">⬇️ Download</span>
                             </a>
                         </div>
                     </div>
@@ -407,59 +407,96 @@ class DiyaCrmCallTrackerController(http.Controller):
                     lead_id = lead.id
                     lead_name = lead.name
                     # Check if audio already embedded for this file to prevent duplicate posts
-                    existing_msg = env['mail.message'].search([
+                    player_url = f"https://crm.sigprop.in/play_recording?file={relative_path}"
+                    raw_bytes = None
+                    try:
+                        with open(filepath, 'rb') as af:
+                            raw_bytes = af.read()
+                    except Exception as _fe:
+                        _logger.warning("Could not read file for attachment: %s", str(_fe))
+
+                    btn_html = f'''
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+                            <div style="margin-top: 4px;">
+                                <a href="{player_url}" target="_blank" style="display: inline-block; padding: 7px 16px; background-color: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; border: 1px solid #1d4ed8; margin-right: 8px;">
+                                    <span style="color: #ffffff !important; font-weight: bold;">▶️ Play Recording</span>
+                                </a>
+                                <a href="{url}" download="{filename}" style="display: inline-block; padding: 7px 12px; background-color: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 11.5px; font-weight: bold;">
+                                    <span style="color: #334155 !important; font-weight: bold;">⬇️ Download ({ext.replace('.', '').upper()})</span>
+                                </a>
+                            </div>
+                        </div>
+                    '''
+
+                    # Check if there is an existing Dialer Call Log message for this lead
+                    recent_dialer_msg = env['mail.message'].search([
                         ('res_id', '=', lead.id),
                         ('model', '=', 'crm.lead'),
-                        '|',
-                        ('body', 'ilike', relative_path),
-                        ('body', 'ilike', filename)
-                    ], limit=1)
+                        ('body', 'ilike', 'Auto-Synced via Diya CRM Dialer'),
+                    ], order='id desc', limit=1)
 
-                    if not existing_msg:
-                        player_url = f"https://crm.sigprop.in/play_recording?file={relative_path}"
-                        chatter_audio = Markup(f'''
-                            <div style="padding: 12px 16px; border-left: 4px solid #2563eb; background: #f8fafc; border-radius: 8px; margin: 6px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                                    <span style="font-weight: 700; color: #1e40af; font-size: 13.5px;">
-                                        🔊 Call Recording Auto-Attached
-                                    </span>
-                                    <span style="font-weight: 600; color: #1e40af; background: #dbeafe; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                                        {company.name}
-                                    </span>
-                                </div>
-                                <div style="font-size: 12px; color: #475569; margin-bottom: 10px;">
-                                    <b>Staff:</b> {user.name} &nbsp;|&nbsp; <b>Client:</b> <span style="color: #1e293b; font-weight: 600;">{phone_10}</span>
-                                </div>
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
-                                    <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12.5px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
-                                        ▶️ Play Recording
-                                    </a>
-                                    <a href="{url}" download="{filename}" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600;">
-                                        ⬇️ Download ({ext.replace('.', '').upper()})
-                                    </a>
-                                </div>
-                                <div style="font-size: 11px; color: #94a3b8;">
-                                    Auto-Synced via DiyaSync to <b>{comp_slug}/{user_slug}</b> &bull; {filename}
-                                </div>
-                            </div>
-                        ''')
+                    if recent_dialer_msg and 'Play Recording' not in str(recent_dialer_msg.body):
+                        # Merge recording directly into the Call Log card!
+                        new_b = str(recent_dialer_msg.body).replace('Auto-Synced via Diya CRM Dialer', btn_html + 'Auto-Synced via Diya CRM Dialer')
+                        recent_dialer_msg.write({'body': Markup(new_b)})
+                        if raw_bytes:
+                            try:
+                                import base64
+                                env['ir.attachment'].create({
+                                    'name': filename,
+                                    'datas': base64.b64encode(raw_bytes),
+                                    'res_model': 'mail.message',
+                                    'res_id': recent_dialer_msg.id,
+                                })
+                            except Exception:
+                                pass
+                    else:
+                        existing_msg = env['mail.message'].search([
+                            ('res_id', '=', lead.id),
+                            ('model', '=', 'crm.lead'),
+                            '|',
+                            ('body', 'ilike', relative_path),
+                            ('body', 'ilike', filename)
+                        ], limit=1)
 
-                        post_kwargs = {
-                            "body": chatter_audio,
-                            "message_type": "comment",
-                            "subtype_xmlid": "mail.mt_note",
-                            "author_id": user.partner_id.id if user else False,
-                        }
+                        if not existing_msg:
+                            chatter_audio = Markup(f'''
+                                <div style="padding: 12px 16px; border-left: 4px solid #2563eb; background-color: #f8fafc; border-radius: 8px; margin: 6px 0; border: 1px solid #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                                    <div style="margin-bottom: 6px;">
+                                        <span style="font-weight: bold; color: #1e40af; font-size: 13.5px;">
+                                            🔊 Call Recording Auto-Attached
+                                        </span>
+                                        <span style="font-weight: bold; color: #1e40af; background-color: #dbeafe; padding: 2px 10px; border-radius: 12px; font-size: 11px; margin-left: 8px;">
+                                            {company.name}
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 12px; color: #475569; margin-bottom: 8px;">
+                                        <b>Staff:</b> {user.name} &nbsp;|&nbsp; <b>Client:</b> <span style="color: #1e293b; font-weight: bold;">{phone_10}</span>
+                                    </div>
+                                    <div style="margin-bottom: 8px;">
+                                        <a href="{player_url}" target="_blank" style="display: inline-block; padding: 7px 16px; background-color: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12.5px; font-weight: bold; border: 1px solid #1d4ed8; margin-right: 8px;">
+                                            <span style="color: #ffffff !important; font-weight: bold;">▶️ Play Recording</span>
+                                        </a>
+                                        <a href="{url}" download="{filename}" style="display: inline-block; padding: 7px 12px; background-color: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 11.5px; font-weight: bold;">
+                                            <span style="color: #334155 !important; font-weight: bold;">⬇️ Download ({ext.replace('.', '').upper()})</span>
+                                        </a>
+                                    </div>
+                                    <div style="font-size: 11px; color: #94a3b8;">
+                                        Auto-Synced via DiyaSync &bull; File: {filename}
+                                    </div>
+                                </div>
+                            ''')
 
-                        # Attach binary file directly to message if available
-                        try:
-                            with open(filepath, 'rb') as af:
-                                raw_bytes = af.read()
-                            post_kwargs["attachments"] = [(filename, raw_bytes)]
-                        except Exception as _fe:
-                            _logger.warning("Could not read file for attachment: %s", str(_fe))
+                            post_kwargs = {
+                                "body": chatter_audio,
+                                "message_type": "comment",
+                                "subtype_xmlid": "mail.mt_note",
+                                "author_id": user.partner_id.id if user else False,
+                            }
+                            if raw_bytes:
+                                post_kwargs["attachments"] = [(filename, raw_bytes)]
 
-                        lead.message_post(**post_kwargs)
+                            lead.message_post(**post_kwargs)
 
             import json
             return request.make_response(
@@ -942,34 +979,65 @@ class DiyaCrmCallTrackerController(http.Controller):
                 staff_name = msg.author_id.name or "Shivam"
                 ext = os.path.splitext(match_fname)[1].lower().replace('.', '').upper()
 
-                clean_card = Markup(f'''
-                    <div style="padding: 12px 16px; border-left: 4px solid #2563eb; background: #f8fafc; border-radius: 8px; margin: 6px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                            <span style="font-weight: 700; color: #1e40af; font-size: 13.5px;">
-                                🔊 Call Recording Auto-Attached
-                            </span>
-                            <span style="font-weight: 600; color: #1e40af; background: #dbeafe; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                                {comp_name}
-                            </span>
-                        </div>
-                        <div style="font-size: 12px; color: #475569; margin-bottom: 10px;">
-                            <b>Staff:</b> {staff_name} &nbsp;|&nbsp; <b>Client:</b> <span style="color: #1e293b; font-weight: 600;">{phone}</span>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
-                            <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12.5px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
-                                ▶️ Play Recording
+                btn_html = f'''
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
+                        <div style="margin-top: 4px;">
+                            <a href="{player_url}" target="_blank" style="display: inline-block; padding: 7px 16px; background-color: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; border: 1px solid #1d4ed8; margin-right: 8px;">
+                                <span style="color: #ffffff !important; font-weight: bold;">▶️ Play Recording</span>
                             </a>
-                            <a href="{dl_url}" download="{match_fname}" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600;">
-                                ⬇️ Download ({ext})
+                            <a href="{dl_url}" download="{match_fname}" style="display: inline-block; padding: 7px 12px; background-color: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 11.5px; font-weight: bold;">
+                                <span style="color: #334155 !important; font-weight: bold;">⬇️ Download ({ext})</span>
                             </a>
-                        </div>
-                        <div style="font-size: 11px; color: #94a3b8;">
-                            Auto-Synced via DiyaSync &bull; File: {match_fname}
                         </div>
                     </div>
-                ''')
-                msg.write({'body': clean_card})
-                updated_count += 1
+                '''
+
+                # Check if this lead has a Dialer Call Log message
+                recent_dialer = env['mail.message'].search([
+                    ('res_id', '=', lead.id),
+                    ('model', '=', 'crm.lead'),
+                    ('body', 'ilike', 'Auto-Synced via Diya CRM Dialer')
+                ], order='id desc', limit=1)
+
+                if recent_dialer and 'Play Recording' not in str(recent_dialer.body):
+                    new_b = str(recent_dialer.body).replace('Auto-Synced via Diya CRM Dialer', btn_html + 'Auto-Synced via Diya CRM Dialer')
+                    recent_dialer.write({'body': Markup(new_b)})
+                    # Now that it's merged into the call log, delete the separate DiyaSync card
+                    try:
+                        msg.unlink()
+                        deleted_count += 1
+                    except Exception:
+                        pass
+                    updated_count += 1
+                else:
+                    clean_card = Markup(f'''
+                        <div style="padding: 12px 16px; border-left: 4px solid #2563eb; background-color: #f8fafc; border-radius: 8px; margin: 6px 0; border: 1px solid #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                            <div style="margin-bottom: 6px;">
+                                <span style="font-weight: bold; color: #1e40af; font-size: 13.5px;">
+                                    🔊 Call Recording Auto-Attached
+                                </span>
+                                <span style="font-weight: bold; color: #1e40af; background-color: #dbeafe; padding: 2px 10px; border-radius: 12px; font-size: 11px; margin-left: 8px;">
+                                    {comp_name}
+                                </span>
+                            </div>
+                            <div style="font-size: 12px; color: #475569; margin-bottom: 8px;">
+                                <b>Staff:</b> {staff_name} &nbsp;|&nbsp; <b>Client:</b> <span style="color: #1e293b; font-weight: bold;">{phone}</span>
+                            </div>
+                            <div style="margin-bottom: 8px;">
+                                <a href="{player_url}" target="_blank" style="display: inline-block; padding: 7px 16px; background-color: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12.5px; font-weight: bold; border: 1px solid #1d4ed8; margin-right: 8px;">
+                                    <span style="color: #ffffff !important; font-weight: bold;">▶️ Play Recording</span>
+                                </a>
+                                <a href="{dl_url}" download="{match_fname}" style="display: inline-block; padding: 7px 12px; background-color: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 11.5px; font-weight: bold;">
+                                    <span style="color: #334155 !important; font-weight: bold;">⬇️ Download ({ext})</span>
+                                </a>
+                            </div>
+                            <div style="font-size: 11px; color: #94a3b8;">
+                                Auto-Synced via DiyaSync &bull; File: {match_fname}
+                            </div>
+                        </div>
+                    ''')
+                    msg.write({'body': clean_card})
+                    updated_count += 1
 
         return Response(
             f"Successfully updated {updated_count} messages with Play button and cleaned {deleted_count} duplicate messages!",
