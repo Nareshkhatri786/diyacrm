@@ -206,17 +206,17 @@ class DiyaCrmCallTrackerController(http.Controller):
                 recording_url = self._find_recording_on_server(phone_number, start_time)
 
             if recording_url:
+                rel_p = recording_url.replace("https://crm.sigprop.in/recordings/", "")
+                player_url = f"https://crm.sigprop.in/play_recording?file={rel_p}"
                 audio_player_html = f'''
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
-                        <span style="font-size: 12px; font-weight: 700; color: #334155;">🔊 Call Recording:</span>
-                        <div style="margin-top: 4px;">
-                            <audio controls style="width: 100%; height: 32px; outline: none;" preload="metadata">
-                                <source src="{recording_url}" type="audio/aac">
-                                <source src="{recording_url}" type="audio/mp4">
-                                <source src="{recording_url}" type="audio/mpeg">
-                                <source src="{recording_url}" type="audio/amr">
-                                Your browser does not support the audio element.
-                            </audio>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
+                                ▶️ Play Recording
+                            </a>
+                            <a href="{recording_url}" download style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 11.5px; font-weight: 600;">
+                                ⬇️ Download
+                            </a>
                         </div>
                     </div>
                 '''
@@ -406,47 +406,60 @@ class DiyaCrmCallTrackerController(http.Controller):
                     lead = matching_leads[0]
                     lead_id = lead.id
                     lead_name = lead.name
-                    # Check if audio already embedded for this URL to prevent duplicate posts
+                    # Check if audio already embedded for this file to prevent duplicate posts
                     existing_msg = env['mail.message'].search([
                         ('res_id', '=', lead.id),
                         ('model', '=', 'crm.lead'),
-                        ('body', 'ilike', url)
+                        '|',
+                        ('body', 'ilike', relative_path),
+                        ('body', 'ilike', filename)
                     ], limit=1)
 
                     if not existing_msg:
+                        player_url = f"https://crm.sigprop.in/play_recording?file={relative_path}"
                         chatter_audio = Markup(f'''
-                            <div style="padding: 10px 14px; border-left: 4px solid #2563eb; background: #f8fafc; border-radius: 6px; margin: 4px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                                <div style="display: flex; align-items: center; justify-content: space-between;">
-                                    <span style="font-weight: 700; color: #2563eb; font-size: 13.5px;">
+                            <div style="padding: 12px 16px; border-left: 4px solid #2563eb; background: #f8fafc; border-radius: 8px; margin: 6px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                    <span style="font-weight: 700; color: #1e40af; font-size: 13.5px;">
                                         🔊 Call Recording Auto-Attached
                                     </span>
-                                    <span style="font-weight: 700; color: #1e40af; background: #dbeafe; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                                    <span style="font-weight: 600; color: #1e40af; background: #dbeafe; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
                                         {company.name}
                                     </span>
                                 </div>
-                                <div style="font-size: 12px; color: #475569; margin-top: 5px;">
-                                    <b>Staff:</b> {user.name} &nbsp;|&nbsp; <b>Client:</b> {phone_10}
+                                <div style="font-size: 12px; color: #475569; margin-bottom: 10px;">
+                                    <b>Staff:</b> {user.name} &nbsp;|&nbsp; <b>Client:</b> <span style="color: #1e293b; font-weight: 600;">{phone_10}</span>
                                 </div>
-                                <div style="margin-top: 8px;">
-                                    <audio controls style="width: 100%; height: 32px; outline: none;" preload="metadata">
-                                        <source src="{url}" type="audio/aac">
-                                        <source src="{url}" type="audio/mp4">
-                                        <source src="{url}" type="audio/mpeg">
-                                        <source src="{url}" type="audio/amr">
-                                        Your browser does not support the audio element.
-                                    </audio>
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+                                    <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12.5px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
+                                        ▶️ Play Recording
+                                    </a>
+                                    <a href="{url}" download="{filename}" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600;">
+                                        ⬇️ Download ({ext.replace('.', '').upper()})
+                                    </a>
                                 </div>
-                                <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
-                                    Auto-Synced via DiyaSync to {comp_slug}/{user_slug}
+                                <div style="font-size: 11px; color: #94a3b8;">
+                                    Auto-Synced via DiyaSync to <b>{comp_slug}/{user_slug}</b> &bull; {filename}
                                 </div>
                             </div>
                         ''')
-                        lead.message_post(
-                            body=chatter_audio,
-                            message_type="comment",
-                            subtype_xmlid="mail.mt_note",
-                            author_id=user.partner_id.id if user else False
-                        )
+
+                        post_kwargs = {
+                            "body": chatter_audio,
+                            "message_type": "comment",
+                            "subtype_xmlid": "mail.mt_note",
+                            "author_id": user.partner_id.id if user else False,
+                        }
+
+                        # Attach binary file directly to message if available
+                        try:
+                            with open(filepath, 'rb') as af:
+                                raw_bytes = af.read()
+                            post_kwargs["attachments"] = [(filename, raw_bytes)]
+                        except Exception as _fe:
+                            _logger.warning("Could not read file for attachment: %s", str(_fe))
+
+                        lead.message_post(**post_kwargs)
 
             import json
             return request.make_response(
@@ -466,6 +479,261 @@ class DiyaCrmCallTrackerController(http.Controller):
             return request.make_response(
                 json.dumps({"status": "error", "message": str(e)}, separators=(',', ':')),
                 headers=[('Content-Type', 'application/json')])
+
+    @http.route('/play_recording', type='http', auth='public', methods=['GET'])
+    def play_recording_page(self, file=None, **kwargs):
+        if not file:
+            return request.not_found("Missing recording file parameter.")
+        clean_file = file.replace('\\', '/').strip('/')
+        if '..' in clean_file or clean_file.startswith('/'):
+            return request.not_found("Invalid path.")
+
+        file_path = os.path.join('/opt/odoo19/custom_addons/diyacrm/static/recordings/', clean_file)
+        if not os.path.exists(file_path):
+            return request.not_found("Recording file not found on server.")
+
+        stream_url = f"/recordings/{clean_file}"
+        download_url = f"/recordings/{clean_file}"
+        parts = clean_file.split('/')
+        company_name = parts[0].replace('_', ' ') if len(parts) > 0 else 'CRM'
+        staff_name = parts[1].replace('_', ' ') if len(parts) > 1 else 'Staff'
+        client_phone = parts[2] if len(parts) > 2 else 'Client'
+        filename = parts[-1] if len(parts) > 0 else 'recording'
+        filesize_kb = round(os.path.getsize(file_path) / 1024, 1)
+
+        html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Recording - {client_phone} | Diya CRM</title>
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #f8fafc;
+        }}
+        .player-card {{
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 32px 28px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }}
+        .pulse-icon {{
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            box-shadow: 0 0 24px rgba(37, 99, 235, 0.4);
+            animation: pulse 2s infinite ease-in-out;
+        }}
+        @keyframes pulse {{
+            0%, 100% {{ transform: scale(1); }}
+            50% {{ transform: scale(1.05); }}
+        }}
+        .title {{
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #ffffff;
+        }}
+        .client-badge {{
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            letter-spacing: 0.5px;
+        }}
+        .meta-grid {{
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 12px;
+            padding: 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            text-align: left;
+            font-size: 12px;
+            margin-bottom: 24px;
+        }}
+        .meta-item b {{
+            display: block;
+            color: #94a3b8;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }}
+        .meta-item span {{
+            color: #e2e8f0;
+            font-weight: 600;
+        }}
+        audio {{
+            width: 100%;
+            height: 48px;
+            border-radius: 8px;
+            outline: none;
+            margin-bottom: 20px;
+        }}
+        .speed-control {{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 22px;
+        }}
+        .speed-label {{
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 600;
+            margin-right: 4px;
+        }}
+        .speed-btn {{
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #cbd5e1;
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }}
+        .speed-btn.active {{
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+        }}
+        .btn-group {{
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }}
+        .btn {{
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }}
+        .btn-download {{
+            background: #2563eb;
+            color: #ffffff;
+        }}
+        .btn-download:hover {{
+            background: #1d4ed8;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }}
+        .btn-back {{
+            background: rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+        }}
+        .btn-back:hover {{
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+        }}
+        .file-note {{
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 18px;
+            word-break: break-all;
+        }}
+    </style>
+</head>
+<body>
+    <div class="player-card">
+        <div class="pulse-icon">🎙️</div>
+        <h1 class="title">Call Recording</h1>
+        <div class="client-badge">📞 {client_phone}</div>
+
+        <div class="meta-grid">
+            <div class="meta-item">
+                <b>Staff</b>
+                <span>{staff_name}</span>
+            </div>
+            <div class="meta-item">
+                <b>Company</b>
+                <span>{company_name}</span>
+            </div>
+            <div class="meta-item">
+                <b>File Size</b>
+                <span>{filesize_kb} KB</span>
+            </div>
+            <div class="meta-item">
+                <b>Status</b>
+                <span style="color: #22c55e;">Synced & Ready</span>
+            </div>
+        </div>
+
+        <audio id="audioPlayer" controls autoplay preload="auto">
+            <source src="{stream_url}" type="audio/aac">
+            <source src="{stream_url}" type="audio/mp4">
+            <source src="{stream_url}" type="audio/mpeg">
+            <source src="{stream_url}">
+            Your browser does not support audio playback.
+        </audio>
+
+        <div class="speed-control">
+            <span class="speed-label">Speed:</span>
+            <button class="speed-btn active" onclick="setSpeed(1.0, this)">1.0x</button>
+            <button class="speed-btn" onclick="setSpeed(1.25, this)">1.25x</button>
+            <button class="speed-btn" onclick="setSpeed(1.5, this)">1.5x</button>
+            <button class="speed-btn" onclick="setSpeed(2.0, this)">2.0x</button>
+        </div>
+
+        <div class="btn-group">
+            <a href="{download_url}" download="{filename}" class="btn btn-download">
+                ⬇️ Download Audio
+            </a>
+            <button onclick="window.close()" class="btn btn-back">
+                ✕ Close
+            </button>
+        </div>
+
+        <div class="file-note">
+            File: {filename}
+        </div>
+    </div>
+
+    <script>
+        const audio = document.getElementById('audioPlayer');
+        function setSpeed(rate, btn) {{
+            if (audio) audio.playbackRate = rate;
+            document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }}
+    </script>
+</body>
+</html>
+"""
+        return Response(html_content, headers=[("Content-Type", "text/html; charset=utf-8")])
 
     @http.route('/recordings/<path:filename>', type='http', auth='public', methods=['GET'])
     def stream_recording(self, filename):
@@ -543,7 +811,7 @@ class DiyaCrmCallTrackerController(http.Controller):
 
         linked_count = 0
         for msg in messages:
-            if 'Call Recording:' in (msg.body or ''):
+            if 'Play Recording' in (msg.body or ''):
                 continue
             lead = env['crm.lead'].browse(msg.res_id)
             phone = lead.phone or lead.mobile or ''
@@ -555,16 +823,17 @@ class DiyaCrmCallTrackerController(http.Controller):
 
             for rel_p, mtime in all_recordings:
                 if clean_phone in rel_p:
+                    player_url = f"https://crm.sigprop.in/play_recording?file={rel_p}"
                     rec_url = 'https://crm.sigprop.in/recordings/' + rel_p
-                    ext = os.path.splitext(rel_p)[1].lower()
-                    mime = 'audio/aac' if ext == '.aac' else ('audio/mp4' if ext == '.m4a' else 'audio/mpeg')
                     player = f'''
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
-                        <span style="font-size: 12px; font-weight: 700; color: #334155;">🔊 Call Recording:</span>
-                        <div style="margin-top: 4px;">
-                            <audio controls style="width: 100%; height: 32px; outline: none;" preload="metadata">
-                                <source src="{rec_url}" type="{mime}">
-                            </audio>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
+                                ▶️ Play Recording
+                            </a>
+                            <a href="{rec_url}" download style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 11.5px; font-weight: 600;">
+                                ⬇️ Download
+                            </a>
                         </div>
                     </div>
                     '''
@@ -581,7 +850,6 @@ class DiyaCrmCallTrackerController(http.Controller):
             if not call_id or not recording_url:
                 return {"status": "error", "message": "Missing params"}
             env = request.env(user=SUPERUSER_ID, su=True)
-            # Search latest call log message on lead (retry up to 4 times to ensure sync_call completed)
             target_msg = False
             for _ in range(4):
                 target_msg = env['mail.message'].search([
@@ -592,24 +860,82 @@ class DiyaCrmCallTrackerController(http.Controller):
                     break
                 time.sleep(1.0)
             if target_msg:
+                rel_p = recording_url.replace("https://crm.sigprop.in/recordings/", "")
+                player_url = f"https://crm.sigprop.in/play_recording?file={rel_p}"
                 audio_html = f'''
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #cbd5e1;">
-                        <span style="font-size: 12px; font-weight: 700; color: #334155;">🔊 Call Recording:</span>
-                        <div style="margin-top: 4px;">
-                            <audio controls style="width: 100%; height: 32px; outline: none;" preload="metadata">
-                                <source src="{recording_url}" type="audio/aac">
-                                <source src="{recording_url}" type="audio/mp4">
-                                <source src="{recording_url}" type="audio/mpeg">
-                                <source src="{recording_url}" type="audio/amr">
-                                Your browser does not support the audio element.
-                            </audio>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
+                                ▶️ Play Recording
+                            </a>
+                            <a href="{recording_url}" download style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 11.5px; font-weight: 600;">
+                                ⬇️ Download
+                            </a>
                         </div>
                     </div>
                 '''
-                if 'Auto-Synced via Diya CRM Dialer' in target_msg.body and 'Call Recording:' not in target_msg.body:
+                if 'Auto-Synced via Diya CRM Dialer' in target_msg.body and 'Play Recording' not in target_msg.body:
                     target_msg.body = Markup(target_msg.body.replace('Auto-Synced via Diya CRM Dialer', audio_html + 'Auto-Synced via Diya CRM Dialer'))
                 return {"status": "success", "message": "Recording audio added to chatter"}
             return {"status": "not_found"}
         except Exception as e:
             _logger.exception("Update recording error: %s", str(e))
             return {"status": "error", "message": str(e)}
+
+    @http.route('/api/call_tracker/upgrade_past_recordings', type='http', auth='public', methods=['GET'])
+    def upgrade_past_recordings(self, **kwargs):
+        env = request.env(user=SUPERUSER_ID, su=True)
+        messages = env['mail.message'].search([
+            ('model', '=', 'crm.lead'),
+            ('body', 'ilike', 'Auto-Synced via DiyaSync')
+        ], order='id desc', limit=50)
+
+        updated_count = 0
+        base_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
+
+        recordings = []
+        if os.path.exists(base_dir):
+            for root, dirs, files in os.walk(base_dir):
+                for f in files:
+                    if f.lower().endswith(('.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg')):
+                        fp = os.path.join(root, f)
+                        rel_p = os.path.relpath(fp, base_dir).replace('\\', '/')
+                        recordings.append((rel_p, f, os.path.getmtime(fp)))
+        recordings.sort(key=lambda x: x[2], reverse=True)
+
+        for msg in messages:
+            if 'Play Recording' in (msg.body or ''):
+                continue
+            lead = env['crm.lead'].browse(msg.res_id)
+            phone = re.sub(r'\D', '', str(lead.phone or lead.mobile or ''))
+            if len(phone) > 10:
+                phone = phone[-10:]
+
+            match_rel = None
+            match_fname = None
+            for rel_p, fname, mtime in recordings:
+                if phone and phone in rel_p:
+                    match_rel = rel_p
+                    match_fname = fname
+                    break
+
+            if match_rel:
+                player_url = f"https://crm.sigprop.in/play_recording?file={match_rel}"
+                dl_url = f"https://crm.sigprop.in/recordings/{match_rel}"
+                btn_html = f'''
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; margin-bottom: 6px;">
+                        <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12.5px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
+                            ▶️ Play Recording
+                        </a>
+                        <a href="{dl_url}" download="{match_fname}" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600;">
+                            ⬇️ Download
+                        </a>
+                    </div>
+                '''
+                if 'Auto-Synced via DiyaSync' in msg.body:
+                    new_body = msg.body.replace('Auto-Synced via DiyaSync', btn_html + 'Auto-Synced via DiyaSync')
+                    msg.write({'body': Markup(new_body)})
+                    updated_count += 1
+
+        return Response(f"Successfully updated {updated_count} chatter messages with Play button!", content_type="text/plain")
+
