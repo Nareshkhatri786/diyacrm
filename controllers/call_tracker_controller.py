@@ -837,7 +837,8 @@ class DiyaCrmCallTrackerController(http.Controller):
                         </div>
                     </div>
                     '''
-                    msg.body = Markup(msg.body.replace('Auto-Synced via Diya CRM Dialer', player + 'Auto-Synced via Diya CRM Dialer'))
+                    new_b = str(msg.body).replace('Auto-Synced via Diya CRM Dialer', player + 'Auto-Synced via Diya CRM Dialer')
+                    msg.write({'body': Markup(new_b)})
                     linked_count += 1
                     break
         return {"status": "success", "linked": linked_count}
@@ -874,8 +875,9 @@ class DiyaCrmCallTrackerController(http.Controller):
                         </div>
                     </div>
                 '''
-                if 'Auto-Synced via Diya CRM Dialer' in target_msg.body and 'Play Recording' not in target_msg.body:
-                    target_msg.body = Markup(target_msg.body.replace('Auto-Synced via Diya CRM Dialer', audio_html + 'Auto-Synced via Diya CRM Dialer'))
+                if 'Auto-Synced via Diya CRM Dialer' in str(target_msg.body) and 'Play Recording' not in str(target_msg.body):
+                    new_b = str(target_msg.body).replace('Auto-Synced via Diya CRM Dialer', audio_html + 'Auto-Synced via Diya CRM Dialer')
+                    target_msg.write({'body': Markup(new_b)})
                 return {"status": "success", "message": "Recording audio added to chatter"}
             return {"status": "not_found"}
         except Exception as e:
@@ -887,10 +889,11 @@ class DiyaCrmCallTrackerController(http.Controller):
         env = request.env(user=SUPERUSER_ID, su=True)
         messages = env['mail.message'].search([
             ('model', '=', 'crm.lead'),
-            ('body', 'ilike', 'Auto-Synced via DiyaSync')
-        ], order='id desc', limit=50)
+            ('body', 'ilike', 'DiyaSync')
+        ], order='id desc', limit=100)
 
         updated_count = 0
+        deleted_count = 0
         base_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
 
         recordings = []
@@ -903,13 +906,26 @@ class DiyaCrmCallTrackerController(http.Controller):
                         recordings.append((rel_p, f, os.path.getmtime(fp)))
         recordings.sort(key=lambda x: x[2], reverse=True)
 
+        seen_lead_time = set()
         for msg in messages:
-            if 'Play Recording' in (msg.body or ''):
-                continue
             lead = env['crm.lead'].browse(msg.res_id)
+            if not lead.exists():
+                continue
+
             phone = re.sub(r'\D', '', str(lead.phone or lead.mobile or ''))
             if len(phone) > 10:
                 phone = phone[-10:]
+
+            # Deduplicate messages for same lead created around the same time
+            time_key = (msg.res_id, msg.date.strftime('%Y-%m-%d %H') if msg.date else '')
+            if time_key in seen_lead_time:
+                try:
+                    msg.unlink()
+                    deleted_count += 1
+                except Exception:
+                    pass
+                continue
+            seen_lead_time.add(time_key)
 
             match_rel = None
             match_fname = None
@@ -922,20 +938,41 @@ class DiyaCrmCallTrackerController(http.Controller):
             if match_rel:
                 player_url = f"https://crm.sigprop.in/play_recording?file={match_rel}"
                 dl_url = f"https://crm.sigprop.in/recordings/{match_rel}"
-                btn_html = f'''
-                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; margin-bottom: 6px;">
-                        <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12.5px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
-                            ▶️ Play Recording
-                        </a>
-                        <a href="{dl_url}" download="{match_fname}" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600;">
-                            ⬇️ Download
-                        </a>
-                    </div>
-                '''
-                if 'Auto-Synced via DiyaSync' in msg.body:
-                    new_body = msg.body.replace('Auto-Synced via DiyaSync', btn_html + 'Auto-Synced via DiyaSync')
-                    msg.write({'body': Markup(new_body)})
-                    updated_count += 1
+                comp_name = lead.company_id.name or "The 1st Residency"
+                staff_name = msg.author_id.name or "Shivam"
+                ext = os.path.splitext(match_fname)[1].lower().replace('.', '').upper()
 
-        return Response(f"Successfully updated {updated_count} chatter messages with Play button!", content_type="text/plain")
+                clean_card = Markup(f'''
+                    <div style="padding: 12px 16px; border-left: 4px solid #2563eb; background: #f8fafc; border-radius: 8px; margin: 6px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                            <span style="font-weight: 700; color: #1e40af; font-size: 13.5px;">
+                                🔊 Call Recording Auto-Attached
+                            </span>
+                            <span style="font-weight: 600; color: #1e40af; background: #dbeafe; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                                {comp_name}
+                            </span>
+                        </div>
+                        <div style="font-size: 12px; color: #475569; margin-bottom: 10px;">
+                            <b>Staff:</b> {staff_name} &nbsp;|&nbsp; <b>Client:</b> <span style="color: #1e293b; font-weight: 600;">{phone}</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+                            <a href="{player_url}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: #2563eb; color: #ffffff !important; border-radius: 6px; text-decoration: none; font-size: 12.5px; font-weight: 700; box-shadow: 0 2px 4px rgba(37,99,235,0.25);">
+                                ▶️ Play Recording
+                            </a>
+                            <a href="{dl_url}" download="{match_fname}" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #ffffff; color: #334155 !important; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 600;">
+                                ⬇️ Download ({ext})
+                            </a>
+                        </div>
+                        <div style="font-size: 11px; color: #94a3b8;">
+                            Auto-Synced via DiyaSync &bull; File: {match_fname}
+                        </div>
+                    </div>
+                ''')
+                msg.write({'body': clean_card})
+                updated_count += 1
+
+        return Response(
+            f"Successfully updated {updated_count} messages with Play button and cleaned {deleted_count} duplicate messages!",
+            content_type="text/plain"
+        )
 
