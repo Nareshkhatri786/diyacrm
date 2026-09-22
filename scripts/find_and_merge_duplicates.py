@@ -10,6 +10,32 @@ if hasattr(sys.stdout, 'reconfigure'):
 config_path = '/etc/odoo19.conf' if os.path.exists('/etc/odoo19.conf') else r'c:\xampp\htdocs\odoo-19\odoo.conf'
 db_name = 'diyacrm' if os.path.exists('/etc/odoo19.conf') else 'odoo19'
 
+if sys.platform != 'win32' and not os.environ.get('ODOO_VENV_SWITCHED'):
+    candidate_venvs = []
+    for s_path in ['/etc/systemd/system/odoo19.service', '/lib/systemd/system/odoo19.service', '/etc/systemd/system/odoo.service']:
+        if os.path.exists(s_path):
+            try:
+                with open(s_path, 'r') as sf:
+                    for line in sf:
+                        if line.strip().startswith('ExecStart='):
+                            parts = line.strip().split('=', 1)[1].strip().split()
+                            if parts and os.path.isfile(parts[0]):
+                                candidate_venvs.append(parts[0])
+            except Exception:
+                pass
+    candidate_venvs += [
+        '/opt/odoo19-venv/bin/python3',
+        '/opt/odoo19/odoo-venv/bin/python3',
+        '/opt/odoo19/venv/bin/python3',
+        '/opt/odoo-venv/bin/python3',
+        '/opt/odoo19/.venv/bin/python3',
+        '/var/odoo19-venv/bin/python3',
+    ]
+    for v_py in candidate_venvs:
+        if os.path.isfile(v_py) and os.access(v_py, os.X_OK) and os.path.realpath(v_py) != os.path.realpath(sys.executable):
+            os.environ['ODOO_VENV_SWITCHED'] = '1'
+            os.execv(v_py, [v_py] + sys.argv)
+
 if os.path.exists('/opt/odoo19/odoo'):
     sys.path.insert(0, '/opt/odoo19/odoo')
 else:
