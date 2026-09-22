@@ -10,10 +10,9 @@ SELECT
     RIGHT(regexp_replace(COALESCE(l.phone, ''), '\\D', '', 'g'), 10) AS phone_10,
     COUNT(l.id) AS dup_count,
     string_agg(l.id::text, ', ' ORDER BY l.id ASC) AS lead_ids,
-    string_agg(l.name || ' [' || COALESCE(s.name, 'No Stage') || ']', '  |  ' ORDER BY l.id ASC) AS details
+    string_agg(COALESCE(l.name::text, 'Unnamed'), '  |  ' ORDER BY l.id ASC) AS lead_names
 FROM crm_lead l
 JOIN res_company c ON c.id = l.company_id
-LEFT JOIN crm_stage s ON s.id = l.stage_id
 WHERE l.phone IS NOT NULL 
   AND length(regexp_replace(l.phone, '\\D', '', 'g')) >= 10
 GROUP BY c.name, l.company_id, RIGHT(regexp_replace(COALESCE(l.phone, ''), '\\D', '', 'g'), 10)
@@ -76,5 +75,3 @@ else:
     print(res.stdout)
     if res.stderr:
         print(res.stderr)
-    print("\n💡 NOTE: To automatically merge all found duplicates and preserve all chatter notes:")
-    print("   python3 scripts/scan_all_duplicates.py --merge")
