@@ -9,6 +9,32 @@ from odoo import models, fields, api, _
 from odoo.exceptions import UserError
 
 
+def normalize_lead_phone(raw_phone):
+    """
+    Clean and normalize phone number:
+    - Strips non-digits
+    - For Indian numbers (10 digits, 11 starting with 0, or 12 starting with 91):
+      returns clean 10-digit number (e.g. '9227777314')
+    - For international numbers: returns '+<digits>'
+    """
+    if not raw_phone:
+        return False
+    digits = re.sub(r'\D', '', str(raw_phone))
+    if not digits:
+        return False
+    if len(digits) == 12 and digits.startswith("91") and digits[2] in "6789":
+        return digits[2:]
+    elif len(digits) == 11 and digits.startswith("0") and digits[1] in "6789":
+        return digits[1:]
+    elif len(digits) == 10 and digits[0] in "6789":
+        return digits
+    elif len(digits) > 10 and digits.startswith("91"):
+        return digits[-10:]
+    elif len(digits) >= 10:
+        return digits[-10:] if not str(raw_phone).strip().startswith('+') else f"+{digits}"
+    return digits
+
+
 class CrmLead(models.Model):
     _inherit = "crm.lead"
 
@@ -81,28 +107,73 @@ class CrmLead(models.Model):
             elif lead.meeting_display_label == "Last Meeting":
                 lead.meeting_display_label = "Last Site Visit"
 
-    def _find_duplicate_phone(self, phone, company_id, exclude_id=None):
-        if not phone or not company_id:
+    @api.model
+    def find_lead_by_phone(self, phone, company_id=None, exclude_id=None, active_test=True):
+        """
+        Robust phone lookup across lead records:
+        - Extracts digits and matches on the last 10 digits (ignoring spaces, dashes, +91, 0 prefix, etc.)
+        - Scoped strictly by company_id if provided (multi-company support: same phone allowed in different companies)
+        - Supports active_test=False to find lost/archived leads (for reactivation)
+        """
+        if not phone:
             return self.env["crm.lead"]
-        domain = [("phone", "=", phone), ("type", "=", "opportunity"), ("company_id", "=", company_id), ("active", "=", True)]
+        digits = re.sub(r'\D', '', str(phone))
+        if not digits:
+            return self.env["crm.lead"]
+
+        phone_10 = digits[-10:] if len(digits) >= 10 else digits
+        where_clauses = ["type = 'opportunity'"]
+        params = []
+
+        if len(digits) >= 10:
+            where_clauses.append("RIGHT(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 10) = %s")
+            params.append(phone_10)
+        else:
+            where_clauses.append("regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') = %s")
+            params.append(digits)
+
+        if company_id:
+            c_id = company_id.id if hasattr(company_id, 'id') else int(company_id)
+            where_clauses.append("company_id = %s")
+            params.append(c_id)
+
         if exclude_id:
-            domain.append(("id", "!=", exclude_id))
-        return self.env["crm.lead"].search(domain, limit=1)
+            e_id = exclude_id.id if hasattr(exclude_id, 'id') else int(exclude_id)
+            where_clauses.append("id != %s")
+            params.append(e_id)
+
+        if active_test:
+            where_clauses.append("active = true")
+
+        query = f"""
+            SELECT id FROM crm_lead
+            WHERE {" AND ".join(where_clauses)}
+            ORDER BY active DESC, write_date DESC, id DESC
+            LIMIT 1
+        """
+        self._cr.execute(query, tuple(params))
+        res = self._cr.fetchone()
+        if res:
+            return self.browse(res[0])
+        return self.env["crm.lead"]
+
+    def _find_duplicate_phone(self, phone, company_id, exclude_id=None):
+        return self.find_lead_by_phone(phone, company_id=company_id, exclude_id=exclude_id, active_test=True)
 
     @api.onchange("phone")
     def _onchange_phone_duplicate_check(self):
         if not self.phone:
             return
         company_id = self.company_id.id if self.company_id else self.env.company.id
-        existing = self._find_duplicate_phone(self.phone, company_id, exclude_id=self._origin.id)
+        existing = self.find_lead_by_phone(self.phone, company_id=company_id, exclude_id=self._origin.id, active_test=True)
         if existing:
             base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url") or ""
             opp_url = base_url + "/odoo/crm/" + str(existing.id)
             return {
                 "warning": {
                     "title": _("Duplicate Phone Number"),
-                    "message": "This phone number already exists in your company!\n\nOpportunity : %s\nSalesperson : %s\nStage : %s\nCompany : %s\n\nDirect Link : %s" % (
-                        existing.name or "-", existing.user_id.name or "Unassigned",
+                    "message": "This phone number (%s) already exists in your company!\n\nOpportunity : %s\nSalesperson : %s\nStage : %s\nCompany : %s\n\nDirect Link : %s" % (
+                        self.phone, existing.name or "-", existing.user_id.name or "Unassigned",
                         existing.stage_id.name or "-", existing.company_id.name or "-", opp_url
                     )
                 }
@@ -121,16 +192,36 @@ class CrmLead(models.Model):
                     vals["unit_type"] = default_ut
             phone = vals.get("phone")
             if phone:
+                normalized = normalize_lead_phone(phone)
+                if normalized:
+                    vals["phone"] = normalized
                 company_id = vals.get("company_id") or self.env.company.id
-                existing = self._find_duplicate_phone(phone, company_id)
+                existing = self.find_lead_by_phone(vals["phone"], company_id=company_id, active_test=True)
                 if existing:
                     base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url") or ""
                     opp_url = base_url + "/odoo/crm/" + str(existing.id)
-                    raise UserError("Duplicate Phone Number Detected!\n\nOpportunity : %s\nSalesperson : %s\nStage : %s\nCompany : %s\n\nDirect Link : %s" % (
-                        existing.name or "-", existing.user_id.name or "Unassigned",
+                    raise UserError(_("Duplicate Phone Number Detected!\n\nThis phone number (%s) already exists in your company!\n\nOpportunity : %s\nSalesperson : %s\nStage : %s\nCompany : %s\n\nDirect Link : %s") % (
+                        vals["phone"], existing.name or "-", existing.user_id.name or "Unassigned",
                         existing.stage_id.name or "-", existing.company_id.name or "-", opp_url
                     ))
         return super().create(vals_list)
+
+    def write(self, vals):
+        if "phone" in vals and vals.get("phone"):
+            normalized = normalize_lead_phone(vals["phone"])
+            if normalized:
+                vals["phone"] = normalized
+            for record in self:
+                company_id = vals.get("company_id") or record.company_id.id
+                existing = self.find_lead_by_phone(vals["phone"], company_id=company_id, exclude_id=record.id, active_test=True)
+                if existing:
+                    base_url = self.env["ir.config_parameter"].sudo().get_param("web.base.url") or ""
+                    opp_url = base_url + "/odoo/crm/" + str(existing.id)
+                    raise UserError(_("Duplicate Phone Number Detected!\n\nThis phone number (%s) already exists in your company!\n\nOpportunity : %s\nSalesperson : %s\nStage : %s\nCompany : %s\n\nDirect Link : %s") % (
+                        vals["phone"], existing.name or "-", existing.user_id.name or "Unassigned",
+                        existing.stage_id.name or "-", existing.company_id.name or "-", opp_url
+                    ))
+        return super().write(vals)
 
     def web_save(self, vals, specification):
         if not self:

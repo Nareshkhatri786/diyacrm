@@ -30,7 +30,7 @@ def clean_phone_10(phone_str):
     return digits[-10:] if len(digits) >= 10 else digits
 
 
-def scan_and_merge_duplicates(auto_merge=False):
+def scan_and_merge_duplicates(auto_merge=False, filter_phone=None):
     print("==========================================================================================")
     print(" 🔍 DIYA CRM - COMPANY-WISE DUPLICATE PHONE NUMBER SCAN & MERGE ENGINE")
     print("==========================================================================================")
@@ -38,6 +38,10 @@ def scan_and_merge_duplicates(auto_merge=False):
     registry = Registry(db_name)
     with registry.cursor() as cr:
         env = api.Environment(cr, SUPERUSER_ID, {})
+
+        target_digits = clean_phone_10(filter_phone) if filter_phone else None
+        if target_digits:
+            print(f"🎯 Target Phone Filter Active: {target_digits}")
 
         companies = env['res.company'].search([])
         grand_total_duplicate_groups = 0
@@ -55,7 +59,8 @@ def scan_and_merge_duplicates(auto_merge=False):
             for lead in all_leads:
                 digits_10 = clean_phone_10(lead.phone)
                 if digits_10 and len(digits_10) == 10:
-                    phone_groups[digits_10].append(lead)
+                    if not target_digits or digits_10 == target_digits:
+                        phone_groups[digits_10].append(lead)
 
             dup_groups = {p: leads for p, leads in phone_groups.items() if len(leads) > 1}
             print(f"   Found {len(dup_groups)} Duplicate Phone Groups in {comp.name}")
@@ -109,6 +114,10 @@ def scan_and_merge_duplicates(auto_merge=False):
                             merged_in_comp += 1
                             grand_total_merged_records += 1
 
+                        # Normalize primary lead's phone to clean 10 digits
+                        if primary_lead.phone != phone_num:
+                            primary_lead.write({'phone': phone_num})
+
                     print(f"   ✅ Cleaned & Merged {merged_in_comp} duplicate records in {comp.name}")
 
         if auto_merge:
@@ -120,9 +129,15 @@ def scan_and_merge_duplicates(auto_merge=False):
             print("\n==========================================================================================")
             print(f" ℹ️ SUMMARY: Found Total {grand_total_duplicate_groups} duplicate phone groups across all companies.")
             print(" Run with '--merge' to automatically consolidate all chatter and remove duplicates!")
+            print(" Example: python3 find_and_merge_duplicates.py --merge --phone 9227777314")
             print("==========================================================================================")
 
 
 if __name__ == '__main__':
     merge_flag = '--merge' in sys.argv or '-m' in sys.argv
-    scan_and_merge_duplicates(auto_merge=merge_flag)
+    phone_arg = None
+    if '--phone' in sys.argv:
+        p_idx = sys.argv.index('--phone')
+        if p_idx + 1 < len(sys.argv):
+            phone_arg = sys.argv[p_idx + 1]
+    scan_and_merge_duplicates(auto_merge=merge_flag, filter_phone=phone_arg)

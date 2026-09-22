@@ -96,15 +96,19 @@ class DiyaCrmCallTrackerController(http.Controller):
                 ("name", "ilike", phone_10)
             ]
 
-            # First try matching in user's company
-            matching_leads = Lead.search([("company_id", "=", target_company_id)] + domain, order="write_date desc")
-            if not matching_leads:
-                # If not found in primary company, search globally across all companies
-                matching_leads = Lead.search(domain, order="write_date desc")
-
-            # Prioritize real named leads over previously auto-generated 'Call:' leads
-            real_leads = matching_leads.filtered(lambda l: not (l.name.startswith("Call:") or l.name.startswith("+91")))
-            lead = real_leads[0] if real_leads else (matching_leads[0] if matching_leads else False)
+            # First try matching via find_lead_by_phone in user's company
+            lead = env["crm.lead"].find_lead_by_phone(phone_number or phone_10, company_id=target_company_id, active_test=False)
+            if not lead:
+                # Fallback to search domain in user's company
+                matching_leads = Lead.search([("company_id", "=", target_company_id)] + domain, order="write_date desc")
+                if not matching_leads:
+                    # Search globally
+                    lead = env["crm.lead"].find_lead_by_phone(phone_number or phone_10, company_id=None, active_test=False)
+                    if not lead:
+                        matching_leads = Lead.search(domain, order="write_date desc")
+                if not lead and matching_leads:
+                    real_leads = matching_leads.filtered(lambda l: not (l.name.startswith("Call:") or l.name.startswith("+91")))
+                    lead = real_leads[0] if real_leads else matching_leads[0]
 
             # Duration formatting
             dur = int(duration_seconds or 0)
@@ -392,18 +396,23 @@ class DiyaCrmCallTrackerController(http.Controller):
             lead_id = False
             lead_name = False
             if phone_10 and phone_10 != 'Unknown':
-                Lead = env["crm.lead"].with_context(active_test=False)
-                domain = [
-                    "|",
-                    ("phone", "ilike", phone_10),
-                    ("name", "ilike", phone_10)
-                ]
-                matching_leads = Lead.search([("company_id", "=", company.id)] + domain, order="write_date desc", limit=1)
-                if not matching_leads:
-                    matching_leads = Lead.search(domain, order="write_date desc", limit=1)
+                lead = env["crm.lead"].find_lead_by_phone(phone_10, company_id=company.id, active_test=False)
+                if not lead:
+                    lead = env["crm.lead"].find_lead_by_phone(phone_10, company_id=None, active_test=False)
+                if not lead:
+                    Lead = env["crm.lead"].with_context(active_test=False)
+                    domain = [
+                        "|",
+                        ("phone", "ilike", phone_10),
+                        ("name", "ilike", phone_10)
+                    ]
+                    matching_leads = Lead.search([("company_id", "=", company.id)] + domain, order="write_date desc", limit=1)
+                    if not matching_leads:
+                        matching_leads = Lead.search(domain, order="write_date desc", limit=1)
+                    if matching_leads:
+                        lead = matching_leads[0]
 
-                if matching_leads:
-                    lead = matching_leads[0]
+                if lead:
                     lead_id = lead.id
                     lead_name = lead.name
                     # Check if audio already embedded for this file to prevent duplicate posts

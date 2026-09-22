@@ -53,6 +53,13 @@ class CrmSiteVisitDesk(models.TransientModel):
 
     def _find_lead(self, digits):
         """Search lead with active_test=False so inactive/lost leads are found too."""
+        lead = self.env["crm.lead"].find_lead_by_phone(
+            digits,
+            company_id=self.company_id.id if self.company_id else None,
+            active_test=False
+        )
+        if lead:
+            return lead
         leads = self.env["crm.lead"].with_context(active_test=False).search([
             ("phone", "ilike", digits)
         ], order="id desc")

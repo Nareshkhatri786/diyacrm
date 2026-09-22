@@ -326,11 +326,18 @@ class WhatsAppWebhookController(http.Controller):
         call_act_type = env['mail.activity.type'].search([('name', '=', 'Call')], limit=1) or env.ref('mail.mail_activity_data_call')
 
         existing_lead = None
-        if clean_mobile_10:
-            existing_lead = env['crm.lead'].with_context(active_test=False).search([
-                ('company_id', '=', company_id),
-                ('phone', 'like', clean_mobile_10)
-            ], order='id desc', limit=1)
+        if clean_mobile_10 or raw_phone:
+            existing_lead = env['crm.lead'].find_lead_by_phone(
+                raw_phone or clean_mobile_10,
+                company_id=company_id,
+                active_test=False
+            )
+            if not existing_lead and clean_mobile_10:
+                existing_lead = env['crm.lead'].find_lead_by_phone(
+                    clean_mobile_10,
+                    company_id=company_id,
+                    active_test=False
+                )
 
         lead_action = "created"
 
