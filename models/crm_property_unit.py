@@ -45,10 +45,19 @@ class CrmPropertyUnit(models.Model):
     booking_date = fields.Date(string="Booking Date", tracking=True)
     remarks = fields.Text(string="Remarks / Notes")
 
-    _sql_constraints = [
-        ('unique_unit_per_block_company', 'unique(company_id, block, unit_no)', 
-         'This unit number already exists in this block and company!'),
-    ]
+    @api.constrains('company_id', 'block', 'unit_no')
+    def _check_unique_unit(self):
+        for rec in self:
+            domain = [
+                ('company_id', '=', rec.company_id.id),
+                ('block', '=', rec.block),
+                ('unit_no', '=', rec.unit_no),
+                ('id', '!=', rec.id),
+            ]
+            if self.search_count(domain):
+                raise UserError(_(
+                    "Unit %s in Block %s already exists for this company!"
+                ) % (rec.unit_no, rec.block))
 
     @api.depends("block", "unit_no")
     def _compute_name(self):

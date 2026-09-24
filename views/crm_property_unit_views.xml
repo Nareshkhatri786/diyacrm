@@ -166,7 +166,7 @@
                 <filter name="filter_plot" string="🏞️ Plot Facing" domain="[('facing', '=', 'plot_facing')]"/>
                 <filter name="filter_plc" string="⭐ Has Location Charge (PLC)" domain="[('location_charge', '=', True)]"/>
 
-                <group expand="0" string="Group By">
+                <group string="Group By">
                     <filter string="Block" name="group_block" context="{'group_by': 'block'}"/>
                     <filter string="Floor" name="group_floor" context="{'group_by': 'floor'}"/>
                     <filter string="Size" name="group_size" context="{'group_by': 'size_sq_yard'}"/>
