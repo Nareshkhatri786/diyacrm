@@ -51,13 +51,11 @@ def main():
     print(f"• Odoo Binary   : {odoo_bin}")
     print(f"• Config File   : {conf}")
 
-    upgrade_cmd = [
-        py_bin, odoo_bin,
-        "-c", conf,
-        "-d", "diyacrm",
-        "-u", "diyacrm",
-        "--stop-after-init"
-    ]
+    inner_cmd = f"{py_bin} {odoo_bin} -c {conf} -d diyacrm -u diyacrm --stop-after-init"
+    if os.name != 'nt' and hasattr(os, 'geteuid') and os.geteuid() == 0:
+        upgrade_cmd = ["su", "-", "odoo19", "-s", "/bin/bash", "-c", inner_cmd]
+    else:
+        upgrade_cmd = [py_bin, odoo_bin, "-c", conf, "-d", "diyacrm", "-u", "diyacrm", "--stop-after-init"]
 
     print("\n📦 Running Odoo Module Upgrade (-u diyacrm)... Please wait...")
     res = subprocess.run(upgrade_cmd)
