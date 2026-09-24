@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import subprocess
-import json
 
 UNITS_DATA = [
     # Block B (16 units)
@@ -62,24 +61,38 @@ def seed_units_sql():
     print(" 🏢 Seeding Real Estate Units for 'The 1st Residency' into Diya CRM")
     print("===================================================================")
 
-    values_rows = []
+    upsert_lines = []
     for block, floor, unit_no, size, facing, plc in UNITS_DATA:
         name = f"{block}-{unit_no}"
         plc_str = 'true' if plc else 'false'
-        values_rows.append(
-            f"('{name}', '{unit_no}', '{block}', {floor}, '{size}', '{facing}', {plc_str}, 'available')"
-        )
-    values_sql = ",\n    ".join(values_rows)
+        upsert_lines.append(f"""
+        IF EXISTS (SELECT 1 FROM crm_property_unit WHERE company_id = comp_id AND block = '{block}' AND unit_no = '{unit_no}') THEN
+            UPDATE crm_property_unit
+            SET size_sq_yard = '{size}',
+                facing = '{facing}',
+                location_charge = {plc_str},
+                floor = {floor},
+                name = '{name}'
+            WHERE company_id = comp_id AND block = '{block}' AND unit_no = '{unit_no}';
+            upd_count := upd_count + 1;
+        ELSE
+            INSERT INTO crm_property_unit 
+                (name, unit_no, block, floor, size_sq_yard, facing, location_charge, status, company_id, create_date, write_date)
+            VALUES 
+                ('{name}', '{unit_no}', '{block}', {floor}, '{size}', '{facing}', {plc_str}, 'available', comp_id, NOW(), NOW());
+            ins_count := ins_count + 1;
+        END IF;
+        """)
+
+    all_upserts = "\n".join(upsert_lines)
 
     sql = f"""
 DO $$
 DECLARE
     comp_id INT;
-    inserted_count INT := 0;
-    updated_count INT := 0;
-    r RECORD;
+    ins_count INT := 0;
+    upd_count INT := 0;
 BEGIN
-    -- 1. Find Company 'The 1st Residency'
     SELECT id INTO comp_id FROM res_company 
     WHERE name ILIKE '%1st%' OR name ILIKE '%first%' 
     ORDER BY id ASC LIMIT 1;
@@ -91,7 +104,6 @@ BEGIN
         RAISE NOTICE '🏢 Found Company ID: % for The 1st Residency', comp_id;
     END IF;
 
-    -- Ensure table exists if module upgrade not run yet
     CREATE TABLE IF NOT EXISTS crm_property_unit (
         id SERIAL PRIMARY KEY,
         name VARCHAR,
@@ -110,37 +122,15 @@ BEGIN
         salesperson_id INT,
         booking_date DATE,
         remarks TEXT,
-        create_date TIMESTAMP,
-        write_date TIMESTAMP,
-        create_uid INT,
-        write_uid INT
+        create_date TIMESTAMP DEFAULT NOW(),
+        write_date TIMESTAMP DEFAULT NOW(),
+        create_uid INT DEFAULT 1,
+        write_uid INT DEFAULT 1
     );
 
-    -- 2. Upsert all 49 units
-    FOR r IN (
-        VALUES
-        {values_sql}
-    ) AS t(name, unit_no, block, floor, size, facing, plc, status)
-    LOOP
-        IF EXISTS (SELECT 1 FROM crm_property_unit WHERE company_id = comp_id AND block = r.block AND unit_no = r.unit_no) THEN
-            UPDATE crm_property_unit
-            SET size_sq_yard = r.size,
-                facing = r.facing,
-                location_charge = r.plc,
-                floor = r.floor,
-                name = r.name
-            WHERE company_id = comp_id AND block = r.block AND unit_no = r.unit_no;
-            updated_count := updated_count + 1;
-        ELSE
-            INSERT INTO crm_property_unit 
-                (name, unit_no, block, floor, size_sq_yard, facing, location_charge, status, company_id, create_date, write_date)
-            VALUES 
-                (r.name, r.unit_no, r.block, r.floor, r.size, r.facing, r.plc, r.status, comp_id, NOW(), NOW());
-            inserted_count := inserted_count + 1;
-        END IF;
-    END LOOP;
+    {all_upserts}
 
-    RAISE NOTICE '🎉 UNIT SEEDING COMPLETE: % inserted, % updated! Total 49 units active.', inserted_count, updated_count;
+    RAISE NOTICE '🎉 UNIT SEEDING COMPLETE: % inserted, % updated! Total 49 units ready in The 1st Residency.', ins_count, upd_count;
 END $$;
 """
 
