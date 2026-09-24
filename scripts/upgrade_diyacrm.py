@@ -57,6 +57,9 @@ def main():
     else:
         upgrade_cmd = [py_bin, odoo_bin, "-c", conf, "-d", "diyacrm", "-u", "diyacrm", "--stop-after-init"]
 
+    print("\n🛑 Temporarily Stopping Odoo19 Service to release port...")
+    subprocess.run(["systemctl", "stop", "odoo19"])
+
     print("\n📦 Running Odoo Module Upgrade (-u diyacrm)... Please wait...")
     res = subprocess.run(upgrade_cmd)
     if res.returncode == 0:
@@ -64,8 +67,8 @@ def main():
     else:
         print(f"⚠️ Upgrade finished with code {res.returncode}")
 
-    print("\n🔄 Restarting Odoo19 Service...")
-    subprocess.run(["systemctl", "restart", "odoo19"])
+    print("\n▶️ Starting Odoo19 Service...")
+    subprocess.run(["systemctl", "start", "odoo19"])
     print("\n🎉 ALL DONE! Diya CRM Unit Matrix is now LIVE!")
 
 if __name__ == '__main__':
