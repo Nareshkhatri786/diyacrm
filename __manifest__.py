@@ -9,6 +9,7 @@
     "license": "LGPL-3",
     "depends": ["base", "crm", "mail", "utm", "calendar", "hr", "hr_attendance"],
     "data": [
+        "security/crm_property_unit_security.xml",
         "security/ir.model.access.csv",
         "data/utm_source_data.xml",
         "data/mail_activity_type_data.xml",

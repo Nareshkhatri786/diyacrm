@@ -14,20 +14,20 @@ export class CrmUnitMatrix extends Component {
 
         this.state = useState({
             loading: true,
-            activeBlock: "B",
+            activeBlock: "",
             filterSize: "all",
             filterFacing: "all",
             filterPlc: "all",
             filterStatus: "all",
             searchQuery: "",
             data: {
-                company_name: "The 1st Residency",
+                company_name: "",
                 company_id: false,
                 total_count: 0,
                 available_count: 0,
                 booked_count: 0,
                 hold_count: 0,
-                blocks: ["B", "C"],
+                blocks: [],
                 block_data: {},
                 size_stats: { "265": 0, "270": 0, "275": 0 },
             },
@@ -44,8 +44,12 @@ export class CrmUnitMatrix extends Component {
             const res = await this.orm.call("crm.property.unit", "get_unit_matrix_data", []);
             if (res) {
                 this.state.data = res;
-                if (res.blocks && res.blocks.length > 0 && !res.blocks.includes(this.state.activeBlock)) {
-                    this.state.activeBlock = res.blocks[0];
+                if (res.blocks && res.blocks.length > 0) {
+                    if (!res.blocks.includes(this.state.activeBlock)) {
+                        this.state.activeBlock = res.blocks[0];
+                    }
+                } else {
+                    this.state.activeBlock = "";
                 }
             }
         } catch (err) {

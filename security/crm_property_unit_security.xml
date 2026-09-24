@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Multi-Company Record Rule: Each company only sees its own units -->
+    <record id="crm_property_unit_rule_company" model="ir.rule">
+        <field name="name">Property Unit Multi-Company Isolation</field>
+        <field name="model_id" ref="model_crm_property_unit"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

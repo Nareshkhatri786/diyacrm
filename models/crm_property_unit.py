@@ -121,11 +121,13 @@ class CrmPropertyUnit(models.Model):
         new_status = 'available' if self.status == 'hold' else 'hold'
         self.status = new_status
 
+    _check_company_auto = True
+
     @api.model
     def get_unit_matrix_data(self, company_id=None):
         """
         API method for OWL Interactive Matrix view:
-        Returns structured data grouped by Block and Floor.
+        Returns structured data grouped by Block and Floor strictly for the requested or current active company.
         """
         if not company_id or company_id == 'current':
             company_id = self.env.company.id
@@ -133,18 +135,22 @@ class CrmPropertyUnit(models.Model):
             company_id = int(company_id)
 
         company = self.env["res.company"].browse(company_id)
+        # Search strictly for this company
         units = self.search([("company_id", "=", company_id)], order="floor desc, unit_no asc")
 
+        floor_dict = dict(self._fields['floor'].selection or [])
+        facing_dict = dict(self._fields['facing'].selection or [])
+        block_dict = dict(self._fields['block'].selection or [])
+
+        # Dynamic blocks: Only blocks that actually have units in this company
         blocks = sorted(list(set(units.mapped("block"))))
-        if not blocks:
-            blocks = ["B", "C"]
 
         total_count = len(units)
         available_count = len(units.filtered(lambda u: u.status == "available"))
         booked_count = len(units.filtered(lambda u: u.status == "booked"))
         hold_count = len(units.filtered(lambda u: u.status == "hold"))
 
-        # Group data: { 'B': { 10: [units...], 9: [units...] }, 'C': { ... } }
+        # Group data per block and floor
         block_data = {}
         for b in blocks:
             b_units = units.filtered(lambda u: u.block == b)
@@ -160,9 +166,10 @@ class CrmPropertyUnit(models.Model):
                         "unit_no": u.unit_no,
                         "block": u.block,
                         "floor": u.floor,
+                        "floor_label": floor_dict.get(u.floor, f"Floor {u.floor}"),
                         "size": u.size_sq_yard,
                         "facing": u.facing,
-                        "facing_label": dict(u._fields['facing'].selection).get(u.facing, u.facing),
+                        "facing_label": facing_dict.get(u.facing, u.facing),
                         "plc": u.location_charge,
                         "status": u.status,
                         "buyer": u.customer_name or (u.booking_lead_id.contact_name if u.booking_lead_id else "") or "",
@@ -171,21 +178,26 @@ class CrmPropertyUnit(models.Model):
                     })
                 floor_groups.append({
                     "floor": fl,
+                    "floor_label": floor_dict.get(fl, f"Floor {fl}"),
                     "units": units_list,
                 })
             block_data[b] = {
+                "name": block_dict.get(b, f"Block {b}"),
                 "total": len(b_units),
                 "available": len(b_units.filtered(lambda u: u.status == "available")),
                 "booked": len(b_units.filtered(lambda u: u.status == "booked")),
                 "floors": floor_groups,
             }
 
-        # Size breakdown stats
+        # Dynamic size stats for available units
+        distinct_sizes = sorted(list(set(units.mapped("size_sq_yard"))))
         size_stats = {
-            "265": len(units.filtered(lambda u: u.size_sq_yard == "265" and u.status == "available")),
-            "270": len(units.filtered(lambda u: u.size_sq_yard == "270" and u.status == "available")),
-            "275": len(units.filtered(lambda u: u.size_sq_yard == "275" and u.status == "available")),
+            s: len(units.filtered(lambda u: u.size_sq_yard == s and u.status == "available"))
+            for s in distinct_sizes
         }
+        for def_sz in ["265", "270", "275"]:
+            if def_sz not in size_stats:
+                size_stats[def_sz] = 0
 
         return {
             "company_name": company.name,
@@ -197,4 +209,5 @@ class CrmPropertyUnit(models.Model):
             "blocks": blocks,
             "block_data": block_data,
             "size_stats": size_stats,
+            "available_sizes": distinct_sizes,
         }
