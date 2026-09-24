@@ -90,14 +90,16 @@
 
                 <!-- Filters Strip -->
                 <div class="d-flex flex-wrap align-items-center gap-3">
-                    <!-- Size Filter -->
+                    <!-- Size Filter (Dynamic per Company) -->
                     <div class="d-flex align-items-center gap-1">
                         <span class="small fw-bold text-muted me-1">Size:</span>
                         <div class="btn-group btn-group-sm" role="group">
                             <button t-attf-class="btn #{state.filterSize === 'all' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setSizeFilter('all')">All</button>
-                            <button t-attf-class="btn #{state.filterSize === '265' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setSizeFilter('265')">265 Yd</button>
-                            <button t-attf-class="btn #{state.filterSize === '270' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setSizeFilter('270')">270 Yd</button>
-                            <button t-attf-class="btn #{state.filterSize === '275' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setSizeFilter('275')">275 Yd</button>
+                            <t t-foreach="state.data.available_sizes || []" t-as="sz" t-key="sz">
+                                <button t-attf-class="btn #{state.filterSize === sz ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setSizeFilter(sz)">
+                                    <t t-esc="sz"/> Yd
+                                </button>
+                            </t>
                         </div>
                     </div>
 
@@ -106,9 +108,11 @@
                         <span class="small fw-bold text-muted me-1">Facing:</span>
                         <div class="btn-group btn-group-sm" role="group">
                             <button t-attf-class="btn #{state.filterFacing === 'all' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('all')">All</button>
-                            <button t-attf-class="btn #{state.filterFacing === 'garden_view' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('garden_view')">🌳 Garden View</button>
-                            <button t-attf-class="btn #{state.filterFacing === 'project_facing' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('project_facing')">🏢 Project Facing</button>
-                            <button t-attf-class="btn #{state.filterFacing === 'plot_facing' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('plot_facing')">🏞️ Plot Facing</button>
+                            <button t-attf-class="btn #{state.filterFacing === 'garden_view' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('garden_view')">🌳 Garden</button>
+                            <button t-attf-class="btn #{state.filterFacing === 'main_road' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('main_road')">🛣️ Main Road</button>
+                            <button t-attf-class="btn #{state.filterFacing === 'internal_road' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('internal_road')">🏘️ Internal Road</button>
+                            <button t-attf-class="btn #{state.filterFacing === 'project_facing' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('project_facing')">🏢 Project</button>
+                            <button t-attf-class="btn #{state.filterFacing === 'plot_facing' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('plot_facing')">🏞️ Plot</button>
                         </div>
                     </div>
 
@@ -198,6 +202,8 @@
                                             </div>
                                             <div class="text-dark small text-truncate">
                                                 <t t-if="unit.facing === 'garden_view'"><i class="fa fa-tree text-success me-1"/> Garden View</t>
+                                                <t t-elif="unit.facing === 'main_road'"><i class="fa fa-road text-primary me-1"/> Main Road</t>
+                                                <t t-elif="unit.facing === 'internal_road'"><i class="fa fa-compass text-secondary me-1"/> Internal Road</t>
                                                 <t t-elif="unit.facing === 'project_facing'"><i class="fa fa-building-o text-primary me-1"/> Project Facing</t>
                                                 <t t-else=""><i class="fa fa-map-o text-secondary me-1"/> Plot Facing</t>
                                             </div>

@@ -163,15 +163,24 @@
                 <filter name="filter_hold" string="🟡 On Hold" domain="[('status', '=', 'hold')]"/>
 
                 <separator/>
+                <filter name="filter_block_a" string="Block A" domain="[('block', '=', 'A')]"/>
                 <filter name="filter_block_b" string="Block B" domain="[('block', '=', 'B')]"/>
                 <filter name="filter_block_c" string="Block C" domain="[('block', '=', 'C')]"/>
+                <filter name="filter_block_d" string="Block D" domain="[('block', '=', 'D')]"/>
 
                 <separator/>
                 <filter name="filter_265" string="265 Sq. Yards" domain="[('size_sq_yard', '=', '265')]"/>
                 <filter name="filter_270" string="270 Sq. Yards" domain="[('size_sq_yard', '=', '270')]"/>
                 <filter name="filter_275" string="275 Sq. Yards" domain="[('size_sq_yard', '=', '275')]"/>
+                <filter name="filter_285" string="285 Sq. Yards" domain="[('size_sq_yard', '=', '285')]"/>
+                <filter name="filter_295" string="295 Sq. Yards" domain="[('size_sq_yard', '=', '295')]"/>
+                <filter name="filter_315" string="315 Sq. Yards" domain="[('size_sq_yard', '=', '315')]"/>
+                <filter name="filter_380" string="380 Sq. Yards" domain="[('size_sq_yard', '=', '380')]"/>
+                <filter name="filter_400" string="400 Sq. Yards" domain="[('size_sq_yard', '=', '400')]"/>
 
                 <separator/>
+                <filter name="filter_main_road" string="🛣️ Main Road" domain="[('facing', '=', 'main_road')]"/>
+                <filter name="filter_internal_road" string="🏘️ Internal Road" domain="[('facing', '=', 'internal_road')]"/>
                 <filter name="filter_garden" string="🌳 Garden View" domain="[('facing', '=', 'garden_view')]"/>
                 <filter name="filter_project" string="🏢 Project Facing" domain="[('facing', '=', 'project_facing')]"/>
                 <filter name="filter_plot" string="🏞️ Plot Facing" domain="[('facing', '=', 'plot_facing')]"/>

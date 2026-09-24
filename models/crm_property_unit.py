@@ -32,13 +32,20 @@ class CrmPropertyUnit(models.Model):
         ("265", "265 Sq. Yards"),
         ("270", "270 Sq. Yards"),
         ("275", "275 Sq. Yards"),
+        ("285", "285 Sq. Yards"),
+        ("295", "295 Sq. Yards"),
+        ("315", "315 Sq. Yards"),
+        ("380", "380 Sq. Yards"),
+        ("400", "400 Sq. Yards"),
     ], string="Size (Sq. Yards)", required=True, tracking=True)
     facing = fields.Selection([
+        ("main_road", "Main Road"),
+        ("internal_road", "Internal Road"),
+        ("garden_view", "Garden View"),
         ("project_facing", "Project Facing"),
         ("plot_facing", "Plot Facing"),
-        ("garden_view", "Garden View"),
         ("road_facing", "Road Facing"),
-    ], string="Facing", required=True, default="project_facing", tracking=True)
+    ], string="Facing", required=True, default="main_road", tracking=True)
     location_charge = fields.Boolean(string="Location Charge (PLC)", default=False, tracking=True)
     status = fields.Selection([
         ("available", "Open / Available"),
