@@ -51,20 +51,26 @@ def main():
     print(f"• Odoo Binary   : {odoo_bin}")
     print(f"• Config File   : {conf}")
 
+    extra_args = ["--logfile="]
     if os.name != 'nt' and hasattr(os, 'geteuid') and os.geteuid() == 0:
-        upgrade_cmd = ["sudo", "-u", "odoo19", py_bin, odoo_bin, "-c", conf, "-d", "diyacrm", "-u", "diyacrm", "--stop-after-init"]
+        upgrade_cmd = ["sudo", "-u", "odoo19", py_bin, odoo_bin, "-c", conf, "-d", "diyacrm", "-u", "diyacrm", "--stop-after-init"] + extra_args
     else:
-        upgrade_cmd = [py_bin, odoo_bin, "-c", conf, "-d", "diyacrm", "-u", "diyacrm", "--stop-after-init"]
+        upgrade_cmd = [py_bin, odoo_bin, "-c", conf, "-d", "diyacrm", "-u", "diyacrm", "--stop-after-init"] + extra_args
 
     print("\n🛑 Temporarily Stopping Odoo19 Service to release port...")
     subprocess.run(["systemctl", "stop", "odoo19"])
 
-    print("\n📦 Running Odoo Module Upgrade (-u diyacrm)... Please wait...")
+    print(f"\n📦 Running Command: {' '.join(upgrade_cmd)}")
     res = subprocess.run(upgrade_cmd)
     if res.returncode == 0:
         print("✅ Module Upgrade Succeeded!")
     else:
         print(f"⚠️ Upgrade finished with code {res.returncode}")
+        # Print recent log lines from log file
+        for log_candidate in ["/var/log/odoo/odoo19.log", "/var/log/odoo/odoo.log"]:
+            if os.path.exists(log_candidate):
+                print(f"\n--- Recent entries from {log_candidate} ---")
+                subprocess.run(["tail", "-n", "35", log_candidate])
 
     print("\n▶️ Starting Odoo19 Service...")
     subprocess.run(["systemctl", "start", "odoo19"])
