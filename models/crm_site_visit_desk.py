@@ -11,7 +11,7 @@ class CrmSiteVisitDesk(models.TransientModel):
     _name = "crm.site.visit.desk"
     _description = "Site Visit Reception Desk"
 
-    phone = fields.Char(string="Mobile Number", required=True, placeholder="Enter 10-digit mobile number")
+    phone = fields.Char(string="Mobile Number", required=True)
     visitor_name = fields.Char(string="Visitor / Client Name")
     company_id = fields.Many2one("res.company", string="Project", required=True,
                                  default=lambda self: self.env.company)
@@ -37,11 +37,9 @@ class CrmSiteVisitDesk(models.TransientModel):
 
     follow_up_date = fields.Date(string="Follow-up Date",
                                  help="When to call / follow-up with this client")
-    follow_up_note = fields.Char(string="Follow-up Reason",
-                                 placeholder="e.g. Will discuss with family, needs site revisit...")
+    follow_up_note = fields.Char(string="Follow-up Reason")
 
-    notes = fields.Text(string="Visit Notes / Discussion",
-                        placeholder="What was discussed? Requirements, budget, objections...")
+    notes = fields.Text(string="Visit Notes / Discussion")
 
     is_existing = fields.Boolean(default=False)
     existing_lead_id = fields.Many2one("crm.lead", string="Existing Lead",

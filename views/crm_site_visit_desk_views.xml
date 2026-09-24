@@ -43,7 +43,7 @@
                 </sheet>
                 <footer>
                     <button name="action_checkin" string="Check-In and Send WhatsApp" type="object" class="btn-primary"/>
-                    <button special="cancel" string="Cancel"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>

@@ -18,6 +18,8 @@
         "wizard/crm_unit_booking_wizard_view.xml",
         "views/mail_activity_views.xml",
         "views/crm_dashboard_views.xml",
+        "views/crm_site_visit_desk_views.xml",
+        "views/login_templates.xml",
         "views/hr_attendance_views.xml",
         "views/hr_employee_views.xml",
     ],
