@@ -53,7 +53,7 @@ class CrmLead(models.Model):
 
     property_unit_id = fields.Many2one("crm.property.unit", string="Booked / Selected Unit", tracking=True)
     unit_block = fields.Selection(related="property_unit_id.block", string="Unit Block", readonly=True)
-    unit_floor = fields.Integer(related="property_unit_id.floor", string="Unit Floor", readonly=True)
+    unit_floor = fields.Selection(related="property_unit_id.floor", string="Unit Floor", readonly=True)
     unit_size = fields.Selection(related="property_unit_id.size_sq_yard", string="Unit Size", readonly=True)
     unit_facing = fields.Selection(related="property_unit_id.facing", string="Unit Facing", readonly=True)
     unit_plc = fields.Boolean(related="property_unit_id.location_charge", string="Unit PLC", readonly=True)
