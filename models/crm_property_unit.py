@@ -6,7 +6,7 @@ class CrmPropertyUnit(models.Model):
     _name = "crm.property.unit"
     _description = "Real Estate Property Unit"
     _inherit = ["mail.thread", "mail.activity.mixin"]
-    _order = "block asc, floor desc, unit_no asc"
+    _order = "block asc, unit_no asc"
 
     name = fields.Char(string="Unit Code", compute="_compute_name", store=True, index=True)
     unit_no = fields.Char(string="Unit No.", required=True, tracking=True)
@@ -16,7 +16,18 @@ class CrmPropertyUnit(models.Model):
         ("C", "Block C"),
         ("D", "Block D"),
     ], string="Block", required=True, default="B", tracking=True)
-    floor = fields.Integer(string="Floor", required=True, default=1, tracking=True)
+    floor = fields.Selection([
+        ("1",  "1st Floor"),
+        ("2",  "2nd Floor"),
+        ("3",  "3rd Floor"),
+        ("4",  "4th Floor"),
+        ("5",  "5th Floor"),
+        ("6",  "6th Floor"),
+        ("7",  "7th Floor"),
+        ("8",  "8th Floor"),
+        ("9",  "9th Floor"),
+        ("10", "10th Floor"),
+    ], string="Floor", required=True, default="1", tracking=True)
     size_sq_yard = fields.Selection([
         ("265", "265 Sq. Yards"),
         ("270", "270 Sq. Yards"),

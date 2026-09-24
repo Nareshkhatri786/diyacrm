@@ -74,7 +74,7 @@ def seed_units_sql():
             SET size_sq_yard = '{size}',
                 facing = '{facing}',
                 location_charge = {plc_str},
-                floor = {floor},
+                floor = '{floor}',
                 name = '{name}'
             WHERE company_id = comp_id AND block = '{block}' AND unit_no = '{unit_no}';
             upd_count := upd_count + 1;
@@ -82,7 +82,7 @@ def seed_units_sql():
             INSERT INTO crm_property_unit 
                 (name, unit_no, block, floor, size_sq_yard, facing, location_charge, status, company_id, create_date, write_date)
             VALUES 
-                ('{name}', '{unit_no}', '{block}', {floor}, '{size}', '{facing}', {plc_str}, 'available', comp_id, NOW(), NOW());
+                ('{name}', '{unit_no}', '{block}', '{floor}', '{size}', '{facing}', {plc_str}, 'available', comp_id, NOW(), NOW());
             ins_count := ins_count + 1;
         END IF;
         """)
@@ -112,7 +112,7 @@ BEGIN
         name VARCHAR,
         unit_no VARCHAR NOT NULL,
         block VARCHAR NOT NULL,
-        floor INT NOT NULL,
+        floor VARCHAR NOT NULL,
         size_sq_yard VARCHAR NOT NULL,
         facing VARCHAR NOT NULL,
         location_charge BOOLEAN DEFAULT FALSE,

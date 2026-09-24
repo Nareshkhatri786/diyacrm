@@ -62,7 +62,7 @@
                             <div class="small text-muted">
                                 <div>
                                     <i class="fa fa-arrows-alt me-1 text-primary" title="Size"/>
-                                    <b><field name="size_sq_yard"/></b> Sq. Yards
+                                    <b><field name="size_sq_yard"/></b>
                                 </div>
                                 <div>
                                     <i class="fa fa-compass me-1 text-secondary" title="Facing"/>
