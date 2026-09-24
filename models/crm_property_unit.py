@@ -202,9 +202,6 @@ class CrmPropertyUnit(models.Model):
             s: len(units.filtered(lambda u: u.size_sq_yard == s and u.status == "available"))
             for s in distinct_sizes
         }
-        for def_sz in ["265", "270", "275"]:
-            if def_sz not in size_stats:
-                size_stats[def_sz] = 0
 
         return {
             "company_name": company.name,

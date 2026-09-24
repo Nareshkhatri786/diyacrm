@@ -40,10 +40,12 @@
                     <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-success">
                         <div class="text-muted small fw-semibold text-uppercase">🟢 Available / Open</div>
                         <div class="fs-3 fw-bold text-success mt-1"><t t-esc="state.data.available_count"/></div>
-                        <div class="small text-muted mt-1">
-                            <span class="badge bg-success-subtle text-success me-1">265y: <t t-esc="state.data.size_stats['265']"/></span>
-                            <span class="badge bg-success-subtle text-success me-1">270y: <t t-esc="state.data.size_stats['270']"/></span>
-                            <span class="badge bg-success-subtle text-success">275y: <t t-esc="state.data.size_stats['275']"/></span>
+                        <div class="small text-muted mt-1 d-flex flex-wrap gap-1">
+                            <t t-foreach="state.data.available_sizes || []" t-as="sz" t-key="sz">
+                                <span class="badge bg-success-subtle text-success">
+                                    <t t-esc="sz"/>y: <t t-esc="state.data.size_stats[sz] || 0"/>
+                                </span>
+                            </t>
                         </div>
                     </div>
                 </div>
