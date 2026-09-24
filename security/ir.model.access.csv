@@ -1,3 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 
 access_crm_site_visit_desk,crm.site.visit.desk,model_crm_site_visit_desk,base.group_user,1,1,1,1
+access_crm_property_unit,crm.property.unit,model_crm_property_unit,base.group_user,1,1,1,1
+access_crm_unit_booking_wizard,crm.unit.booking.wizard,model_crm_unit_booking_wizard,base.group_user,1,1,1,1

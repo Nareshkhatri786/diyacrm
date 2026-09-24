@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1. Tree / List View -->
+    <record id="view_crm_property_unit_tree" model="ir.ui.view">
+        <field name="name">crm.property.unit.list</field>
+        <field name="model">crm.property.unit</field>
+        <field name="arch" type="xml">
+            <list string="Property Units" 
+                  decoration-success="status == 'available'"
+                  decoration-danger="status == 'booked'"
+                  decoration-warning="status == 'hold'"
+                  sample="1">
+                <field name="name" string="Unit Code" class="fw-bold fs-6"/>
+                <field name="block" widget="badge"/>
+                <field name="floor"/>
+                <field name="size_sq_yard" widget="badge"/>
+                <field name="facing"/>
+                <field name="location_charge" string="PLC" widget="boolean"/>
+                <field name="status" widget="badge" 
+                       decoration-success="status == 'available'"
+                       decoration-danger="status == 'booked'"
+                       decoration-warning="status == 'hold'"/>
+                <field name="customer_name" string="Buyer Name"/>
+                <field name="salesperson_id" widget="many2one_avatar_user"/>
+                <field name="booking_date"/>
+                <field name="company_id" groups="base.group_multi_company" optional="show"/>
+                <button name="action_book_wizard" string="Book" type="object" 
+                        class="btn-sm btn-success" icon="fa-check" 
+                        invisible="status == 'booked'"/>
+                <button name="action_release_unit" string="Release" type="object" 
+                        class="btn-sm btn-danger" icon="fa-undo" 
+                        invisible="status == 'available'"
+                        confirm="Are you sure you want to release this unit back to available?"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- 2. Kanban View -->
+    <record id="view_crm_property_unit_kanban" model="ir.ui.view">
+        <field name="name">crm.property.unit.kanban</field>
+        <field name="model">crm.property.unit</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="floor" sample="1" quick_create="false">
+                <field name="name"/>
+                <field name="block"/>
+                <field name="floor"/>
+                <field name="size_sq_yard"/>
+                <field name="facing"/>
+                <field name="location_charge"/>
+                <field name="status"/>
+                <field name="customer_name"/>
+                <field name="salesperson_id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_global_click p-3 rounded-3 shadow-sm border-start border-4 #{record.status.raw_value == 'available' ? 'border-success bg-white' : record.status.raw_value == 'booked' ? 'border-danger bg-light' : 'border-warning bg-white'}">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold fs-5 text-dark"><field name="name"/></span>
+                                <span t-if="record.status.raw_value == 'available'" class="badge bg-success">🟢 OPEN</span>
+                                <span t-elif="record.status.raw_value == 'booked'" class="badge bg-danger">🔴 BOOKED</span>
+                                <span t-else="" class="badge bg-warning text-dark">🟡 HOLD</span>
+                            </div>
+                            <div class="small text-muted mb-2">
+                                <div><i class="fa fa-arrows-alt me-1 text-primary"/> <b><field name="size_sq_yard"/></b> Sq. Yards</div>
+                                <div><i class="fa fa-compass me-1 text-secondary"/> <field name="facing"/></div>
+                                <div t-if="record.location_charge.raw_value" class="text-warning fw-bold">
+                                    <i class="fa fa-star me-1"/> Location Charge (PLC)
+                                </div>
+                            </div>
+                            <div t-if="record.status.raw_value == 'booked'" class="border-top pt-2 mt-2 small">
+                                <div class="fw-bold text-danger"><i class="fa fa-user me-1"/> <field name="customer_name"/></div>
+                                <div class="text-muted"><i class="fa fa-id-badge me-1"/> <field name="salesperson_id"/></div>
+                            </div>
+                            <div t-if="record.status.raw_value == 'available'" class="border-top pt-2 mt-2 text-end">
+                                <button name="action_book_wizard" type="object" class="btn btn-sm btn-outline-success w-100">
+                                    <i class="fa fa-check me-1"/> Book Unit
+                                </button>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- 3. Form View -->
+    <record id="view_crm_property_unit_form" model="ir.ui.view">
+        <field name="name">crm.property.unit.form</field>
+        <field name="model">crm.property.unit</field>
+        <field name="arch" type="xml">
+            <form string="Property Unit">
+                <header>
+                    <button name="action_book_wizard" string="✅ Book Unit" type="object" 
+                            class="btn-success" invisible="status == 'booked'"/>
+                    <button name="action_hold_unit" string="🟡 Put on Hold / Release Hold" type="object" 
+                            class="btn-warning" invisible="status == 'booked'"/>
+                    <button name="action_release_unit" string="❌ Release to Available" type="object" 
+                            class="btn-outline-danger" invisible="status == 'available'"
+                            confirm="Are you sure you want to cancel booking and make this unit Available?"/>
+                    <field name="status" widget="statusbar" statusbar_visible="available,hold,booked"/>
+                </header>
+                <sheet>
+                    <div class="oe_title mb-3">
+                        <label for="name" string="Unit Identifier"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Unit Specifications">
+                            <field name="company_id" options="{'no_create': True}"/>
+                            <field name="block"/>
+                            <field name="floor"/>
+                            <field name="unit_no"/>
+                        </group>
+                        <group string="Dimensions &amp; View">
+                            <field name="size_sq_yard"/>
+                            <field name="facing"/>
+                            <field name="location_charge" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <group string="Booking Information" invisible="status == 'available'">
+                        <group>
+                            <field name="booking_lead_id" options="{'no_create': True}"/>
+                            <field name="customer_name"/>
+                            <field name="customer_phone"/>
+                        </group>
+                        <group>
+                            <field name="salesperson_id" options="{'no_create': True}"/>
+                            <field name="booking_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="remarks" placeholder="Internal remarks or construction notes..."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- 4. Search & Filter View -->
+    <record id="view_crm_property_unit_search" model="ir.ui.view">
+        <field name="name">crm.property.unit.search</field>
+        <field name="model">crm.property.unit</field>
+        <field name="arch" type="xml">
+            <search string="Search Property Units">
+                <field name="name" string="Unit No / Code"/>
+                <field name="customer_name" string="Buyer Name"/>
+                <field name="salesperson_id"/>
+                
+                <separator/>
+                <filter name="filter_available" string="🟢 Available Units" domain="[('status', '=', 'available')]"/>
+                <filter name="filter_booked" string="🔴 Booked Units" domain="[('status', '=', 'booked')]"/>
+                <filter name="filter_hold" string="🟡 On Hold" domain="[('status', '=', 'hold')]"/>
+
+                <separator/>
+                <filter name="filter_block_b" string="Block B" domain="[('block', '=', 'B')]"/>
+                <filter name="filter_block_c" string="Block C" domain="[('block', '=', 'C')]"/>
+
+                <separator/>
+                <filter name="filter_265" string="265 Sq. Yards" domain="[('size_sq_yard', '=', '265')]"/>
+                <filter name="filter_270" string="270 Sq. Yards" domain="[('size_sq_yard', '=', '270')]"/>
+                <filter name="filter_275" string="275 Sq. Yards" domain="[('size_sq_yard', '=', '275')]"/>
+
+                <separator/>
+                <filter name="filter_garden" string="🌳 Garden View" domain="[('facing', '=', 'garden_view')]"/>
+                <filter name="filter_project" string="🏢 Project Facing" domain="[('facing', '=', 'project_facing')]"/>
+                <filter name="filter_plot" string="🏞️ Plot Facing" domain="[('facing', '=', 'plot_facing')]"/>
+                <filter name="filter_plc" string="⭐ Has Location Charge (PLC)" domain="[('location_charge', '=', True)]"/>
+
+                <group expand="0" string="Group By">
+                    <filter string="Block" name="group_block" context="{'group_by': 'block'}"/>
+                    <filter string="Floor" name="group_floor" context="{'group_by': 'floor'}"/>
+                    <filter string="Size" name="group_size" context="{'group_by': 'size_sq_yard'}"/>
+                    <filter string="Facing" name="group_facing" context="{'group_by': 'facing'}"/>
+                    <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- 5. Window Action for Standard List/Kanban/Form Views -->
+    <record id="action_crm_property_unit_list" model="ir.actions.act_window">
+        <field name="name">Unit Inventory</field>
+        <field name="res_model">crm.property.unit</field>
+        <field name="view_mode">kanban,list,form</field>
+        <field name="search_view_id" ref="view_crm_property_unit_search"/>
+        <field name="context">{'search_default_filter_available': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No property units registered yet!
+            </p>
+            <p>
+                Manage property units across blocks and floors with real-time availability and booking tracking.
+            </p>
+        </field>
+    </record>
+
+    <!-- 6. Client Action for Visual Interactive Matrix -->
+    <record id="action_crm_unit_matrix" model="ir.actions.client">
+        <field name="name">🏢 Visual Unit Availability Matrix</field>
+        <field name="tag">crm_unit_matrix</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- 7. Menu Structure in CRM -->
+    <menuitem id="menu_crm_property_unit_root"
+              name="🏢 Unit Inventory"
+              parent="crm.crm_menu_root"
+              sequence="4"/>
+
+    <menuitem id="menu_crm_unit_matrix"
+              name="📊 Visual Unit Matrix"
+              parent="menu_crm_property_unit_root"
+              action="action_crm_unit_matrix"
+              sequence="1"/>
+
+    <menuitem id="menu_crm_property_unit_all"
+              name="📋 All Units (List &amp; Kanban)"
+              parent="menu_crm_property_unit_root"
+              action="action_crm_property_unit_list"
+              sequence="2"/>
+</odoo>

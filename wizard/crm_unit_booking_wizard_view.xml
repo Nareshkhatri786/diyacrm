@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_unit_booking_wizard_form" model="ir.ui.view">
+        <field name="name">crm.unit.booking.wizard.form</field>
+        <field name="model">crm.unit.booking.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Book Property Unit">
+                <sheet>
+                    <div class="alert alert-info d-flex align-items-center mb-3 p-2" role="alert">
+                        <i class="fa fa-building fa-2x me-3 text-primary"></i>
+                        <div>
+                            <div class="fw-bold fs-5">Unit: <field name="unit_name" class="oe_inline"/></div>
+                            <div class="text-muted small">
+                                Block: <field name="block" class="oe_inline"/> |
+                                Floor: <field name="floor" class="oe_inline"/> |
+                                Size: <field name="size_sq_yard" class="oe_inline"/> Sq. Yards |
+                                Facing: <field name="facing" class="oe_inline"/> |
+                                PLC: <field name="location_charge" class="oe_inline" widget="boolean"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <group>
+                        <group string="Client &amp; Booking Details">
+                            <field name="lead_id" placeholder="Select lead if booking from CRM..." options="{'no_create': True}"/>
+                            <field name="customer_name" placeholder="Enter buyer name"/>
+                            <field name="customer_phone" placeholder="Enter 10-digit mobile number"/>
+                        </group>
+                        <group string="Sales &amp; Terms">
+                            <field name="salesperson_id" options="{'no_create': True}"/>
+                            <field name="booking_date"/>
+                            <field name="token_amount" placeholder="e.g. 51000"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="remarks" placeholder="Any special remarks, payment terms, or family details..."/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_confirm_booking" string="✅ Confirm Booking" type="object" class="btn-success"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

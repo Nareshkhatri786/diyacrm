@@ -1,0 +1,38 @@
+/* Unit Matrix Styling */
+.unit-card-box {
+    transition: all 0.2s ease-in-out;
+    background: #ffffff;
+}
+
+.unit-card-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.unit-available {
+    border-width: 2px !important;
+    background-color: #f0fdf4 !important;
+}
+
+.unit-available:hover {
+    border-color: #16a34a !important;
+    background-color: #dcfce7 !important;
+}
+
+.unit-booked {
+    border-width: 2px !important;
+    background-color: #fef2f2 !important;
+}
+
+.unit-hold {
+    border-width: 2px !important;
+    background-color: #fffbeb !important;
+}
+
+.floor-row-card {
+    transition: background 0.15s ease;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}

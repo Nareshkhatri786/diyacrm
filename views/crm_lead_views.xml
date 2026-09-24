@@ -91,10 +91,13 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- Left Column: Add Area & Unit Type after Phone -->
+            <!-- Left Column: Add Area, Unit Type & Unit Selection after Phone -->
             <xpath expr="//field[@name='phone']/parent::div" position="after">
                 <field name="area" placeholder="Select Area..."/>
                 <field name="unit_type" placeholder="Select Unit Type..." string="Unit Type"/>
+                <field name="property_unit_id" string="Booked Unit" 
+                       domain="[('company_id', '=', company_id), ('status', 'in', ['available', 'hold'])]" 
+                       options="{'no_create': True}"/>
             </xpath>
 
             <!-- Right Column: Add Status & Source after Salesperson -->

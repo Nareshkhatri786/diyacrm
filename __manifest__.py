@@ -9,10 +9,13 @@
     "license": "LGPL-3",
     "depends": ["base", "crm", "mail", "utm", "calendar", "hr", "hr_attendance"],
     "data": [
+        "security/ir.model.access.csv",
         "data/utm_source_data.xml",
         "data/mail_activity_type_data.xml",
         "data/crm_tag_data.xml",
         "views/crm_lead_views.xml",
+        "views/crm_property_unit_views.xml",
+        "wizard/crm_unit_booking_wizard_view.xml",
         "views/mail_activity_views.xml",
         "views/crm_dashboard_views.xml",
         "views/hr_attendance_views.xml",
@@ -21,10 +24,13 @@
     "assets": {
         "web.assets_backend": [
             "diyacrm/static/src/css/crm_custom.css",
+            "diyacrm/static/src/css/unit_matrix.css",
             "diyacrm/static/src/core/web/activity_markasdone_patch.xml",
             "diyacrm/static/src/core/web/activity_markasdone_patch.js",
             "diyacrm/static/src/dashboard/crm_dashboard.xml",
             "diyacrm/static/src/dashboard/crm_dashboard.js",
+            "diyacrm/static/src/unit_matrix/unit_matrix.xml",
+            "diyacrm/static/src/unit_matrix/unit_matrix.js",
             "diyacrm/static/src/attendance/attendance_selfie_dialog.xml",
             "diyacrm/static/src/attendance/attendance_selfie_dialog.js",
             "diyacrm/static/src/attendance/attendance_systray_patch.js",
