@@ -20,9 +20,10 @@ UNITS_DATA = [
     ("B", 9, "903", "265", "plot_facing", False),
     ("B", 10, "1002", "265", "project_facing", False),
 
-    # Block C (33 units)
+    # Block C (36 units)
     ("C", 1, "101", "275", "plot_facing", False),
     ("C", 1, "102", "270", "plot_facing", False),
+    ("C", 1, "103", "265", "plot_facing", False),
     ("C", 1, "104", "265", "project_facing", False),
     ("C", 1, "105", "270", "garden_view", True),
     ("C", 1, "106", "275", "garden_view", True),
@@ -46,9 +47,11 @@ UNITS_DATA = [
     ("C", 7, "702", "270", "plot_facing", False),
     ("C", 7, "704", "265", "project_facing", False),
     ("C", 7, "705", "270", "garden_view", True),
+    ("C", 8, "801", "275", "plot_facing", False),
     ("C", 8, "802", "270", "plot_facing", False),
     ("C", 8, "804", "265", "project_facing", False),
     ("C", 8, "805", "270", "garden_view", True),
+    ("C", 9, "901", "275", "plot_facing", False),
     ("C", 9, "904", "265", "project_facing", False),
     ("C", 9, "905", "270", "garden_view", True),
     ("C", 9, "906", "275", "garden_view", True),
@@ -130,7 +133,7 @@ BEGIN
 
     {all_upserts}
 
-    RAISE NOTICE '🎉 UNIT SEEDING COMPLETE: % inserted, % updated! Total 49 units ready in The 1st Residency.', ins_count, upd_count;
+    RAISE NOTICE '🎉 UNIT SEEDING COMPLETE: % inserted, % updated! Total 52 units ready in The 1st Residency.', ins_count, upd_count;
 END $$;
 """
 
