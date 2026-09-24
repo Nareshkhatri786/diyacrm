@@ -10,7 +10,7 @@ class CrmUnitBookingWizard(models.TransientModel):
     company_id = fields.Many2one("res.company", related="unit_id.company_id", readonly=True)
     unit_name = fields.Char(string="Unit Code", related="unit_id.name", readonly=True)
     block = fields.Selection(related="unit_id.block", readonly=True)
-    floor = fields.Integer(related="unit_id.floor", readonly=True)
+    floor = fields.Selection(related="unit_id.floor", readonly=True)
     size_sq_yard = fields.Selection(related="unit_id.size_sq_yard", readonly=True)
     facing = fields.Selection(related="unit_id.facing", readonly=True)
     location_charge = fields.Boolean(related="unit_id.location_charge", readonly=True)
