@@ -7,7 +7,7 @@
             <form string="Book Property Unit">
                 <sheet>
                     <div class="alert alert-info d-flex align-items-center mb-3 p-2" role="alert">
-                        <i class="fa fa-building fa-2x me-3 text-primary"></i>
+                        <i class="fa fa-building fa-2x me-3 text-primary" title="Property Unit"></i>
                         <div>
                             <div class="fw-bold fs-5">Unit: <field name="unit_name" class="oe_inline"/></div>
                             <div class="text-muted small">
