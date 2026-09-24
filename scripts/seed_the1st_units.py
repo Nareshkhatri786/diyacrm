@@ -68,13 +68,14 @@ def seed_units_sql():
     for block, floor, unit_no, size, facing, plc in UNITS_DATA:
         name = f"{block}-{unit_no}"
         plc_str = 'true' if plc else 'false'
+        floor_key = str(floor).zfill(2)   # "1"→"01", "10"→"10"
         upsert_lines.append(f"""
         IF EXISTS (SELECT 1 FROM crm_property_unit WHERE company_id = comp_id AND block = '{block}' AND unit_no = '{unit_no}') THEN
             UPDATE crm_property_unit
             SET size_sq_yard = '{size}',
                 facing = '{facing}',
                 location_charge = {plc_str},
-                floor = '{floor}',
+                floor = '{floor_key}',
                 name = '{name}'
             WHERE company_id = comp_id AND block = '{block}' AND unit_no = '{unit_no}';
             upd_count := upd_count + 1;
@@ -82,7 +83,7 @@ def seed_units_sql():
             INSERT INTO crm_property_unit 
                 (name, unit_no, block, floor, size_sq_yard, facing, location_charge, status, company_id, create_date, write_date)
             VALUES 
-                ('{name}', '{unit_no}', '{block}', '{floor}', '{size}', '{facing}', {plc_str}, 'available', comp_id, NOW(), NOW());
+                ('{name}', '{unit_no}', '{block}', '{floor_key}', '{size}', '{facing}', {plc_str}, 'available', comp_id, NOW(), NOW());
             ins_count := ins_count + 1;
         END IF;
         """)

@@ -17,17 +17,17 @@ class CrmPropertyUnit(models.Model):
         ("D", "Block D"),
     ], string="Block", required=True, default="B", tracking=True)
     floor = fields.Selection([
-        ("1",  "1st Floor"),
-        ("2",  "2nd Floor"),
-        ("3",  "3rd Floor"),
-        ("4",  "4th Floor"),
-        ("5",  "5th Floor"),
-        ("6",  "6th Floor"),
-        ("7",  "7th Floor"),
-        ("8",  "8th Floor"),
-        ("9",  "9th Floor"),
+        ("01", "1st Floor"),
+        ("02", "2nd Floor"),
+        ("03", "3rd Floor"),
+        ("04", "4th Floor"),
+        ("05", "5th Floor"),
+        ("06", "6th Floor"),
+        ("07", "7th Floor"),
+        ("08", "8th Floor"),
+        ("09", "9th Floor"),
         ("10", "10th Floor"),
-    ], string="Floor", required=True, default="1", tracking=True)
+    ], string="Floor", required=True, default="01", tracking=True)
     size_sq_yard = fields.Selection([
         ("265", "265 Sq. Yards"),
         ("270", "270 Sq. Yards"),
