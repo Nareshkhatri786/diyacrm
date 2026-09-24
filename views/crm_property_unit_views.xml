@@ -166,14 +166,13 @@
                 <filter name="filter_plot" string="🏞️ Plot Facing" domain="[('facing', '=', 'plot_facing')]"/>
                 <filter name="filter_plc" string="⭐ Has Location Charge (PLC)" domain="[('location_charge', '=', True)]"/>
 
-                <group string="Group By">
-                    <filter string="Block" name="group_block" context="{'group_by': 'block'}"/>
-                    <filter string="Floor" name="group_floor" context="{'group_by': 'floor'}"/>
-                    <filter string="Size" name="group_size" context="{'group_by': 'size_sq_yard'}"/>
-                    <filter string="Facing" name="group_facing" context="{'group_by': 'facing'}"/>
-                    <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
-                    <filter string="Company" name="group_company" context="{'group_by': 'company_id'}"/>
-                </group>
+                <separator/>
+                <filter string="Group by Block" name="group_block" context="{'group_by': 'block'}"/>
+                <filter string="Group by Floor" name="group_floor" context="{'group_by': 'floor'}"/>
+                <filter string="Group by Size" name="group_size" context="{'group_by': 'size_sq_yard'}"/>
+                <filter string="Group by Facing" name="group_facing" context="{'group_by': 'facing'}"/>
+                <filter string="Group by Status" name="group_status" context="{'group_by': 'status'}"/>
+                <filter string="Group by Company" name="group_company" context="{'group_by': 'company_id'}"/>
             </search>
         </field>
     </record>
