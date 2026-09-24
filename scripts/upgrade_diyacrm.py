@@ -51,9 +51,8 @@ def main():
     print(f"• Odoo Binary   : {odoo_bin}")
     print(f"• Config File   : {conf}")
 
-    inner_cmd = f"{py_bin} {odoo_bin} -c {conf} -d diyacrm -u diyacrm --stop-after-init"
     if os.name != 'nt' and hasattr(os, 'geteuid') and os.geteuid() == 0:
-        upgrade_cmd = ["su", "-", "odoo19", "-s", "/bin/bash", "-c", inner_cmd]
+        upgrade_cmd = ["sudo", "-u", "odoo19", py_bin, odoo_bin, "-c", conf, "-d", "diyacrm", "-u", "diyacrm", "--stop-after-init"]
     else:
         upgrade_cmd = [py_bin, odoo_bin, "-c", conf, "-d", "diyacrm", "-u", "diyacrm", "--stop-after-init"]
 
