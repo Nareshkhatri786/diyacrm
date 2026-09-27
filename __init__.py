@@ -5,8 +5,27 @@ from . import wizard
 
 
 def post_init_hook(env):
-    """Module install/upgrade ke baad company-wise tags assign karo."""
+    """Module install/upgrade ke baad company-wise tags assign karo aur non-admins ko CRM home action do."""
     _assign_tag_companies(env)
+    _set_non_admin_home_action(env)
+
+
+def _set_non_admin_home_action(env):
+    """Set default home action to CRM Pipeline for all non-admin internal users."""
+    crm_action = env.ref('crm.action_your_pipeline', raise_if_not_found=False) or \
+                 env.ref('crm.crm_lead_action_pipeline', raise_if_not_found=False)
+    if not crm_action:
+        return
+    admin_group = env.ref('base.group_system', raise_if_not_found=False)
+    if not admin_group:
+        return
+    non_admins = env['res.users'].search([
+        ('groups_id', 'not in', admin_group.id),
+        ('share', '=', False),
+    ])
+    if non_admins:
+        non_admins.write({'action_id': crm_action.id})
+        print(f"[diyacrm] Set CRM home action for {len(non_admins)} non-admin users.")
 
 
 def _assign_tag_companies(env):

@@ -38,4 +38,25 @@
             </xpath>
         </field>
     </record>
+
+    <!-- Allow all internal users to see Attendances in the app menu -->
+    <record id="hr_attendance.menu_hr_attendance_root" model="ir.ui.menu">
+        <field name="groups_id" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- My Attendances menu for regular employees -->
+    <record id="action_my_attendances" model="ir.actions.act_window">
+        <field name="name">My Attendances</field>
+        <field name="res_model">hr.attendance</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('employee_id.user_id', '=', uid)]</field>
+        <field name="context">{}</field>
+    </record>
+
+    <menuitem id="menu_hr_attendance_my_attendances"
+              name="My Attendances"
+              parent="hr_attendance.menu_hr_attendance_root"
+              sequence="1"
+              action="action_my_attendances"
+              groups="base.group_user"/>
 </odoo>
