@@ -92,9 +92,14 @@
                         <div id="syncSummary" style="font-size: 11.5px; color: #64748b; margin-top: 2px;">0 recordings synced</div>
                     </div>
                 </div>
-                <button onclick="doSyncNow()" id="btnSyncNow" style="background: #eff6ff; color: #2563eb; border: 1.5px solid #bfdbfe; padding: 8px 14px; border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer;">
-                    🔄 Sync Now
-                </button>
+                <div style="display: flex; gap: 6px;">
+                    <button onclick="doSyncNow()" id="btnSyncNow" style="background: #eff6ff; color: #2563eb; border: 1.5px solid #bfdbfe; padding: 8px 12px; border-radius: 12px; font-size: 11.5px; font-weight: 700; cursor: pointer;">
+                        🔄 Sync Now
+                    </button>
+                    <button onclick="doForceResync()" id="btnForceResync" style="background: #f8fafc; color: #475569; border: 1.5px solid #cbd5e1; padding: 8px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 600; cursor: pointer;" title="Re-upload all finalized recordings">
+                        ⚡ Re-sync All
+                    </button>
+                </div>
             </div>
             <div id="lastSyncStatus" style="font-size: 11px; color: #94a3b8; margin-top: 10px;">Checking folder every few minutes...</div>
         </div>
@@ -203,6 +208,22 @@
                 btn.disabled = false;
                 checkInit();
             }, 3000);
+        }
+
+        function doForceResync() {
+            if (!confirm("Kya aap phone ki sabhi call recordings ko dobara fresh sync karna chahte hain?")) return;
+            let btn = document.getElementById('btnForceResync');
+            btn.innerText = "Re-syncing...";
+            btn.disabled = true;
+            document.getElementById('lastSyncStatus').innerText = "⚡ Re-syncing all recordings to CRM...";
+            if (window.DiyaBridge && window.DiyaBridge.forceResync) {
+                window.DiyaBridge.forceResync();
+            }
+            setTimeout(function() {
+                btn.innerText = "⚡ Re-sync All";
+                btn.disabled = false;
+                checkInit();
+            }, 5000);
         }
 
         function loadLogs() {

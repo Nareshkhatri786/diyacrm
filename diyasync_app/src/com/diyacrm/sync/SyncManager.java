@@ -70,6 +70,14 @@ public class SyncManager {
                         // Recurse into subdirectories (e.g. Infinix PhoneRecord/<phone_number>/)
                         count += scanAndUploadDirectory(context, treeUri, docId, displayName, serverUrl, userId, companyId, db);
                     } else if (isAudioFile(displayName)) {
+                        long lastMod = c.getLong(3);
+                        long ageMs = System.currentTimeMillis() - lastMod;
+                        // Skip if modified in last 15 seconds (call may be active or file finalizing)
+                        if (lastMod > 0 && ageMs < 15000) {
+                            Log.d(TAG, "Skipping active recording: " + displayName + " (age: " + (ageMs / 1000) + "s)");
+                            continue;
+                        }
+
                         // Check if already synced
                         String uniqueKey = treeUri.toString() + "::" + docId;
                         if (!db.isAlreadySynced(uniqueKey)) {

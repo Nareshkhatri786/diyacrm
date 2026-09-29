@@ -259,6 +259,26 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public void forceResync() {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    SyncDbHelper db = new SyncDbHelper(context);
+                    db.clearAll();
+                    final int uploaded = SyncManager.performSync(context);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (webView != null) {
+                                webView.evaluateJavascript("if (window.onSyncFinished) window.onSyncFinished(" + uploaded + ");", null);
+                            }
+                        }
+                    });
+                }
+            }).start();
+        }
+
+        @JavascriptInterface
         public String getRecentLogs() {
             SyncDbHelper db = new SyncDbHelper(context);
             return db.getRecentLogsJson();

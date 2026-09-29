@@ -68,6 +68,13 @@ public class SyncDbHelper extends SQLiteOpenHelper {
         } catch (Exception ignored) {}
     }
 
+    public synchronized void clearAll() {
+        SQLiteDatabase db = getWritableDatabase();
+        try {
+            db.delete(TABLE_SYNCED, null, null);
+        } catch (Exception ignored) {}
+    }
+
     public synchronized int getSyncedCount() {
         SQLiteDatabase db = getReadableDatabase();
         Cursor cursor = null;

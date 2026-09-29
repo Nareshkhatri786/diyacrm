@@ -533,6 +533,22 @@ class DiyaCrmCallTrackerController(http.Controller):
         filename = parts[-1] if len(parts) > 0 else 'recording'
         filesize_kb = round(os.path.getsize(file_path) / 1024, 1)
 
+        ext = os.path.splitext(filename)[1].lower()
+        if ext in ['.m4a', '.mp4']:
+            primary_type = 'audio/mp4'
+        elif ext == '.mp3':
+            primary_type = 'audio/mpeg'
+        elif ext == '.aac':
+            primary_type = 'audio/aac'
+        elif ext in ['.ogg', '.oga']:
+            primary_type = 'audio/ogg'
+        elif ext == '.wav':
+            primary_type = 'audio/wav'
+        elif ext == '.amr':
+            primary_type = 'audio/amr'
+        else:
+            primary_type = 'audio/mp4'
+
         html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -625,7 +641,19 @@ class DiyaCrmCallTrackerController(http.Controller):
             height: 48px;
             border-radius: 8px;
             outline: none;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
+        }}
+        .notice-box {{
+            display: none;
+            margin-bottom: 18px;
+            padding: 10px 14px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            font-size: 12px;
+            color: #fca5a5;
+            text-align: left;
+            line-height: 1.4;
         }}
         .speed-control {{
             display: flex;
@@ -725,12 +753,14 @@ class DiyaCrmCallTrackerController(http.Controller):
         </div>
 
         <audio id="audioPlayer" controls autoplay preload="auto">
-            <source src="{stream_url}" type="audio/aac">
-            <source src="{stream_url}" type="audio/mp4">
-            <source src="{stream_url}" type="audio/mpeg">
+            <source src="{stream_url}" type="{primary_type}">
             <source src="{stream_url}">
             Your browser does not support audio playback.
         </audio>
+
+        <div id="noticeBox" class="notice-box">
+            ⚠️ <b>Playback issue detected:</b> Yeh audio format browser me direct play nahi ho raha hai (codec / incomplete stream). Kripya niche <b>Download Audio</b> button daba kar phone ya VLC me open karein.
+        </div>
 
         <div class="speed-control">
             <span class="speed-label">Speed:</span>
@@ -756,6 +786,13 @@ class DiyaCrmCallTrackerController(http.Controller):
 
     <script>
         const audio = document.getElementById('audioPlayer');
+        const notice = document.getElementById('noticeBox');
+        if (audio) {{
+            audio.addEventListener('error', function(e) {{
+                console.warn('Audio playback error encountered:', e);
+                if (notice) notice.style.display = 'block';
+            }});
+        }}
         function setSpeed(rate, btn) {{
             if (audio) audio.playbackRate = rate;
             document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
@@ -772,23 +809,61 @@ class DiyaCrmCallTrackerController(http.Controller):
         file_path = os.path.join('/opt/odoo19/custom_addons/diyacrm/static/recordings/', filename)
         if not os.path.exists(file_path):
             return request.not_found("Recording not found.")
-        with open(file_path, "rb") as f:
-            data = f.read()
+
         ext = os.path.splitext(filename)[1].lower()
         mime_map = {
             '.aac': 'audio/aac',
             '.m4a': 'audio/mp4',
+            '.mp4': 'audio/mp4',
             '.mp3': 'audio/mpeg',
             '.amr': 'audio/amr',
             '.wav': 'audio/wav',
             '.ogg': 'audio/ogg',
         }
-        content_type = mime_map.get(ext, 'audio/aac')
-        return request.make_response(data, headers=[
-            ("Content-Type", content_type),
-            ("Content-Disposition", f"inline; filename={filename}"),
-            ("Accept-Ranges", "bytes")
-        ])
+        content_type = mime_map.get(ext, 'audio/mp4')
+        file_size = os.path.getsize(file_path)
+
+        range_header = request.httprequest.headers.get('Range', None)
+        if range_header and range_header.startswith('bytes='):
+            try:
+                ranges = range_header.replace('bytes=', '').strip().split('-')
+                start = int(ranges[0]) if ranges[0] else 0
+                end = int(ranges[1]) if len(ranges) > 1 and ranges[1] else file_size - 1
+                if start >= file_size or end >= file_size or start > end:
+                    return Response(status=416, headers={"Content-Range": f"bytes */{file_size}"})
+
+                length = end - start + 1
+                with open(file_path, "rb") as f:
+                    f.seek(start)
+                    data = f.read(length)
+
+                return Response(
+                    data,
+                    status=206,
+                    headers=[
+                        ("Content-Type", content_type),
+                        ("Content-Range", f"bytes {start}-{end}/{file_size}"),
+                        ("Content-Length", str(length)),
+                        ("Content-Disposition", f"inline; filename={os.path.basename(filename)}"),
+                        ("Accept-Ranges", "bytes")
+                    ]
+                )
+            except Exception:
+                pass
+
+        with open(file_path, "rb") as f:
+            data = f.read()
+
+        return Response(
+            data,
+            status=200,
+            headers=[
+                ("Content-Type", content_type),
+                ("Content-Length", str(file_size)),
+                ("Content-Disposition", f"inline; filename={os.path.basename(filename)}"),
+                ("Accept-Ranges", "bytes")
+            ]
+        )
 
     def _find_recording_on_server(self, phone_number, start_time=None):
         import os, re
