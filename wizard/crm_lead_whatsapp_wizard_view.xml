@@ -13,7 +13,7 @@
                         <field name="lead_name" readonly="1"/>
                     </div>
                     <div class="fs-5 text-success fw-bold">
-                        <i class="fa fa-whatsapp me-1"/> <field name="phone" readonly="1"/>
+                        <i class="fa fa-whatsapp me-1" title="WhatsApp" aria-label="WhatsApp"/> <field name="phone" readonly="1"/>
                     </div>
                 </div>
 
@@ -40,7 +40,7 @@
 
                 <div class="mt-4" invisible="not whatsapp_message_ids">
                     <h6 class="text-uppercase text-muted fw-bold mb-2 small">
-                        <i class="fa fa-comments me-1"/> WhatsApp Conversation History
+                        <i class="fa fa-comments me-1" title="History" aria-label="History"/> WhatsApp Conversation History
                     </h6>
                     <field name="whatsapp_message_ids" readonly="1">
                         <list create="false" delete="false" edit="false" default_order="date desc">
