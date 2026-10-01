@@ -68,10 +68,14 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
-            <!-- WhatsApp Call Follow-up Buttons in Header -->
+            <!-- WhatsApp Follow-up Button in Header (Single compact button saving statusbar space) -->
             <xpath expr="//header" position="inside">
-                <button name="action_send_call_connected_whatsapp" string="📲 WhatsApp (Connected)" type="object" class="btn-secondary" invisible="not phone"/>
-                <button name="action_send_call_missed_whatsapp" string="📲 WhatsApp (Missed / Busy)" type="object" class="btn-secondary" invisible="not phone"/>
+                <button name="action_open_call_whatsapp_wizard" string="WhatsApp" type="object" class="btn-success text-white" icon="fa-whatsapp" invisible="not phone" title="Send WhatsApp Follow-up (Connected / Missed)"/>
+            </xpath>
+
+            <!-- WhatsApp Icon next to Phone number (Easy 1-tap for mobile & desktop) -->
+            <xpath expr="//field[@name='phone']" position="after">
+                <button name="action_open_call_whatsapp_wizard" type="object" class="btn btn-sm btn-link text-success p-0 ms-1 align-baseline" icon="fa-whatsapp" title="Send WhatsApp Follow-up" invisible="not phone"/>
             </xpath>
 
             <!-- Opportunity's Name Placeholder -> Full Name -->

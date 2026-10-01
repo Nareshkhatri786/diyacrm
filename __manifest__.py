@@ -17,6 +17,7 @@
         "views/crm_lead_views.xml",
         "views/crm_property_unit_views.xml",
         "wizard/crm_unit_booking_wizard_view.xml",
+        "wizard/crm_lead_whatsapp_wizard_view.xml",
         "views/mail_activity_views.xml",
         "views/crm_dashboard_views.xml",
         "views/crm_site_visit_desk_views.xml",

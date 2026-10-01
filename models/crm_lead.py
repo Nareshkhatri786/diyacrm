@@ -882,3 +882,19 @@ class CrmLead(models.Model):
             }
         else:
             raise UserError(_("Could not send WhatsApp message. Please check phone number or Meta credentials."))
+
+    def action_open_call_whatsapp_wizard(self):
+        self.ensure_one()
+        if not self.phone:
+            raise UserError(_("No phone number found on this lead!"))
+        return {
+            'name': _('WhatsApp Follow-up'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'crm.lead.whatsapp.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_lead_id': self.id,
+                'default_user_id': self.env.user.id,
+            }
+        }
