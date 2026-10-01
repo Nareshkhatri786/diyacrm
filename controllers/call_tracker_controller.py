@@ -254,6 +254,16 @@ class DiyaCrmCallTrackerController(http.Controller):
                 author_id=user.partner_id.id if user else False
             )
 
+            # 7. Automated WhatsApp Follow-up (Connected or Not Connected) with 12h Cooldown
+            try:
+                lead.with_context(mail_notrack=True).send_call_followup_whatsapp(
+                    call_outcome=outcome,
+                    executive_user=user,
+                    force_send=False
+                )
+            except Exception as _we:
+                _logger.warning("Automated Call WhatsApp trigger failed on lead #%s: %s", lead.id, str(_we))
+
             return {
                 "status": "success",
                 "lead_id": lead.id,

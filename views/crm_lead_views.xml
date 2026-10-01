@@ -68,6 +68,12 @@
         <field name="model">crm.lead</field>
         <field name="inherit_id" ref="crm.crm_lead_view_form"/>
         <field name="arch" type="xml">
+            <!-- WhatsApp Call Follow-up Buttons in Header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_send_call_connected_whatsapp" string="📲 WhatsApp (Connected)" type="object" class="btn-secondary" invisible="not phone"/>
+                <button name="action_send_call_missed_whatsapp" string="📲 WhatsApp (Missed / Busy)" type="object" class="btn-secondary" invisible="not phone"/>
+            </xpath>
+
             <!-- Opportunity's Name Placeholder -> Full Name -->
             <xpath expr="//field[@name='name']" position="attributes">
                 <attribute name="placeholder">e.g. Full Name</attribute>

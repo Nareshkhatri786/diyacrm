@@ -67,6 +67,12 @@ class CrmLead(models.Model):
         ("busy", "Busy"), ("switched_off", "Switched off")
     ], string="Last Call Outcome", tracking=True)
 
+    last_call_whatsapp_date = fields.Datetime("Last Call WhatsApp Sent", readonly=True)
+    last_call_whatsapp_type = fields.Selection([
+        ("answered", "Connected"),
+        ("no_answer", "Missed / Busy")
+    ], string="Last Call WhatsApp Type", readonly=True)
+
     finance_mode = fields.Selection([
         ("loan", "Loan"), ("cash", "Self-Funding / Cash"), ("both", "Loan + Cash")
     ], string="Finance Mode", tracking=True)
@@ -643,3 +649,210 @@ class CrmLead(models.Model):
         if stage_5 and self.stage_id != stage_5:
             self.stage_id = stage_5.id
         return self.send_site_visit_whatsapp()
+
+    def send_call_followup_whatsapp(self, call_outcome="answered", executive_user=None, force_send=False):
+        self.ensure_one()
+        phone_raw = self.phone or (self.partner_id and self.partner_id.phone) or ''
+        digits = ''.join(filter(str.isdigit, phone_raw))
+        if len(digits) >= 10:
+            recipient = '91' + digits[-10:]
+        else:
+            _logger.warning("Invalid phone for Call WhatsApp on lead #%s: %s", self.id, phone_raw)
+            return False
+
+        # Anti-Spam Check: Max 1 automated call follow-up WhatsApp every 12 hours unless force_send
+        if not force_send and self.last_call_whatsapp_date:
+            now = fields.Datetime.now()
+            diff_hours = (now - self.last_call_whatsapp_date).total_seconds() / 3600.0
+            if diff_hours < 12.0:
+                _logger.info("Call WhatsApp skipped for lead #%s: sent %.1f hours ago (cooldown 12h)", self.id, diff_hours)
+                return False
+
+        # 1. Resolve Executive details
+        exec_name = "our team"
+        exec_phone = ""
+        if executive_user and executive_user.exists():
+            exec_name = executive_user.name or "our team"
+            exec_phone = executive_user.phone or executive_user.mobile or (executive_user.partner_id and (executive_user.partner_id.phone or executive_user.partner_id.mobile)) or ""
+
+        if not exec_phone and self.user_id:
+            exec_name = self.user_id.name or exec_name
+            exec_phone = self.user_id.phone or self.user_id.mobile or (self.user_id.partner_id and (self.user_id.partner_id.phone or self.user_id.partner_id.mobile)) or ""
+
+        exec_digits = ''.join(filter(str.isdigit, str(exec_phone or '')))
+        if len(exec_digits) >= 10:
+            formatted_exec_phone = exec_digits[-10:]
+        else:
+            formatted_exec_phone = "our team"
+
+        lead_name = self.name.split('-')[0].strip() if self.name else "Client"
+        if any(lead_name.startswith(p) for p in ["Call:", "+91", "91", "0"]):
+            lead_name = "Sir/Madam"
+
+        company_name = (self.company_id.name or '').lower()
+        ICP = self.env['ir.config_parameter'].sudo()
+
+        is_rudraksha = False
+        # 2. Determine Project Config & Links
+        if 'shreemad' in company_name:
+            phone_id = ICP.get_param('diyacrm.shreemad_family.phone_id', '1161115510429761')
+            token = ICP.get_param('diyacrm.shreemad_family.token', '')
+            template_name = 'payment_received'
+            lang = 'en'
+            proj_title = "Shreemad Family"
+            links_text = "👉 *🎥 Video:* https://www.instagram.com/reel/DahhUDKtbTD/ | *📖 Brochure:* https://drive.google.com/file/d/1vN7R6AqyZRAiTOVdg4gK9C_mRo9jkHWM/view | *📍 Location:* https://maps.app.goo.gl/gyN7sJgEhQMi5uMY9"
+
+        elif any(k in company_name for k in ['1st', 'first', 'radhe']):
+            phone_id = ICP.get_param('diyacrm.radhe_developers.phone_id', '1305619522636450')
+            token = ICP.get_param('diyacrm.radhe_developers.token', '')
+            template_name = 'payment_received'
+            lang = 'en'
+            proj_title = "THE 1ˢᵗ RESIDENCY"
+            links_text = "👉 *🎥 Video:* https://youtu.be/rAvOj2_QF-0 | *📖 Brochure:* https://drive.google.com/file/d/1izKX9HnlTSTZJpg1CKOzYMvzHTq-KC4B/view | *📍 Location:* https://goo.gl/maps/NcoSHFBo6UZzbkpL9"
+
+        elif any(k in company_name for k in ['rudraksha', 'royal']):
+            phone_id = ICP.get_param('diyacrm.royal_rudraksha.phone_id', '1224814500716320')
+            token = ICP.get_param('diyacrm.royal_rudraksha.token', '')
+            template_name = 'payment_received'
+            lang = 'en'
+            proj_title = "Royal Rudraksha"
+            links_text = "👉 *🎬 Sample House:* https://www.instagram.com/reel/DbuUMm_Nb4Y/ | *📖 Brochure:* https://drive.google.com/file/d/1nvQ8DRwq7D3E-yapAT6-C0dfn58mkARk/view | *📍 Location:* https://maps.app.goo.gl/aZJTapHTQsxtzfic6"
+            is_rudraksha = True
+
+        elif 'devi' in company_name:
+            phone_id = ICP.get_param('diyacrm.devi_bungalows.phone_id', '1265084363352795')
+            token = ICP.get_param('diyacrm.devi_bungalows.token', '')
+            template_name = 'order_details'
+            lang = 'en'
+            proj_title = "Devi Bungalows"
+            links_text = "👉 *🏠 Sample House:* https://www.instagram.com/reel/DSb52VZkzlp/ | *📖 Brochure:* https://cloudmediastorage.fylestor.com/2773/file-manager/BROCHURE_DEVI_BUNGLOWS_PDF_compressed.pdf-1762586213760.pdf | *📍 Location:* https://maps.app.goo.gl/i4dehWZrwamtrTJXA"
+
+        else:
+            phone_id = ICP.get_param('diyacrm.shreemad_family.phone_id', '1161115510429761')
+            token = ICP.get_param('diyacrm.shreemad_family.token', '')
+            template_name = 'payment_received'
+            lang = 'en'
+            proj_title = self.company_id.name or "our project"
+            links_text = "👉 *🎥 Video:* https://www.instagram.com/reel/DahhUDKtbTD/ | *📖 Brochure:* https://drive.google.com/file/d/1vN7R6AqyZRAiTOVdg4gK9C_mRo9jkHWM/view | *📍 Location:* https://maps.app.goo.gl/gyN7sJgEhQMi5uMY9"
+
+        if not token or not phone_id:
+            _logger.error("Missing WhatsApp token or phone_id for company '%s' on lead #%s", company_name, self.id)
+            return False
+
+        # 3. Construct clean, simple variables
+        is_connected = (call_outcome == "answered")
+        if is_connected:
+            var1 = f"*{lead_name}*, thank you for talking with us regarding *{proj_title}*"
+            var2 = f"are sharing the project details with you. For any help, please call or WhatsApp *{exec_name}* on *{formatted_exec_phone}*"
+            var3 = f"more details, check the photos, video and location here {links_text}"
+        else:
+            var1 = f"*{lead_name}*, tried calling you regarding your enquiry for *{proj_title}*"
+            var2 = f"could not connect with you. Whenever you are free, please call back or WhatsApp *{exec_name}* on *{formatted_exec_phone}*"
+            var3 = f"your reference, you can check our project video and location here {links_text}"
+
+        if is_rudraksha:
+            parameters = [
+                {'type': 'text', 'text': var2},
+                {'type': 'text', 'text': var3},
+                {'type': 'text', 'text': var1}
+            ]
+        else:
+            parameters = [
+                {'type': 'text', 'text': var1},
+                {'type': 'text', 'text': var2},
+                {'type': 'text', 'text': var3}
+            ]
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": recipient,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": lang},
+                "components": [
+                    {
+                        "type": "body",
+                        "parameters": parameters
+                    }
+                ]
+            }
+        }
+
+        try:
+            import requests
+            url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
+            res = requests.post(url, json=payload, headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }, timeout=10)
+
+            outcome_label = "Connected" if is_connected else "Missed / Busy"
+            if res.status_code == 200:
+                res_data = res.json()
+                msg_id = res_data.get('messages', [{}])[0].get('id', 'N/A')
+                self.write({
+                    'last_call_whatsapp_date': fields.Datetime.now(),
+                    'last_call_whatsapp_type': 'answered' if is_connected else 'no_answer'
+                })
+                self.message_post(
+                    body=Markup(
+                        "📲 <b>Call Follow-up WhatsApp Delivered ({0})</b><br/>"
+                        "📱 <b>To:</b> {1}<br/>"
+                        "👤 <b>Advisor:</b> {2} ({3})<br/>"
+                        "🏢 <b>Project:</b> {4}<br/>"
+                        "🆔 <b>Meta Message ID:</b> <code>{5}</code>"
+                    ).format(outcome_label, recipient, exec_name, formatted_exec_phone, proj_title, msg_id),
+                    subtype_xmlid='mail.mt_note'
+                )
+                _logger.info("Call WhatsApp (%s) sent to %s for lead #%s (Msg ID: %s)", outcome_label, recipient, self.id, msg_id)
+                return True
+            else:
+                err_text = res.text
+                self.message_post(
+                    body=Markup(
+                        "⚠️ <b>Call Follow-up WhatsApp Failed ({0})</b><br/>"
+                        "📱 <b>To:</b> {1}<br/>"
+                        "❌ <b>Error:</b> {2}"
+                    ).format(outcome_label, recipient, err_text),
+                    subtype_xmlid='mail.mt_note'
+                )
+                _logger.error("Meta API error for Call WhatsApp on lead #%s: %s", self.id, err_text)
+                return False
+        except Exception as e:
+            _logger.exception("Exception sending Call WhatsApp for lead #%s: %s", self.id, e)
+            return False
+
+    def action_send_call_connected_whatsapp(self):
+        self.ensure_one()
+        res = self.send_call_followup_whatsapp(call_outcome="answered", executive_user=self.env.user, force_send=True)
+        if res:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("WhatsApp Sent!"),
+                    "message": _("Call Connected WhatsApp message delivered to %s") % self.phone,
+                    "type": "success",
+                    "sticky": False
+                }
+            }
+        else:
+            raise UserError(_("Could not send WhatsApp message. Please check phone number or Meta credentials."))
+
+    def action_send_call_missed_whatsapp(self):
+        self.ensure_one()
+        res = self.send_call_followup_whatsapp(call_outcome="no_answer", executive_user=self.env.user, force_send=True)
+        if res:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("WhatsApp Sent!"),
+                    "message": _("Missed Call WhatsApp message delivered to %s") % self.phone,
+                    "type": "success",
+                    "sticky": False
+                }
+            }
+        else:
+            raise UserError(_("Could not send WhatsApp message. Please check phone number or Meta credentials."))
