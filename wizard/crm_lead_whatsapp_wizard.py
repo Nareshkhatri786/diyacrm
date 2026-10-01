@@ -11,6 +11,11 @@ class CrmLeadWhatsappWizard(models.TransientModel):
     phone = fields.Char(string="Phone Number", related="lead_id.phone", readonly=True)
     company_id = fields.Many2one("res.company", related="lead_id.company_id", readonly=True)
     user_id = fields.Many2one("res.users", string="Sales Executive", default=lambda self: self.env.user)
+    whatsapp_message_ids = fields.One2many(
+        related="lead_id.whatsapp_message_ids",
+        readonly=True,
+        string="Recent WhatsApp Messages"
+    )
 
     def action_send_connected(self):
         """Send Call Connected follow-up WhatsApp (Project video, location, brochure)."""

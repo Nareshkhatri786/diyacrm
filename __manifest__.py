@@ -31,6 +31,8 @@
             "diyacrm/static/src/css/unit_matrix.css",
             "diyacrm/static/src/core/web/activity_markasdone_patch.xml",
             "diyacrm/static/src/core/web/activity_markasdone_patch.js",
+            "diyacrm/static/src/core/web/chatter_whatsapp_patch.xml",
+            "diyacrm/static/src/core/web/chatter_whatsapp_patch.js",
             "diyacrm/static/src/dashboard/crm_dashboard.xml",
             "diyacrm/static/src/dashboard/crm_dashboard.js",
             "diyacrm/static/src/unit_matrix/unit_matrix.xml",

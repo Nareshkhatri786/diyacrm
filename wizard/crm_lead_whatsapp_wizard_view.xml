@@ -38,6 +38,20 @@
                     </div>
                 </div>
 
+                <div class="mt-4" invisible="not whatsapp_message_ids">
+                    <h6 class="text-uppercase text-muted fw-bold mb-2 small">
+                        <i class="fa fa-comments me-1"/> WhatsApp Conversation History
+                    </h6>
+                    <field name="whatsapp_message_ids" readonly="1">
+                        <list create="false" delete="false" edit="false" default_order="date desc">
+                            <field name="date" string="Date/Time"/>
+                            <field name="direction" widget="badge" decoration-success="direction == 'inbound'" decoration-info="direction == 'outbound'"/>
+                            <field name="author_name" string="Sender"/>
+                            <field name="body" string="Message"/>
+                        </list>
+                    </field>
+                </div>
+
                 <footer>
                     <button string="Close" class="btn-secondary" special="cancel"/>
                 </footer>
@@ -46,7 +60,7 @@
     </record>
 
     <record id="action_crm_lead_whatsapp_wizard" model="ir.actions.act_window">
-        <field name="name">Send WhatsApp Follow-up</field>
+        <field name="name">WhatsApp Follow-up</field>
         <field name="res_model">crm.lead.whatsapp.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
