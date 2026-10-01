@@ -9,3 +9,4 @@ from . import crm_property_unit
 from . import res_users
 from . import ir_ui_menu
 from . import ir_http
+from . import crm_lead_whatsapp_message

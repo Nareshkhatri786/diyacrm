@@ -73,6 +73,14 @@ class CrmLead(models.Model):
         ("no_answer", "Missed / Busy")
     ], string="Last Call WhatsApp Type", readonly=True)
 
+    whatsapp_message_ids = fields.One2many("crm.lead.whatsapp.message", "lead_id", string="WhatsApp Messages")
+    whatsapp_message_count = fields.Integer("WhatsApp Messages Count", compute="_compute_whatsapp_message_count")
+
+    @api.depends("whatsapp_message_ids")
+    def _compute_whatsapp_message_count(self):
+        for lead in self:
+            lead.whatsapp_message_count = len(lead.whatsapp_message_ids)
+
     finance_mode = fields.Selection([
         ("loan", "Loan"), ("cash", "Self-Funding / Cash"), ("both", "Loan + Cash")
     ], string="Finance Mode", tracking=True)
@@ -621,6 +629,14 @@ class CrmLead(models.Model):
             if res.status_code == 200:
                 res_data = res.json()
                 msg_id = res_data.get('messages', [{}])[0].get('id', 'N/A')
+                self.env['crm.lead.whatsapp.message'].create({
+                    'lead_id': self.id,
+                    'direction': 'outbound',
+                    'author_name': self.env.user.name or 'System',
+                    'phone': recipient,
+                    'body': f"🎉 Site Visit WhatsApp Sent:\n{var1}\n{var2}\n{var3}",
+                    'date': fields.Datetime.now(),
+                })
                 self.message_post(
                     body=Markup("🎉 <b>Site Visit WhatsApp Delivered</b><br/>📱 <b>To:</b> {0}<br/>🏢 <b>Project:</b> {1}<br/>🆔 <b>Meta Message ID:</b> <code>{2}</code>").format(recipient, self.company_id.name, msg_id),
                     subtype_xmlid='mail.mt_note'
@@ -794,6 +810,14 @@ class CrmLead(models.Model):
                 self.write({
                     'last_call_whatsapp_date': fields.Datetime.now(),
                     'last_call_whatsapp_type': 'answered' if is_connected else 'no_answer'
+                })
+                self.env['crm.lead.whatsapp.message'].create({
+                    'lead_id': self.id,
+                    'direction': 'outbound',
+                    'author_name': exec_name or self.env.user.name or 'System',
+                    'phone': recipient,
+                    'body': f"📲 Call Follow-up ({outcome_label}):\n{var1}\n{var2}\n{var3}",
+                    'date': fields.Datetime.now(),
                 })
                 self.message_post(
                     body=Markup(

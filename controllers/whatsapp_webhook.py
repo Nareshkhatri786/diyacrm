@@ -353,19 +353,13 @@ class WhatsAppWebhookController(http.Controller):
             lead = existing_lead
             lead_action = "updated_active"
             if message:
-                body_html = f"""
-                <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 10px; border-radius: 4px;">
-                    <p style="margin: 0 0 5px 0; color: #166534; font-weight: bold;">📱 New WhatsApp Message:</p>
-                    <div style="color: #1f2937; white-space: pre-wrap;">{message}</div>
-                </div>
-                """
-                env['mail.message'].create({
-                    'model': 'crm.lead',
-                    'res_id': lead.id,
-                    'message_type': 'comment',
-                    'subtype_id': env.ref('mail.mt_comment').id,
-                    'author_id': lead.user_id.partner_id.id if lead.user_id else assigned_user.partner_id.id,
-                    'body': body_html,
+                env['crm.lead.whatsapp.message'].create({
+                    'lead_id': lead.id,
+                    'direction': 'inbound',
+                    'author_name': name or lead.name or 'Client',
+                    'phone': clean_mobile_10 or raw_phone,
+                    'body': message,
+                    'date': fields.Datetime.now(),
                 })
 
             lead.activity_schedule(
@@ -374,7 +368,7 @@ class WhatsAppWebhookController(http.Controller):
                 summary="Inbound WhatsApp message received",
                 date_deadline=fields.Date.today(),
                 user_id=lead.user_id.id if lead.user_id else assigned_user.id,
-                note="Client sent a new message via WhatsApp. Please check and reply."
+                note="Client sent a new message via WhatsApp. Please check WhatsApp History tab and reply."
             )
 
             return {'status': 'success', 'action': lead_action, 'lead_id': lead.id, 'lead_name': lead.name, 'phone': lead.phone, 'project': company_name, 'assigned_to': lead.user_id.name if lead.user_id else assigned_user.name}
@@ -393,21 +387,28 @@ class WhatsAppWebhookController(http.Controller):
             })
 
             if message:
-                body_html = f"""
-                <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 10px; border-radius: 4px; margin-bottom: 6px;">
+                env['crm.lead.whatsapp.message'].create({
+                    'lead_id': lead.id,
+                    'direction': 'inbound',
+                    'author_name': name or lead.name or 'Client',
+                    'phone': clean_mobile_10 or raw_phone,
+                    'body': message,
+                    'date': fields.Datetime.now(),
+                })
+                # Single clean chatter note for revival alert
+                revival_note = f"""
+                <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 10px; border-radius: 4px;">
                     <div style="color: #991b1b; font-weight: 800; font-size: 13px;">🔥 RE-ENQUIRY FROM LOST CLIENT!</div>
-                    <div style="font-size: 11px; color: #b91c1c; margin-bottom: 6px;">Lead has been auto-revived from Lost to Active Pipeline.</div>
-                    <p style="margin: 0 0 5px 0; color: #166534; font-weight: bold;">📱 WhatsApp Message:</p>
-                    <div style="color: #1f2937; white-space: pre-wrap;">{message}</div>
+                    <div style="font-size: 11px; color: #b91c1c;">Lead auto-revived from Lost to Active Pipeline via WhatsApp.</div>
                 </div>
                 """
                 env['mail.message'].create({
                     'model': 'crm.lead',
                     'res_id': lead.id,
                     'message_type': 'comment',
-                    'subtype_id': env.ref('mail.mt_comment').id,
+                    'subtype_id': env.ref('mail.mt_note').id,
                     'author_id': target_user.partner_id.id,
-                    'body': body_html,
+                    'body': revival_note,
                 })
 
             lead.activity_schedule(
@@ -416,7 +417,7 @@ class WhatsAppWebhookController(http.Controller):
                 summary="🔥 URGENT RE-ENQUIRY: Lost Client Sent WhatsApp!",
                 date_deadline=fields.Date.today(),
                 user_id=target_user.id,
-                note=f"Client sent WhatsApp message: '{message}'. Please call back immediately!"
+                note=f"Client sent WhatsApp message. Please check WhatsApp History tab and call back immediately!"
             )
 
             return {'status': 'success', 'action': lead_action, 'lead_id': lead.id, 'lead_name': lead.name, 'phone': lead.phone, 'project': company_name, 'assigned_to': target_user.name}
@@ -447,19 +448,13 @@ class WhatsAppWebhookController(http.Controller):
             lead = env['crm.lead'].create(lead_vals)
 
             if message:
-                body_html = f"""
-                <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 10px; border-radius: 4px;">
-                    <p style="margin: 0 0 5px 0; color: #166534; font-weight: bold;">📱 Inbound WhatsApp Message:</p>
-                    <div style="color: #1f2937; white-space: pre-wrap;">{message}</div>
-                </div>
-                """
-                env['mail.message'].create({
-                    'model': 'crm.lead',
-                    'res_id': lead.id,
-                    'message_type': 'comment',
-                    'subtype_id': env.ref('mail.mt_comment').id,
-                    'author_id': assigned_user.partner_id.id,
-                    'body': body_html,
+                env['crm.lead.whatsapp.message'].create({
+                    'lead_id': lead.id,
+                    'direction': 'inbound',
+                    'author_name': name or 'Client',
+                    'phone': clean_mobile_10 or raw_phone,
+                    'body': message,
+                    'date': fields.Datetime.now(),
                 })
 
             lead.activity_schedule(

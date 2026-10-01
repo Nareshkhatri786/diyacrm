@@ -134,6 +134,23 @@
                 <attribute name="domain">[('company_ids', 'in', [company_id])]</attribute>
                 <attribute name="options">{'color_field': 'color', 'no_create': True, 'no_quick_create': True, 'no_create_edit': True}</attribute>
             </xpath>
+
+            <!-- 💬 WhatsApp History Tab inside Notebook -->
+            <xpath expr="//notebook" position="inside">
+                <page string="💬 WhatsApp History" name="whatsapp_history">
+                    <field name="whatsapp_message_ids" readonly="1">
+                        <list create="false" edit="false" delete="false" default_order="date desc">
+                            <field name="date" string="Date &amp; Time"/>
+                            <field name="direction" widget="badge" 
+                                   decoration-success="direction == 'inbound'" 
+                                   decoration-info="direction == 'outbound'"/>
+                            <field name="author_name" string="Sender"/>
+                            <field name="phone" string="Phone"/>
+                            <field name="body" string="Message"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
         </field>
     </record>
 
