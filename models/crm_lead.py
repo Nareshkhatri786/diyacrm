@@ -689,11 +689,13 @@ class CrmLead(models.Model):
         exec_phone = ""
         if executive_user and executive_user.exists():
             exec_name = executive_user.name or "our team"
-            exec_phone = executive_user.phone or executive_user.mobile or (executive_user.partner_id and (executive_user.partner_id.phone or executive_user.partner_id.mobile)) or ""
+            partner = getattr(executive_user, 'partner_id', False)
+            exec_phone = getattr(executive_user, 'phone', False) or (partner and (getattr(partner, 'phone', False) or getattr(partner, 'mobile', False))) or ""
 
-        if not exec_phone and self.user_id:
+        if not exec_phone and self.user_id and self.user_id.exists():
             exec_name = self.user_id.name or exec_name
-            exec_phone = self.user_id.phone or self.user_id.mobile or (self.user_id.partner_id and (self.user_id.partner_id.phone or self.user_id.partner_id.mobile)) or ""
+            partner = getattr(self.user_id, 'partner_id', False)
+            exec_phone = getattr(self.user_id, 'phone', False) or (partner and (getattr(partner, 'phone', False) or getattr(partner, 'mobile', False))) or ""
 
         exec_digits = ''.join(filter(str.isdigit, str(exec_phone or '')))
         if len(exec_digits) >= 10:
