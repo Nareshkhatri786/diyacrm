@@ -44,8 +44,8 @@ COMPANY_RULES = {
         'phone_numbers': ['7575863338', '917575863338', '+917575863338'],
         'keywords': ['the 1st', 'the1st', '1st', 'residency', 'the first'],
         'default_salesperson': {
-            'name': 'Heer Savaliya',
-            'login': 'Heer',
+            'name': 'Nikita',
+            'login': 'Nikita',
         }
     },
     'royal': {
@@ -274,6 +274,14 @@ class WhatsAppWebhookController(http.Controller):
         user = env['res.users'].search([('name', '=ilike', target_name.strip())], limit=1)
         if not user and target_login:
             user = env['res.users'].search([('login', '=ilike', target_login.strip())], limit=1)
+        if not user:
+            # Flexible match (e.g. "Nikita Patel" when target_name is "Nikita")
+            user = env['res.users'].search([
+                ('share', '=', False),
+                '|',
+                ('name', 'ilike', target_name.strip()),
+                ('login', 'ilike', target_name.strip())
+            ], limit=1)
 
         all_companies = env['res.company'].search([])
 
