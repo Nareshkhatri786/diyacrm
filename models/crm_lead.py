@@ -666,7 +666,7 @@ class CrmLead(models.Model):
             self.stage_id = stage_5.id
         return self.send_site_visit_whatsapp()
 
-    def send_call_followup_whatsapp(self, call_outcome="answered", executive_user=None, force_send=False):
+    def send_call_followup_whatsapp(self, call_outcome="answered", executive_user=None, force_send=False, lang_choice="en"):
         self.ensure_one()
         phone_raw = self.phone or (self.partner_id and self.partner_id.phone) or ''
         digits = ''.join(filter(str.isdigit, phone_raw))
@@ -759,14 +759,24 @@ class CrmLead(models.Model):
 
         # 3. Construct clean, simple variables
         is_connected = (call_outcome == "answered")
-        if is_connected:
-            var1 = f"*{lead_name}*, thank you for talking with us regarding *{proj_title}*"
-            var2 = f"are sharing the project details with you. For any help, please call or WhatsApp *{exec_name}* on *{formatted_exec_phone}*"
-            var3 = f"more details, check the photos, video and location here {links_text}"
+        if lang_choice == "gu":
+            if is_connected:
+                var1 = f"*{lead_name} ji*, *{proj_title}* na regarding amari sathe vaat karva mate thank you. 🙏"
+                var2 = f"Ame tamari sathe project ni details share kari rahya chhiye. Koi pan help ke mahiti mate amari team na *{exec_name}* ({formatted_exec_phone}) ne call athva WhatsApp kari shako cho."
+                var3 = f"📍 Vadhu details mate project na photos, video ane location ahi check kari shako cho. {links_text}"
+            else:
+                var1 = f"*{lead_name} ji*, *{proj_title}* na regarding tamaro contact karvano prayas karyo hato. 🌟"
+                var2 = f"Shayad tame busy hata, etle call par vaat thai shaki nahi. Jyare tamne convenient hoy, tyare please amne call back karo athva amari team na *{exec_name}* ({formatted_exec_phone}) ne WhatsApp par message karo."
+                var3 = f"📍 Tamara reference mate project video ane location ahi check kari shako cho. {links_text}"
         else:
-            var1 = f"*{lead_name}*, tried calling you regarding your enquiry for *{proj_title}*"
-            var2 = f"could not connect with you. Whenever you are free, please call back or WhatsApp *{exec_name}* on *{formatted_exec_phone}*"
-            var3 = f"your reference, you can check our project video and location here {links_text}"
+            if is_connected:
+                var1 = f"*{lead_name}*, thank you for talking with us regarding *{proj_title}*"
+                var2 = f"are sharing the project details with you. For any help, please call or WhatsApp *{exec_name}* on *{formatted_exec_phone}*"
+                var3 = f"more details, check the photos, video and location here {links_text}"
+            else:
+                var1 = f"*{lead_name}*, tried calling you regarding your enquiry for *{proj_title}*"
+                var2 = f"could not connect with you. Whenever you are free, please call back or WhatsApp *{exec_name}* on *{formatted_exec_phone}*"
+                var3 = f"your reference, you can check our project video and location here {links_text}"
 
         if is_rudraksha:
             parameters = [
@@ -806,6 +816,7 @@ class CrmLead(models.Model):
             }, timeout=10)
 
             outcome_label = "Connected" if is_connected else "Missed / Busy"
+            lang_label = "ગુજરાતી" if lang_choice == "gu" else "English"
             if res.status_code == 200:
                 res_data = res.json()
                 msg_id = res_data.get('messages', [{}])[0].get('id', 'N/A')
@@ -818,29 +829,29 @@ class CrmLead(models.Model):
                     'direction': 'outbound',
                     'author_name': exec_name or self.env.user.name or 'System',
                     'phone': recipient,
-                    'body': f"📲 Call Follow-up ({outcome_label}):\n{var1}\n{var2}\n{var3}",
+                    'body': f"📲 Call Follow-up ({outcome_label} - {lang_label}):\n{var1}\n{var2}\n{var3}",
                     'date': fields.Datetime.now(),
                 })
                 self.message_post(
                     body=Markup(
-                        "📲 <b>Call Follow-up WhatsApp Delivered ({0})</b><br/>"
-                        "📱 <b>To:</b> {1}<br/>"
-                        "👤 <b>Advisor:</b> {2} ({3})<br/>"
-                        "🏢 <b>Project:</b> {4}<br/>"
-                        "🆔 <b>Meta Message ID:</b> <code>{5}</code>"
-                    ).format(outcome_label, recipient, exec_name, formatted_exec_phone, proj_title, msg_id),
+                        "📲 <b>Call Follow-up WhatsApp Delivered ({0} - {1})</b><br/>"
+                        "📱 <b>To:</b> {2}<br/>"
+                        "👤 <b>Advisor:</b> {3} ({4})<br/>"
+                        "🏢 <b>Project:</b> {5}<br/>"
+                        "🆔 <b>Meta Message ID:</b> <code>{6}</code>"
+                    ).format(outcome_label, lang_label, recipient, exec_name, formatted_exec_phone, proj_title, msg_id),
                     subtype_xmlid='mail.mt_note'
                 )
-                _logger.info("Call WhatsApp (%s) sent to %s for lead #%s (Msg ID: %s)", outcome_label, recipient, self.id, msg_id)
+                _logger.info("Call WhatsApp (%s - %s) sent to %s for lead #%s (Msg ID: %s)", outcome_label, lang_label, recipient, self.id, msg_id)
                 return True
             else:
                 err_text = res.text
                 self.message_post(
                     body=Markup(
-                        "⚠️ <b>Call Follow-up WhatsApp Failed ({0})</b><br/>"
-                        "📱 <b>To:</b> {1}<br/>"
-                        "❌ <b>Error:</b> {2}"
-                    ).format(outcome_label, recipient, err_text),
+                        "⚠️ <b>Call Follow-up WhatsApp Failed ({0} - {1})</b><br/>"
+                        "📱 <b>To:</b> {2}<br/>"
+                        "❌ <b>Error:</b> {3}"
+                    ).format(outcome_label, lang_label, recipient, err_text),
                     subtype_xmlid='mail.mt_note'
                 )
                 _logger.error("Meta API error for Call WhatsApp on lead #%s: %s", self.id, err_text)
@@ -851,14 +862,14 @@ class CrmLead(models.Model):
 
     def action_send_call_connected_whatsapp(self):
         self.ensure_one()
-        res = self.send_call_followup_whatsapp(call_outcome="answered", executive_user=self.env.user, force_send=True)
+        res = self.send_call_followup_whatsapp(call_outcome="answered", executive_user=self.env.user, force_send=True, lang_choice="en")
         if res:
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
                 "params": {
                     "title": _("WhatsApp Sent!"),
-                    "message": _("Call Connected WhatsApp message delivered to %s") % self.phone,
+                    "message": _("Call Connected WhatsApp message (English) delivered to %s") % self.phone,
                     "type": "success",
                     "sticky": False
                 }
@@ -868,14 +879,48 @@ class CrmLead(models.Model):
 
     def action_send_call_missed_whatsapp(self):
         self.ensure_one()
-        res = self.send_call_followup_whatsapp(call_outcome="no_answer", executive_user=self.env.user, force_send=True)
+        res = self.send_call_followup_whatsapp(call_outcome="no_answer", executive_user=self.env.user, force_send=True, lang_choice="en")
         if res:
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
                 "params": {
                     "title": _("WhatsApp Sent!"),
-                    "message": _("Missed Call WhatsApp message delivered to %s") % self.phone,
+                    "message": _("Missed Call WhatsApp message (English) delivered to %s") % self.phone,
+                    "type": "success",
+                    "sticky": False
+                }
+            }
+        else:
+            raise UserError(_("Could not send WhatsApp message. Please check phone number or Meta credentials."))
+
+    def action_send_call_connected_whatsapp_gu(self):
+        self.ensure_one()
+        res = self.send_call_followup_whatsapp(call_outcome="answered", executive_user=self.env.user, force_send=True, lang_choice="gu")
+        if res:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("WhatsApp Sent!"),
+                    "message": _("Call Connected WhatsApp message (ગુજરાતી) delivered to %s") % self.phone,
+                    "type": "success",
+                    "sticky": False
+                }
+            }
+        else:
+            raise UserError(_("Could not send WhatsApp message. Please check phone number or Meta credentials."))
+
+    def action_send_call_missed_whatsapp_gu(self):
+        self.ensure_one()
+        res = self.send_call_followup_whatsapp(call_outcome="no_answer", executive_user=self.env.user, force_send=True, lang_choice="gu")
+        if res:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("WhatsApp Sent!"),
+                    "message": _("Missed Call WhatsApp message (ગુજરાતી) delivered to %s") % self.phone,
                     "type": "success",
                     "sticky": False
                 }

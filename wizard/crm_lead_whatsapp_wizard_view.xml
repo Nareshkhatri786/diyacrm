@@ -17,24 +17,58 @@
                     </div>
                 </div>
 
-                <div class="row g-3 my-2">
-                    <div class="col-12 col-md-6 mb-2">
-                        <button name="action_send_connected" type="object" class="btn btn-outline-success w-100 p-3 shadow-sm d-flex flex-column align-items-center justify-content-center border-2 rounded-3 text-decoration-none">
-                            <i class="fa fa-phone fa-2x text-success mb-2"/>
-                            <span class="fs-5 fw-bold text-success">Call Connected</span>
-                            <span class="small text-muted text-center mt-1">
-                                Send greetings, project videos &amp; location link
-                            </span>
-                        </button>
+                <!-- 4 FOLLOW-UP OPTIONS -->
+                <div class="mb-3">
+                    <!-- ENGLISH SECTION -->
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-primary text-white me-2 px-2 py-1">English</span>
+                        <span class="text-muted small fw-bold text-uppercase">Standard Follow-up Message</span>
                     </div>
-                    <div class="col-12 col-md-6 mb-2">
-                        <button name="action_send_missed" type="object" class="btn btn-outline-danger w-100 p-3 shadow-sm d-flex flex-column align-items-center justify-content-center border-2 rounded-3 text-decoration-none">
-                            <i class="fa fa-phone-square fa-2x text-danger mb-2"/>
-                            <span class="fs-5 fw-bold text-danger">Missed / Busy Call</span>
-                            <span class="small text-muted text-center mt-1">
-                                Send apology, executive contact &amp; call back request
-                            </span>
-                        </button>
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-6">
+                            <button name="action_send_connected_en" type="object" class="btn btn-outline-success w-100 p-3 shadow-sm d-flex flex-column align-items-center justify-content-center border-2 rounded-3 text-decoration-none h-100">
+                                <i class="fa fa-phone fa-2x text-success mb-2" title="Call Connected" aria-label="Call Connected"/>
+                                <span class="fs-6 fw-bold text-success">Call Connected (English)</span>
+                                <span class="small text-muted text-center mt-1">
+                                    Send greetings, project video &amp; location link
+                                </span>
+                            </button>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <button name="action_send_missed_en" type="object" class="btn btn-outline-danger w-100 p-3 shadow-sm d-flex flex-column align-items-center justify-content-center border-2 rounded-3 text-decoration-none h-100">
+                                <i class="fa fa-phone-square fa-2x text-danger mb-2" title="Missed Call" aria-label="Missed Call"/>
+                                <span class="fs-6 fw-bold text-danger">Missed / Busy (English)</span>
+                                <span class="small text-muted text-center mt-1">
+                                    Send apology, executive contact &amp; call back request
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- GUJARATI SECTION -->
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-success text-white me-2 px-2 py-1">ગુજરાતી</span>
+                        <span class="text-muted small fw-bold text-uppercase">Gujarati Follow-up Message</span>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-12 col-md-6">
+                            <button name="action_send_connected_gu" type="object" class="btn btn-outline-success w-100 p-3 shadow-sm d-flex flex-column align-items-center justify-content-center border-2 rounded-3 text-decoration-none h-100">
+                                <i class="fa fa-phone fa-2x text-success mb-2" title="Call Connected" aria-label="Call Connected"/>
+                                <span class="fs-6 fw-bold text-success">Call Connected (ગુજરાતી)</span>
+                                <span class="small text-muted text-center mt-1">
+                                    પ્રોજેક્ટ વિડીયો, બ્રોશર &amp; લોકેશન લિંક
+                                </span>
+                            </button>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <button name="action_send_missed_gu" type="object" class="btn btn-outline-danger w-100 p-3 shadow-sm d-flex flex-column align-items-center justify-content-center border-2 rounded-3 text-decoration-none h-100">
+                                <i class="fa fa-phone-square fa-2x text-danger mb-2" title="Missed Call" aria-label="Missed Call"/>
+                                <span class="fs-6 fw-bold text-danger">Missed / Busy (ગુજરાતી)</span>
+                                <span class="small text-muted text-center mt-1">
+                                    કોલ બેક વિનંતી &amp; એક્ઝિક્યુટિવ સંપર્ક
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

@@ -17,13 +17,14 @@ class CrmLeadWhatsappWizard(models.TransientModel):
         string="Recent WhatsApp Messages"
     )
 
-    def action_send_connected(self):
-        """Send Call Connected follow-up WhatsApp (Project video, location, brochure)."""
+    def action_send_connected_en(self):
+        """Send Call Connected follow-up WhatsApp in English."""
         self.ensure_one()
         res = self.lead_id.send_call_followup_whatsapp(
             call_outcome="answered",
             executive_user=self.user_id or self.env.user,
-            force_send=True
+            force_send=True,
+            lang_choice="en"
         )
         if res:
             return {
@@ -31,7 +32,7 @@ class CrmLeadWhatsappWizard(models.TransientModel):
                 "tag": "display_notification",
                 "params": {
                     "title": _("WhatsApp Sent!"),
-                    "message": _("Call Connected WhatsApp message delivered to %s") % self.phone,
+                    "message": _("Call Connected WhatsApp message (English) delivered to %s") % self.phone,
                     "type": "success",
                     "sticky": False
                 }
@@ -39,13 +40,14 @@ class CrmLeadWhatsappWizard(models.TransientModel):
         else:
             raise UserError(_("Could not send WhatsApp message. Please verify phone number and Meta credentials."))
 
-    def action_send_missed(self):
-        """Send Missed/Busy Call follow-up WhatsApp (Call back request, executive details)."""
+    def action_send_missed_en(self):
+        """Send Missed/Busy Call follow-up WhatsApp in English."""
         self.ensure_one()
         res = self.lead_id.send_call_followup_whatsapp(
             call_outcome="no_answer",
             executive_user=self.user_id or self.env.user,
-            force_send=True
+            force_send=True,
+            lang_choice="en"
         )
         if res:
             return {
@@ -53,10 +55,63 @@ class CrmLeadWhatsappWizard(models.TransientModel):
                 "tag": "display_notification",
                 "params": {
                     "title": _("WhatsApp Sent!"),
-                    "message": _("Missed Call WhatsApp message delivered to %s") % self.phone,
+                    "message": _("Missed Call WhatsApp message (English) delivered to %s") % self.phone,
                     "type": "success",
                     "sticky": False
                 }
             }
         else:
             raise UserError(_("Could not send WhatsApp message. Please verify phone number and Meta credentials."))
+
+    def action_send_connected_gu(self):
+        """Send Call Connected follow-up WhatsApp in Gujarati."""
+        self.ensure_one()
+        res = self.lead_id.send_call_followup_whatsapp(
+            call_outcome="answered",
+            executive_user=self.user_id or self.env.user,
+            force_send=True,
+            lang_choice="gu"
+        )
+        if res:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("WhatsApp Sent!"),
+                    "message": _("Call Connected WhatsApp message (ગુજરાતી) delivered to %s") % self.phone,
+                    "type": "success",
+                    "sticky": False
+                }
+            }
+        else:
+            raise UserError(_("Could not send WhatsApp message. Please verify phone number and Meta credentials."))
+
+    def action_send_missed_gu(self):
+        """Send Missed/Busy Call follow-up WhatsApp in Gujarati."""
+        self.ensure_one()
+        res = self.lead_id.send_call_followup_whatsapp(
+            call_outcome="no_answer",
+            executive_user=self.user_id or self.env.user,
+            force_send=True,
+            lang_choice="gu"
+        )
+        if res:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("WhatsApp Sent!"),
+                    "message": _("Missed Call WhatsApp message (ગુજરાતી) delivered to %s") % self.phone,
+                    "type": "success",
+                    "sticky": False
+                }
+            }
+        else:
+            raise UserError(_("Could not send WhatsApp message. Please verify phone number and Meta credentials."))
+
+    # Backward compatibility
+    def action_send_connected(self):
+        return self.action_send_connected_en()
+
+    def action_send_missed(self):
+        return self.action_send_missed_en()
