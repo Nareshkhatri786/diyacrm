@@ -703,6 +703,8 @@ class CrmLead(models.Model):
         else:
             formatted_exec_phone = "our team"
 
+        contact_exec = f"*{exec_name}* ({formatted_exec_phone})" if formatted_exec_phone and formatted_exec_phone != "our team" else f"*{exec_name}*"
+
         lead_name = self.name.split('-')[0].strip() if self.name else "Client"
         if any(lead_name.startswith(p) for p in ["Call:", "+91", "91", "0"]):
             lead_name = "Sir/Madam"
@@ -762,20 +764,20 @@ class CrmLead(models.Model):
         if lang_choice == "gu":
             if is_connected:
                 var1 = f"*{lead_name} ji*, *{proj_title}* na regarding amari sathe vaat karva mate thank you. 🙏"
-                var2 = f"Ame tamari sathe project ni details share kari rahya chhiye. Koi pan help ke mahiti mate amari team na *{exec_name}* ({formatted_exec_phone}) ne call athva WhatsApp kari shako cho."
-                var3 = f"📍 Vadhu details mate project na photos, video ane location ahi check kari shako cho. {links_text}"
+                var2 = f"would like to share project details with you. Koi pan help ke mahiti mate amari team na {contact_exec} ne call athva WhatsApp kari shako cho."
+                var3 = f"project details, video ane location ahi check kari shako cho: {links_text}"
             else:
                 var1 = f"*{lead_name} ji*, *{proj_title}* na regarding tamaro contact karvano prayas karyo hato. 🌟"
-                var2 = f"Shayad tame busy hata, etle call par vaat thai shaki nahi. Jyare tamne convenient hoy, tyare please amne call back karo athva amari team na *{exec_name}* ({formatted_exec_phone}) ne WhatsApp par message karo."
-                var3 = f"📍 Tamara reference mate project video ane location ahi check kari shako cho. {links_text}"
+                var2 = f"missed you on call (vaat na thai shaki). Jyare tame free thav, please amne call back karo athva amari team na {contact_exec} ne WhatsApp message karo."
+                var3 = f"your reference, project video ane location ahi check kari shako cho: {links_text}"
         else:
             if is_connected:
                 var1 = f"*{lead_name}*, thank you for talking with us regarding *{proj_title}*"
-                var2 = f"are sharing the project details with you. For any help, please call or WhatsApp *{exec_name}* on *{formatted_exec_phone}*"
+                var2 = f"are sharing the project details with you. For any help, please call or WhatsApp {contact_exec}"
                 var3 = f"more details, check the photos, video and location here {links_text}"
             else:
                 var1 = f"*{lead_name}*, tried calling you regarding your enquiry for *{proj_title}*"
-                var2 = f"could not connect with you. Whenever you are free, please call back or WhatsApp *{exec_name}* on *{formatted_exec_phone}*"
+                var2 = f"could not connect with you. Whenever you are free, please call back or WhatsApp {contact_exec}"
                 var3 = f"your reference, you can check our project video and location here {links_text}"
 
         if is_rudraksha:
