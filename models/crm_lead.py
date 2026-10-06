@@ -562,7 +562,7 @@ class CrmLead(models.Model):
             lang = 'en'
             # Royal Rudraksha has {{3}} after Hi, {{1}} after We, {{2}} after for
             param1 = "hope you loved our *project planning, sample house and construction quality*"
-            param2 = "your family discussion and ready reference, explore all verified links here 👉 *📖 Brochure:* https://drive.google.com/file/d/1nvQ8DRwq7D3E-yapAT6-C0dfn58mkARk/view | *🎬 Sample House:* https://www.instagram.com/reel/DbuUMm_Nb4Y/ | *📍 Location:* https://maps.app.goo.gl/nshVkVLDydKs4Nyq7"
+            param2 = "your family discussion and ready reference, explore all verified links here 👉 *📖 Brochure:* https://drive.google.com/file/d/1nvQ8DRwq7D3E-yapAT6-C0dfn58mkARk/view | *🎬 Sample House:* https://www.instagram.com/reel/DbuUMm_Nb4Y/ | *📍 Location:* https://maps.app.goo.gl/CbgU4s1ScXNdRrTF9"
             param3 = f"*{lead_name}*, thank you for visiting *Royal Rudraksha* today"
             parameters = [
                 {'type': 'text', 'text': param1},
@@ -736,7 +736,7 @@ class CrmLead(models.Model):
             template_name = 'payment_received'
             lang = 'en'
             proj_title = "Royal Rudraksha"
-            links_text = "👉 *🎬 Sample House:* https://www.instagram.com/reel/DbuUMm_Nb4Y/ | *📖 Brochure:* https://drive.google.com/file/d/1nvQ8DRwq7D3E-yapAT6-C0dfn58mkARk/view | *📍 Location:* https://maps.app.goo.gl/nshVkVLDydKs4Nyq7"
+            links_text = "👉 *🎬 Sample House:* https://www.instagram.com/reel/DbuUMm_Nb4Y/ | *📖 Brochure:* https://drive.google.com/file/d/1nvQ8DRwq7D3E-yapAT6-C0dfn58mkARk/view | *📍 Location:* https://maps.app.goo.gl/CbgU4s1ScXNdRrTF9"
             is_rudraksha = True
 
         elif 'devi' in company_name:
@@ -1008,7 +1008,7 @@ class CrmLead(models.Model):
             template_name = 'payment_received'
             lang = 'en'
             proj_title = "Royal Rudraksha"
-            links_text = "👉 *🎬 Sample House:* https://www.instagram.com/reel/DbuUMm_Nb4Y/ | *📖 Brochure:* https://drive.google.com/file/d/1nvQ8DRwq7D3E-yapAT6-C0dfn58mkARk/view | *📍 Location:* https://maps.app.goo.gl/nshVkVLDydKs4Nyq7"
+            links_text = "👉 *🎬 Sample House:* https://www.instagram.com/reel/DbuUMm_Nb4Y/ | *📖 Brochure:* https://drive.google.com/file/d/1nvQ8DRwq7D3E-yapAT6-C0dfn58mkARk/view | *📍 Location:* https://maps.app.goo.gl/CbgU4s1ScXNdRrTF9"
             is_rudraksha = True
 
         elif 'devi' in company_name:
