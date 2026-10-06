@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_crm_lead_bulk_whatsapp_wizard_form" model="ir.ui.view">
+        <field name="name">crm.lead.bulk.whatsapp.wizard.form</field>
+        <field name="model">crm.lead.bulk.whatsapp.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Send Bulk WhatsApp Campaign (Admin Only)">
+                <div class="alert alert-warning py-2 mb-3 d-flex align-items-center" role="alert">
+                    <i class="fa fa-shield fa-2x me-2 text-warning" title="Security" aria-label="Security"/>
+                    <div>
+                        <strong>Admin Exclusive Feature:</strong> Yeh campaign Meta Cloud API se selected leads ko direct delivered hoga. Normal sales executives ko yeh access visible nahi hai.
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-6 border-end pe-md-4">
+                        <h6 class="text-uppercase text-muted fw-bold small mb-2">Campaign Setup</h6>
+                        <group>
+                            <field name="campaign_type" widget="radio"/>
+                            <field name="lang_choice" widget="radio"/>
+                        </group>
+                    </div>
+                    <div class="col-12 col-md-6 ps-md-4">
+                        <h6 class="text-uppercase text-muted fw-bold small mb-2">Selected Audience Summary</h6>
+                        <div class="d-flex justify-content-between align-items-center p-2 mb-2 bg-light rounded border">
+                            <span>Total Leads Selected:</span>
+                            <span class="fs-5 fw-bold text-primary"><field name="total_selected"/></span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center p-2 mb-2 bg-light rounded border">
+                            <span>Valid Mobile Numbers (Ready):</span>
+                            <span class="fs-5 fw-bold text-success"><field name="valid_count"/></span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center p-2 mb-2 bg-light rounded border">
+                            <span>Invalid / Missing Numbers (Skipped):</span>
+                            <span class="fs-6 fw-bold text-danger"><field name="invalid_count"/></span>
+                        </div>
+                    </div>
+                </div>
+
+                <notebook>
+                    <page string="Live Message Preview" name="preview">
+                        <field name="preview_html" widget="html" readonly="1"/>
+                    </page>
+                    <page string="Selected Leads List" name="leads">
+                        <field name="lead_ids" readonly="1">
+                            <list create="false" delete="false" edit="false">
+                                <field name="name" string="Lead Name"/>
+                                <field name="phone" string="Phone"/>
+                                <field name="stage_id" string="Current Stage"/>
+                                <field name="company_id" string="Project"/>
+                                <field name="user_id" string="Sales Executive"/>
+                            </list>
+                        </field>
+                    </page>
+                </notebook>
+
+                <footer>
+                    <button name="action_send_bulk_campaign" string="🚀 Start Bulk Campaign" type="object" class="btn-success text-white" confirm="Are you sure you want to send this WhatsApp campaign to all valid selected leads?"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- Admin Only Action: Bound ONLY to crm.lead List View -->
+    <record id="action_crm_lead_bulk_whatsapp_wizard" model="ir.actions.act_window">
+        <field name="name">📲 Send Bulk WhatsApp Campaign (Admin)</field>
+        <field name="res_model">crm.lead.bulk.whatsapp.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="crm.model_crm_lead"/>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('base.group_system'))]"/>
+    </record>
+</odoo>

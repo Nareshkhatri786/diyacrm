@@ -945,3 +945,214 @@ class CrmLead(models.Model):
                 'default_user_id': self.env.user.id,
             }
         }
+
+    def send_campaign_whatsapp(self, campaign_type="new_lead", lang_choice="gu", executive_user=None, force_send=True):
+        self.ensure_one()
+        phone_raw = self.phone or (self.partner_id and self.partner_id.phone) or ''
+        digits = ''.join(filter(str.isdigit, phone_raw))
+        if len(digits) >= 10:
+            recipient = '91' + digits[-10:]
+        else:
+            _logger.warning("Invalid phone for Campaign WhatsApp on lead #%s: %s", self.id, phone_raw)
+            return False
+
+        # 1. Resolve Executive details
+        exec_name = "our team"
+        exec_phone = ""
+        if executive_user and executive_user.exists():
+            exec_name = executive_user.name or "our team"
+            partner = getattr(executive_user, 'partner_id', False)
+            exec_phone = getattr(executive_user, 'phone', False) or (partner and (getattr(partner, 'phone', False) or getattr(partner, 'mobile', False))) or ""
+
+        if not exec_phone and self.user_id and self.user_id.exists():
+            exec_name = self.user_id.name or exec_name
+            partner = getattr(self.user_id, 'partner_id', False)
+            exec_phone = getattr(self.user_id, 'phone', False) or (partner and (getattr(partner, 'phone', False) or getattr(partner, 'mobile', False))) or ""
+
+        exec_digits = ''.join(filter(str.isdigit, str(exec_phone or '')))
+        if len(exec_digits) >= 10:
+            formatted_exec_phone = exec_digits[-10:]
+        else:
+            formatted_exec_phone = ""
+
+        contact_exec = f"*{exec_name}* ({formatted_exec_phone})" if formatted_exec_phone else f"*{exec_name}*"
+
+        lead_name = self.name.split('-')[0].strip() if self.name else "Client"
+        if any(lead_name.startswith(p) for p in ["Call:", "+91", "91", "0"]):
+            lead_name = "Sir/Madam"
+
+        company_name = (self.company_id.name or '').lower()
+        ICP = self.env['ir.config_parameter'].sudo()
+
+        is_rudraksha = False
+        # 2. Determine Project Config & Links
+        if 'shreemad' in company_name:
+            phone_id = ICP.get_param('diyacrm.shreemad_family.phone_id', '1161115510429761')
+            token = ICP.get_param('diyacrm.shreemad_family.token', '')
+            template_name = 'payment_received'
+            lang = 'en'
+            proj_title = "Shreemad Family"
+            links_text = "👉 *🎥 Video:* https://www.instagram.com/reel/DahhUDKtbTD/ | *📖 Brochure:* https://drive.google.com/file/d/1vN7R6AqyZRAiTOVdg4gK9C_mRo9jkHWM/view | *📍 Location:* https://maps.app.goo.gl/gyN7sJgEhQMi5uMY9"
+
+        elif any(k in company_name for k in ['1st', 'first', 'radhe']):
+            phone_id = ICP.get_param('diyacrm.radhe_developers.phone_id', '1305619522636450')
+            token = ICP.get_param('diyacrm.radhe_developers.token', '')
+            template_name = 'payment_received'
+            lang = 'en'
+            proj_title = "THE 1ˢᵗ RESIDENCY"
+            links_text = "👉 *🎥 Video:* https://youtu.be/rAvOj2_QF-0 | *📖 Brochure:* https://drive.google.com/file/d/1izKX9HnlTSTZJpg1CKOzYMvzHTq-KC4B/view | *📍 Location:* https://goo.gl/maps/NcoSHFBo6UZzbkpL9"
+
+        elif any(k in company_name for k in ['rudraksha', 'royal']):
+            phone_id = ICP.get_param('diyacrm.royal_rudraksha.phone_id', '1224814500716320')
+            token = ICP.get_param('diyacrm.royal_rudraksha.token', '')
+            template_name = 'payment_received'
+            lang = 'en'
+            proj_title = "Royal Rudraksha"
+            links_text = "👉 *🎬 Sample House:* https://www.instagram.com/reel/DbuUMm_Nb4Y/ | *📖 Brochure:* https://drive.google.com/file/d/1nvQ8DRwq7D3E-yapAT6-C0dfn58mkARk/view | *📍 Location:* https://maps.app.goo.gl/nshVkVLDydKs4Nyq7"
+            is_rudraksha = True
+
+        elif 'devi' in company_name:
+            phone_id = ICP.get_param('diyacrm.devi_bungalows.phone_id', '1265084363352795')
+            token = ICP.get_param('diyacrm.devi_bungalows.token', '')
+            template_name = 'order_details'
+            lang = 'en'
+            proj_title = "Devi Bungalows"
+            links_text = "👉 *🏠 Sample House:* https://www.instagram.com/reel/DSb52VZkzlp/ | *📖 Brochure:* https://cloudmediastorage.fylestor.com/2773/file-manager/BROCHURE_DEVI_BUNGLOWS_PDF_compressed.pdf-1762586213760.pdf | *📍 Location:* https://maps.app.goo.gl/i4dehWZrwamtrTJXA"
+
+        else:
+            phone_id = ICP.get_param('diyacrm.shreemad_family.phone_id', '1161115510429761')
+            token = ICP.get_param('diyacrm.shreemad_family.token', '')
+            template_name = 'payment_received'
+            lang = 'en'
+            proj_title = self.company_id.name or "our project"
+            links_text = "👉 *🎥 Video:* https://www.instagram.com/reel/DahhUDKtbTD/ | *📖 Brochure:* https://drive.google.com/file/d/1vN7R6AqyZRAiTOVdg4gK9C_mRo9jkHWM/view | *📍 Location:* https://maps.app.goo.gl/gyN7sJgEhQMi5uMY9"
+
+        if not token or not phone_id:
+            _logger.error("Missing WhatsApp token or phone_id for company '%s' on lead #%s", company_name, self.id)
+            return False
+
+        # 3. Construct Campaign Variables based on stage & language
+        if lang_choice == "gu":
+            if campaign_type == "contacted":
+                campaign_label = "Stage 2: Contacted"
+                var1 = f"*{lead_name} ji*, *{proj_title}* na regarding amari sathe vaat thaya ne thodo samay thayo. 🤝"
+                var2 = f"wanted to check ke tamari property search chaloo chhe ke tame purchase kari lidhu chhe? Jo search chaloo hoy toh updated pricing ane inventory mate {contact_exec} sathe connect kari shako chho."
+                var3 = f"fresh layout plans, sample house video ane location link: {links_text}"
+            elif campaign_type == "site_visit_scheduled":
+                campaign_label = "Stage 4: Site Visit Scheduled"
+                var1 = f"*{lead_name} ji*, *{proj_title}* ni tamari scheduled site visit ma tame aavi shakya na hata. 🤝"
+                var2 = f"missed you at our site. We understand tame busy hasso. Aa weekend par tame ane tamaro parivar amaro ready sample house jova aavi shako chho. Tamaro convenient time {contact_exec} ne janavi shako chho."
+                var3 = f"easy navigation mate site Google Location ane video link ahi chhe: {links_text}"
+            elif campaign_type == "site_visit_done":
+                campaign_label = "Stage 5: Site Visit Done"
+                var1 = f"*{lead_name} ji*, *{proj_title}* ma tame pasand kareli unit na reference ma. ⚡"
+                var2 = f"would like to update you ke selected units ma booking fast chaloo chhe. Tamari preferred unit hold karva mate athva token process samajva mate {contact_exec} sathe connect kari shako chho."
+                var3 = f"unit details, floor layout ane brochure re-check karva ahi click karo: {links_text}"
+            else:
+                # new_lead (Default with user's approved wording)
+                campaign_label = "Stage 1: New Lead"
+                var1 = f"*{lead_name} ji*, *{proj_title}* ma tame pehla interest batavyo hato, etle tamari sathe fari connect karvanu thayu. 🙏"
+                var2 = f"would love to invite you to experience our *Ready Sample House / Flat*. Jo tame nava ghar ni search ma chho, toh amaro sample house ek vaar live jova jevo chhe. Amari team na {contact_exec} sathe tamaro visit plan kari shako chho."
+                var3 = f"sample house video, photos ane location ahi check kari shako chho: {links_text}"
+        else:
+            if campaign_type == "contacted":
+                campaign_label = "Stage 2: Contacted"
+                var1 = f"*{lead_name}*, following up on our previous conversation regarding *{proj_title}*"
+                var2 = f"wanted to check if your property search is still active. Construction is progressing rapidly on site. For the latest pricing and unit availability, connect with {contact_exec}."
+                var3 = f"updated walkthrough video, brochure and location: {links_text}"
+            elif campaign_type == "site_visit_scheduled":
+                campaign_label = "Stage 4: Site Visit Scheduled"
+                var1 = f"*{lead_name}*, we noticed you missed your scheduled visit to *{proj_title}*"
+                var2 = f"missed hosting you at our site. We understand you might have been busy. We invite you and your family to reschedule your visit this weekend. Share your preferred time with {contact_exec}."
+                var3 = f"easy navigation, sample house video and location link: {links_text}"
+            elif campaign_type == "site_visit_done":
+                campaign_label = "Stage 5: Site Visit Done"
+                var1 = f"*{lead_name}*, following up on your recent site visit to *{proj_title}*"
+                var2 = f"would like to update you that high-demand units are booking fast. To hold your preferred unit or discuss token process, please connect with {contact_exec}."
+                var3 = f"unit details, floor layout and brochure: {links_text}"
+            else:
+                campaign_label = "Stage 1: New Lead"
+                var1 = f"*{lead_name}*, following up on your earlier interest in *{proj_title}*"
+                var2 = f"would love to invite you to experience our *Ready Sample House / Flat*. If you are exploring your dream home, this weekend is the perfect time to visit. Connect with {contact_exec} to plan your visit."
+                var3 = f"project video walkthrough, brochure and exact location: {links_text}"
+
+        if is_rudraksha:
+            parameters = [
+                {'type': 'text', 'text': var2},
+                {'type': 'text', 'text': var3},
+                {'type': 'text', 'text': var1}
+            ]
+        else:
+            parameters = [
+                {'type': 'text', 'text': var1},
+                {'type': 'text', 'text': var2},
+                {'type': 'text', 'text': var3}
+            ]
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": recipient,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": lang},
+                "components": [
+                    {
+                        "type": "body",
+                        "parameters": parameters
+                    }
+                ]
+            }
+        }
+
+        try:
+            import requests
+            url = f"https://graph.facebook.com/v19.0/{phone_id}/messages"
+            res = requests.post(url, json=payload, headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            }, timeout=10)
+
+            lang_label = "ગુજરાતી" if lang_choice == "gu" else "English"
+            if res.status_code == 200:
+                res_data = res.json()
+                msg_id = res_data.get('messages', [{}])[0].get('id', 'N/A')
+                self.write({
+                    'last_call_whatsapp_date': fields.Datetime.now(),
+                    'last_call_whatsapp_type': 'campaign'
+                })
+                self.env['crm.lead.whatsapp.message'].create({
+                    'lead_id': self.id,
+                    'direction': 'outbound',
+                    'author_name': exec_name or self.env.user.name or 'Admin Campaign',
+                    'phone': recipient,
+                    'body': f"🚀 Re-Engagement Campaign ({campaign_label} - {lang_label}):\n{var1}\n{var2}\n{var3}",
+                    'date': fields.Datetime.now(),
+                })
+                self.message_post(
+                    body=Markup(
+                        "🚀 <b>WhatsApp Campaign Delivered ({0} - {1})</b><br/>"
+                        "📱 <b>To:</b> {2}<br/>"
+                        "👤 <b>Advisor:</b> {3}<br/>"
+                        "🏢 <b>Project:</b> {4}<br/>"
+                        "🆔 <b>Meta Message ID:</b> <code>{5}</code>"
+                    ).format(campaign_label, lang_label, recipient, contact_exec, proj_title, msg_id),
+                    subtype_xmlid='mail.mt_note'
+                )
+                _logger.info("Campaign WhatsApp (%s - %s) sent to %s on lead #%s", campaign_label, lang_label, recipient, self.id)
+                return True
+            else:
+                err_text = res.text
+                self.message_post(
+                    body=Markup(
+                        "⚠️ <b>WhatsApp Campaign Failed ({0} - {1})</b><br/>"
+                        "📱 <b>To:</b> {2}<br/>"
+                        "❌ <b>Error:</b> {3}"
+                    ).format(campaign_label, lang_label, recipient, err_text),
+                    subtype_xmlid='mail.mt_note'
+                )
+                _logger.error("Meta API error on lead #%s campaign: %s", self.id, err_text)
+                return False
+        except Exception as e:
+            _logger.exception("Exception sending Campaign WhatsApp for lead #%s: %s", self.id, e)
+            return False
