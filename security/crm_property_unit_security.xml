@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 1. Category for Property & Unit Inventory in User Management -->
-    <record id="module_category_property_inventory" model="ir.module.category">
+    <!-- 1. Privilege for Property & Unit Inventory in User Management (Odoo 19 Architecture) -->
+    <record id="res_groups_privilege_property_developer" model="res.groups.privilege">
         <field name="name">Diya CRM Property</field>
-        <field name="description">Access rights for Property Unit Inventory and Visual Matrix</field>
         <field name="sequence">15</field>
+        <field name="category_id" ref="base.module_category_sales"/>
     </record>
 
     <!-- 2. Developer Access Group (Unit Inventory Only) -->
     <record id="group_property_developer" model="res.groups">
         <field name="name">Developer (Unit Inventory Only)</field>
-        <field name="category_id" ref="module_category_property_inventory"/>
+        <field name="privilege_id" ref="res_groups_privilege_property_developer"/>
+        <field name="sequence">10</field>
         <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
-        <field name="comment">Access level for property developers/builders. Grants access ONLY to Unit Inventory and Visual Unit Matrix. No access to CRM leads, call logs, WhatsApp, attendance, or settings.</field>
+        <field name="comment">Access level for property developers/builders. Grants access ONLY to Unit Inventory and Visual Unit Matrix.</field>
     </record>
 
     <!-- 3. Multi-Company Record Rule: Each company only sees its own units -->
