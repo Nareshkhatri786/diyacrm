@@ -28,15 +28,19 @@ BEGIN
     WHERE name ILIKE '%1st%' OR name ILIKE '%first%' OR name ILIKE '%radhe%'
     ORDER BY id ASC LIMIT 1;
 
-    -- 2. Find Nikita User
-    SELECT id INTO nikita_uid FROM res_users 
-    WHERE (name ILIKE '%nikita%' OR login ILIKE '%nikita%') AND share = FALSE 
-    ORDER BY id ASC LIMIT 1;
+    -- 2. Find Nikita User (join res_partner because 'name' is in res_partner)
+    SELECT u.id INTO nikita_uid 
+    FROM res_users u
+    JOIN res_partner p ON p.id = u.partner_id
+    WHERE (p.name ILIKE '%nikita%' OR u.login ILIKE '%nikita%') AND u.share = FALSE 
+    ORDER BY u.id ASC LIMIT 1;
 
-    -- 3. Find Heer User
-    SELECT id INTO heer_uid FROM res_users 
-    WHERE (name ILIKE '%heer%' OR login ILIKE '%heer%') 
-    ORDER BY id ASC LIMIT 1;
+    -- 3. Find Heer User (join res_partner)
+    SELECT u.id INTO heer_uid 
+    FROM res_users u
+    JOIN res_partner p ON p.id = u.partner_id
+    WHERE (p.name ILIKE '%heer%' OR u.login ILIKE '%heer%') 
+    ORDER BY u.id ASC LIMIT 1;
 
     IF the1st_comp_id IS NULL THEN
         RAISE NOTICE '⚠️ Company "The 1st Residency" not found in res_company!';
@@ -57,6 +61,8 @@ BEGIN
         RETURNING id INTO nikita_uid;
 
         RAISE NOTICE '✅ Created user Nikita (ID: %)', nikita_uid;
+    ELSE
+        RAISE NOTICE 'ℹ️ Found Nikita user (ID: %)', nikita_uid;
     END IF;
 
     -- Ensure Nikita has access to The 1st Residency company in res_company_users_rel
@@ -76,6 +82,7 @@ BEGIN
 
     -- 5. Reassign The 1st Residency leads currently under Heer to Nikita
     IF heer_uid IS NOT NULL THEN
+        RAISE NOTICE 'ℹ️ Found Heer user (ID: %)', heer_uid;
         UPDATE crm_lead 
         SET user_id = nikita_uid,
             company_id = the1st_comp_id
@@ -115,36 +122,12 @@ BEGIN
 END $$;
 """
 
-    commands = [
-        ["sudo", "-u", "postgres", "psql", "-d", "diyacrm", "-c", sql],
-        ["psql", "-d", "diyacrm", "-c", sql],
-        ["psql", "-U", "odoo19", "-d", "diyacrm", "-c", sql],
-    ]
-
-    success = False
-    for cmd in commands:
-        try:
-            res = subprocess.run(cmd, capture_output=True, text=True)
-            if res.returncode == 0:
-                print(res.stdout)
-                success = True
-                break
-        except Exception:
-            pass
-
-    if not success:
-        try:
-            import psycopg2
-            conn = psycopg2.connect(dbname="diyacrm")
-            conn.autocommit = True
-            with conn.cursor() as cur:
-                cur.execute(sql)
-                for notice in conn.notices:
-                    print(notice.strip())
-            conn.close()
-            success = True
-        except Exception as e:
-            print(f"⚠️ Notice: Reassignment execution error: {e}")
+    cmd = ["sudo", "-u", "postgres", "psql", "-d", "diyacrm", "-c", sql]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.stdout:
+        print(res.stdout)
+    if res.stderr:
+        print(res.stderr)
 
 if __name__ == '__main__':
     run_reassign()

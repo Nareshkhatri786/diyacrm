@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Diya CRM: Campaign WhatsApp Stats Reporter for Shreemad Family & The 1st Residency.
+Diya CRM: Comprehensive Campaign & WhatsApp Statistics Report.
 Usage:
     python3 scripts/report_campaign_stats.py
 """
-import sys
 import subprocess
 
 def run_stats():
@@ -13,131 +12,82 @@ def run_stats():
 \\pset format aligned
 
 \\echo '====================================================================================='
-\\echo ' 📊 DIYA CRM: CAMPAIGN WHATSAPP SENT REPORT (Shreemad & The 1st Residency)'
+\\echo ' 📊 DIYA CRM: WHATSAPP & CAMPAIGN AUDIT REPORT'
 \\echo '====================================================================================='
 
 \\echo ''
-\\echo '1️⃣ SUMMARY BY PROJECT (Total Sent & Unique Leads):'
+\\echo '1️⃣ REGISTERED COMPANIES IN SYSTEM:'
+SELECT id, name FROM res_company ORDER BY id;
+
+\\echo ''
+\\echo '2️⃣ ALL OUTBOUND WHATSAPP MESSAGES BY COMPANY (crm_lead_whatsapp_message):'
 SELECT 
-    c.name AS "Project / Company",
-    COUNT(m.id) AS "Total WhatsApp Sent",
+    c.name AS "Company",
+    COUNT(m.id) AS "Total Outbound WA",
     COUNT(DISTINCT m.lead_id) AS "Unique Leads",
+    COUNT(CASE WHEN m.body ILIKE '%campaign%' OR m.body ILIKE '%re-engagement%' THEN 1 END) AS "Stage Campaigns",
+    COUNT(CASE WHEN m.body ILIKE '%site visit%' OR m.body ILIKE '%sample house%' THEN 1 END) AS "Visit / Sample House",
     MIN((m.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::varchar(19)) AS "First Sent (IST)",
     MAX((m.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::varchar(19)) AS "Latest Sent (IST)"
 FROM crm_lead_whatsapp_message m
 JOIN crm_lead l ON l.id = m.lead_id
 JOIN res_company c ON c.id = l.company_id
 WHERE m.direction = 'outbound'
-  AND (m.body ILIKE '%campaign%' OR m.body ILIKE '%re-engagement%')
-  AND (c.name ILIKE '%shreemad%' OR c.name ILIKE '%1st%' OR c.name ILIKE '%first%' OR c.name ILIKE '%radhe%')
 GROUP BY c.name
 ORDER BY c.name;
 
 \\echo ''
-\\echo '2️⃣ DELIVERY STATUS IN CHATTER (Delivered vs Failed via Meta Cloud API):'
+\\echo '3️⃣ WHATSAPP CAMPAIGN LOGS IN CHATTER (mail_message):'
 SELECT 
-    c.name AS "Project / Company",
+    c.name AS "Company",
     COUNT(CASE WHEN mm.body ILIKE '%WhatsApp Campaign Delivered%' THEN 1 END) AS "Delivered ✅",
-    COUNT(CASE WHEN mm.body ILIKE '%WhatsApp Campaign Failed%' THEN 1 END) AS "Failed ❌"
+    COUNT(CASE WHEN mm.body ILIKE '%WhatsApp Campaign Failed%' THEN 1 END) AS "Failed ❌",
+    COUNT(CASE WHEN mm.body ILIKE '%WhatsApp%' AND mm.body NOT ILIKE '%Campaign%' THEN 1 END) AS "Other WA Messages"
 FROM mail_message mm
 JOIN crm_lead l ON l.id = mm.res_id AND mm.model = 'crm.lead'
 JOIN res_company c ON c.id = l.company_id
-WHERE (mm.body ILIKE '%WhatsApp Campaign Delivered%' OR mm.body ILIKE '%WhatsApp Campaign Failed%')
-  AND (c.name ILIKE '%shreemad%' OR c.name ILIKE '%1st%' OR c.name ILIKE '%first%' OR c.name ILIKE '%radhe%')
+WHERE mm.body ILIKE '%WhatsApp%'
 GROUP BY c.name
 ORDER BY c.name;
 
 \\echo ''
-\\echo '3️⃣ BREAKDOWN BY CRM STAGE:'
+\\echo '4️⃣ LEADS WITH WHATSAPP TIMESTAMP ON RECORD (crm_lead):'
 SELECT 
-    c.name AS "Project / Company",
-    COALESCE(s.name::jsonb->>'en_US', s.name::text) AS "Stage Name",
-    COUNT(m.id) AS "Messages Sent"
-FROM crm_lead_whatsapp_message m
-JOIN crm_lead l ON l.id = m.lead_id
+    c.name AS "Company",
+    COUNT(l.id) AS "Total Leads",
+    COUNT(CASE WHEN l.last_call_whatsapp_date IS NOT NULL THEN 1 END) AS "Has WA Sent Date",
+    COUNT(CASE WHEN l.last_call_whatsapp_type = 'campaign' THEN 1 END) AS "Type = Campaign",
+    COUNT(CASE WHEN l.last_call_whatsapp_type = 'answered' THEN 1 END) AS "Type = Answered",
+    COUNT(CASE WHEN l.last_call_whatsapp_type = 'no_answer' THEN 1 END) AS "Type = No Answer",
+    MAX((l.last_call_whatsapp_date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::varchar(19)) AS "Latest WA (IST)"
+FROM crm_lead l
 JOIN res_company c ON c.id = l.company_id
-LEFT JOIN crm_stage s ON s.id = l.stage_id
-WHERE m.direction = 'outbound'
-  AND (m.body ILIKE '%campaign%' OR m.body ILIKE '%re-engagement%')
-  AND (c.name ILIKE '%shreemad%' OR c.name ILIKE '%1st%' OR c.name ILIKE '%first%' OR c.name ILIKE '%radhe%')
-GROUP BY c.name, COALESCE(s.name::jsonb->>'en_US', s.name::text)
-ORDER BY c.name, "Messages Sent" DESC;
+GROUP BY c.name
+ORDER BY c.name;
 
 \\echo ''
-\\echo '4️⃣ BREAKDOWN BY DATE (IST):'
+\\echo '5️⃣ RECENT OUTBOUND MESSAGES ACROSS ALL COMPANIES (Latest 15):'
 SELECT 
-    c.name AS "Project / Company",
-    (m.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date AS "Date (IST)",
-    COUNT(m.id) AS "Messages Sent"
-FROM crm_lead_whatsapp_message m
-JOIN crm_lead l ON l.id = m.lead_id
-JOIN res_company c ON c.id = l.company_id
-WHERE m.direction = 'outbound'
-  AND (m.body ILIKE '%campaign%' OR m.body ILIKE '%re-engagement%')
-  AND (c.name ILIKE '%shreemad%' OR c.name ILIKE '%1st%' OR c.name ILIKE '%first%' OR c.name ILIKE '%radhe%')
-GROUP BY c.name, (m.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::date
-ORDER BY "Date (IST)" DESC, c.name;
-
-\\echo ''
-\\echo '5️⃣ RECENT 10 CAMPAIGN DELIVERIES (Sample):'
-SELECT 
-    c.name AS "Project",
-    SUBSTRING(l.name FROM 1 FOR 25) AS "Lead Name",
+    c.name AS "Company",
+    SUBSTRING(l.name FROM 1 FOR 22) AS "Lead Name",
     m.phone AS "Phone",
     (m.date AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata')::varchar(19) AS "Sent At (IST)",
-    COALESCE(s.name::jsonb->>'en_US', s.name::text) AS "Stage",
-    m.author_name AS "Sent By"
+    m.author_name AS "Sent By",
+    SUBSTRING(m.body FROM 1 FOR 45) AS "Body Preview"
 FROM crm_lead_whatsapp_message m
 JOIN crm_lead l ON l.id = m.lead_id
 JOIN res_company c ON c.id = l.company_id
-LEFT JOIN crm_stage s ON s.id = l.stage_id
 WHERE m.direction = 'outbound'
-  AND (m.body ILIKE '%campaign%' OR m.body ILIKE '%re-engagement%')
-  AND (c.name ILIKE '%shreemad%' OR c.name ILIKE '%1st%' OR c.name ILIKE '%first%' OR c.name ILIKE '%radhe%')
 ORDER BY m.date DESC
-LIMIT 10;
+LIMIT 15;
 """
 
-    commands = [
-        ["sudo", "-u", "postgres", "psql", "-d", "diyacrm", "-c", sql],
-        ["psql", "-d", "diyacrm", "-c", sql],
-        ["psql", "-U", "odoo19", "-d", "diyacrm", "-c", sql],
-    ]
-
-    for cmd in commands:
-        try:
-            res = subprocess.run(cmd, capture_output=True, text=True)
-            if res.returncode == 0:
-                print(res.stdout)
-                return
-        except Exception:
-            pass
-
-    # Fallback to psycopg2
-    try:
-        import psycopg2
-        conn = psycopg2.connect(dbname="diyacrm")
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT 
-                    c.name AS company,
-                    COUNT(m.id) AS total_sent,
-                    COUNT(DISTINCT m.lead_id) AS unique_leads
-                FROM crm_lead_whatsapp_message m
-                JOIN crm_lead l ON l.id = m.lead_id
-                JOIN res_company c ON c.id = l.company_id
-                WHERE m.direction = 'outbound'
-                  AND (m.body ILIKE '%campaign%' OR m.body ILIKE '%re-engagement%')
-                  AND (c.name ILIKE '%shreemad%' OR c.name ILIKE '%1st%' OR c.name ILIKE '%first%' OR c.name ILIKE '%radhe%')
-                GROUP BY c.name;
-            """)
-            rows = cur.fetchall()
-            print("\nProject Summary:")
-            for r in rows:
-                print(f"• {r[0]}: {r[1]} messages sent ({r[2]} unique leads)")
-        conn.close()
-    except Exception as e:
-        print(f"Error querying database: {e}")
+    cmd = ["sudo", "-u", "postgres", "psql", "-d", "diyacrm"]
+    res = subprocess.run(cmd, input=sql, text=True, capture_output=True)
+    if res.stdout:
+        print(res.stdout)
+    if res.stderr:
+        print(res.stderr)
 
 if __name__ == '__main__':
     run_stats()
