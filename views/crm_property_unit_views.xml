@@ -221,7 +221,7 @@
         <field name="target">current</field>
     </record>
 
-    <!-- 7. Menu Structure in CRM -->
+    <!-- 7. Menu Structure in CRM (Inside CRM App for Sales & Admin) -->
     <menuitem id="menu_crm_property_unit_root"
               name="🏢 Unit Inventory"
               parent="crm.crm_menu_root"
@@ -236,6 +236,24 @@
     <menuitem id="menu_crm_property_unit_all"
               name="📋 All Units (List &amp; Kanban)"
               parent="menu_crm_property_unit_root"
+              action="action_crm_property_unit_list"
+              sequence="2"/>
+
+    <!-- 8. Standalone Root App for Unit Inventory (Dedicated App for Developers in App Switcher) -->
+    <menuitem id="menu_crm_property_unit_top"
+              name="🏢 Unit Inventory"
+              web_icon="diyacrm,static/description/icon.png"
+              sequence="5"/>
+
+    <menuitem id="menu_crm_unit_matrix_top"
+              name="📊 Visual Unit Matrix"
+              parent="menu_crm_property_unit_top"
+              action="action_crm_unit_matrix"
+              sequence="1"/>
+
+    <menuitem id="menu_crm_property_unit_all_top"
+              name="📋 All Units (List &amp; Kanban)"
+              parent="menu_crm_property_unit_top"
               action="action_crm_property_unit_list"
               sequence="2"/>
 </odoo>
