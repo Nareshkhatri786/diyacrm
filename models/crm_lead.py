@@ -110,12 +110,40 @@ class CrmLead(models.Model):
             return "3bhk"
         return False
 
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        company_id = res.get("company_id") or self.env.company.id
+        if company_id:
+            company = self.env["res.company"].browse(company_id)
+            comp_name = str(company.name or "").lower()
+            if any(k in comp_name for k in ['1st', 'first', 'radhe']):
+                nikita = self.env["res.users"].sudo().search([
+                    ("share", "=", False),
+                    "|",
+                    ("name", "ilike", "nikita"),
+                    ("login", "ilike", "nikita")
+                ], limit=1)
+                if nikita:
+                    res["user_id"] = nikita.id
+        return res
+
     @api.onchange("company_id")
     def _onchange_company_unit_type(self):
         if self.company_id:
             default_ut = self._default_unit_type_for_company(self.company_id.name)
             if default_ut:
                 self.unit_type = default_ut
+            comp_name = str(self.company_id.name or "").lower()
+            if any(k in comp_name for k in ['1st', 'first', 'radhe']):
+                nikita = self.env["res.users"].sudo().search([
+                    ("share", "=", False),
+                    "|",
+                    ("name", "ilike", "nikita"),
+                    ("login", "ilike", "nikita")
+                ], limit=1)
+                if nikita:
+                    self.user_id = nikita.id
 
     @api.depends("activity_ids.activity_type_id")
     def _compute_meeting_display(self):
@@ -203,11 +231,47 @@ class CrmLead(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get("type", "opportunity") != "opportunity":
-                continue
+            company_id = vals.get("company_id") or self.env.company.id
+            company = self.env["res.company"].browse(company_id)
+            comp_name = str(company.name or "").lower()
+
+            # If company isn't The 1st Residency yet, check if lead title/subject matches The 1st
+            if not any(k in comp_name for k in ['1st', 'first', 'radhe']):
+                lead_name = str(vals.get("name") or "").lower()
+                if any(k in lead_name for k in ['the 1st', 'the1st', '1st residency', 'radhe']):
+                    the1st_comp = self.env["res.company"].sudo().search([
+                        "|", "|",
+                        ("name", "ilike", "1st"),
+                        ("name", "ilike", "first"),
+                        ("name", "ilike", "radhe")
+                    ], limit=1)
+                    if the1st_comp:
+                        vals["company_id"] = the1st_comp.id
+                        company = the1st_comp
+                        comp_name = str(company.name or "").lower()
+
+            # The 1st Residency: default salesperson is always Nikita
+            if any(k in comp_name for k in ['1st', 'first', 'radhe']):
+                nikita = self.env["res.users"].sudo().search([
+                    ("share", "=", False),
+                    "|",
+                    ("name", "ilike", "nikita"),
+                    ("login", "ilike", "nikita")
+                ], limit=1)
+                if nikita:
+                    if company and company not in nikita.company_ids:
+                        nikita.sudo().write({"company_ids": [(4, company.id)]})
+                    curr_user_id = vals.get("user_id")
+                    heer = self.env["res.users"].sudo().search([
+                        ("share", "=", False),
+                        "|",
+                        ("name", "ilike", "heer"),
+                        ("login", "ilike", "heer")
+                    ], limit=1)
+                    if not curr_user_id or (heer and curr_user_id == heer.id) or curr_user_id in [SUPERUSER_ID, 1]:
+                        vals["user_id"] = nikita.id
+
             if not vals.get("unit_type"):
-                company_id = vals.get("company_id") or self.env.company.id
-                company = self.env["res.company"].browse(company_id)
                 default_ut = self._default_unit_type_for_company(company.name)
                 if default_ut:
                     vals["unit_type"] = default_ut

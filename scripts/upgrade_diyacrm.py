@@ -74,7 +74,14 @@ def main():
 
     print("\n▶️ Starting Odoo19 Service...")
     subprocess.run(["systemctl", "start", "odoo19"])
-    print("\n🎉 ALL DONE! Diya CRM Unit Matrix is now LIVE!")
+
+    # Auto-run reassignment for The 1st Residency leads to Nikita
+    script_path = os.path.join(os.path.dirname(__file__), "reassign_the1st_leads_to_nikita.py")
+    if os.path.exists(script_path):
+        print("\n📋 Running The 1st Residency lead reassignment check...")
+        subprocess.run([sys.executable, script_path])
+
+    print("\n🎉 ALL DONE! Diya CRM is now UP TO DATE & LIVE!")
 
 if __name__ == '__main__':
     main()

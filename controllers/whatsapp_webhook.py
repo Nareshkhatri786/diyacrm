@@ -42,7 +42,7 @@ COMPANY_RULES = {
         'company_name': 'The 1st Residency',
         'phone_number_ids': ['1305619522636450'],
         'phone_numbers': ['7575863338', '917575863338', '+917575863338'],
-        'keywords': ['the 1st', 'the1st', '1st', 'residency', 'the first'],
+        'keywords': ['the 1st', 'the1st', '1st', 'residency', 'the first', 'radhe'],
         'default_salesperson': {
             'name': 'Nikita',
             'login': 'Nikita',
@@ -319,8 +319,12 @@ class WhatsAppWebhookController(http.Controller):
         if not name:
             name = f"WhatsApp Lead ({clean_mobile_10})" if clean_mobile_10 else "New WhatsApp Lead"
 
-        salesperson_param = data.get('salesperson') or data.get('user') or data.get('assigned_to')
-        assigned_user = self._get_or_create_salesperson(env, company, rule, salesperson_param)
+        # For The 1st Residency, salesperson is ALWAYS Nikita
+        if matched_key == 'the1st' or any(kw in str(company.name or '').lower() for kw in ['1st', 'first', 'radhe']):
+            assigned_user = self._get_or_create_salesperson(env, company, COMPANY_RULES['the1st'])
+        else:
+            salesperson_param = data.get('salesperson') or data.get('user') or data.get('assigned_to')
+            assigned_user = self._get_or_create_salesperson(env, company, rule, salesperson_param)
 
         raw_source = str(data.get('source') or 'AI WhatsApp Agent').strip()
         utm_source = env['utm.source'].search([('name', '=ilike', raw_source)], limit=1) or env['utm.source'].search([('name', '=ilike', 'AI WhatsApp Agent')], limit=1) or env['utm.source'].search([('name', '=ilike', 'WhatsApp')], limit=1)
@@ -352,6 +356,9 @@ class WhatsAppWebhookController(http.Controller):
         if existing_lead and existing_lead.active:
             lead = existing_lead
             lead_action = "updated_active"
+            if any(kw in str(lead.company_id.name or '').lower() for kw in ['1st', 'first', 'radhe']):
+                if not lead.user_id or 'heer' in str(lead.user_id.name or '').lower():
+                    lead.write({'user_id': assigned_user.id})
             if message:
                 env['crm.lead.whatsapp.message'].create({
                     'lead_id': lead.id,
@@ -377,6 +384,9 @@ class WhatsAppWebhookController(http.Controller):
             lead = existing_lead
             lead_action = "reopened_from_lost"
             target_user = lead.user_id if lead.user_id else assigned_user
+            if any(kw in str(lead.company_id.name or '').lower() for kw in ['1st', 'first', 'radhe']):
+                if not target_user or 'heer' in str(target_user.name or '').lower():
+                    target_user = assigned_user
             lead.write({
                 'active': True,
                 'stage_id': stage_new.id if stage_new else 5,
