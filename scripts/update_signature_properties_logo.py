@@ -34,27 +34,27 @@ BEGIN
     LIMIT 1;
 
     IF comp_id IS NOT NULL THEN
-        -- Update company logo
-        UPDATE res_company
-        SET logo = decode('{logo_b64}', 'base64')
-        WHERE id = comp_id;
-
-        -- Update company partner avatar/logo
+        -- In Odoo 19, company logo is stored on partner_id.image_1920 and res_company.logo_web
         IF p_id IS NOT NULL THEN
             UPDATE res_partner
             SET image_1920 = decode('{logo_b64}', 'base64')
             WHERE id = p_id;
         END IF;
 
-        RAISE NOTICE '✅ Successfully updated Logo for Company "Signature Properties" (ID: %)!', comp_id;
+        UPDATE res_company
+        SET logo_web = decode('{logo_b64}', 'base64')
+        WHERE id = comp_id;
+
+        RAISE NOTICE '✅ Successfully updated Logo for Company "Signature Properties" (ID: %, Partner ID: %)!', comp_id, p_id;
     ELSE
         RAISE NOTICE '⚠️ Company "Signature Properties" not found in res_company.';
     END IF;
 END $$;
 
-SELECT id, name, partner_id, (logo IS NOT NULL) AS has_logo
-FROM res_company
-WHERE name ILIKE '%Signature%';
+SELECT c.id, c.name, c.partner_id, (p.image_1920 IS NOT NULL) AS has_logo
+FROM res_company c
+JOIN res_partner p ON p.id = c.partner_id
+WHERE c.name ILIKE '%Signature%';
 """
 
     cmd = ["sudo", "-u", "postgres", "psql", "-d", "diyacrm"]

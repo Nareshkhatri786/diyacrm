@@ -20,7 +20,7 @@
         </xpath>
 
         <!-- Enhance Card Width and Styling -->
-        <xpath expr="//div[contains(@class, 'card')]" position="attributes">
+        <xpath expr="//div[hasclass('card')]" position="attributes">
             <attribute name="style">max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 12px;</attribute>
         </xpath>
 
