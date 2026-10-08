@@ -12,14 +12,15 @@ class ResUsers(models.Model):
     )
 
     def _compute_is_property_developer(self):
-        dev_group = self.env.ref('diyacrm.group_property_developer', raise_if_not_found=False)
         for user in self:
-            user.is_property_developer = bool(dev_group and dev_group in user.groups_id)
+            user.is_property_developer = user.has_group('diyacrm.group_property_developer')
 
     def _inverse_is_property_developer(self):
         dev_group = self.env.ref('diyacrm.group_property_developer', raise_if_not_found=False)
         sales_group = self.env.ref('sales_team.group_sale_salesman', raise_if_not_found=False)
         sales_mgr_group = self.env.ref('sales_team.group_sale_manager', raise_if_not_found=False)
+        att_group = self.env.ref('hr_attendance.group_hr_attendance_user', raise_if_not_found=False)
+        att_mgr_group = self.env.ref('hr_attendance.group_hr_attendance_manager', raise_if_not_found=False)
         matrix_action = self.env.ref('diyacrm.action_crm_unit_matrix', raise_if_not_found=False) or \
                         self.env.ref('diyacrm.action_crm_property_unit_list', raise_if_not_found=False)
 
@@ -29,15 +30,14 @@ class ResUsers(models.Model):
         for user in self:
             if user.is_property_developer:
                 cmds = [(4, dev_group.id)]
-                if sales_group and sales_group in user.groups_id:
-                    cmds.append((3, sales_group.id))
-                if sales_mgr_group and sales_mgr_group in user.groups_id:
-                    cmds.append((3, sales_mgr_group.id))
-                user.groups_id = cmds
+                for g in [sales_group, sales_mgr_group, att_group, att_mgr_group]:
+                    if g:
+                        cmds.append((3, g.id))
+                user.write({'group_ids': cmds})
                 if matrix_action:
-                    user.action_id = matrix_action.id
+                    user.sudo().write({'action_id': matrix_action.id})
             else:
-                user.groups_id = [(3, dev_group.id)]
+                user.write({'group_ids': [(3, dev_group.id)]})
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -50,11 +50,11 @@ class ResUsers(models.Model):
 
         for vals in vals_list:
             if not vals.get('action_id'):
-                groups_id = vals.get('groups_id', [])
+                raw_groups = vals.get('group_ids', vals.get('groups_id', []))
                 is_admin = False
                 is_dev = False
                 if admin_group or dev_group:
-                    for g in groups_id:
+                    for g in raw_groups:
                         if isinstance(g, (list, tuple)) and len(g) >= 2:
                             g_ids = [g[1]] if g[0] == 4 else (g[2] if g[0] == 6 and len(g) >= 3 else [])
                             if admin_group and admin_group.id in g_ids:
