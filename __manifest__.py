@@ -25,6 +25,7 @@
         "views/login_templates.xml",
         "views/hr_attendance_views.xml",
         "views/hr_employee_views.xml",
+        "views/res_users_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

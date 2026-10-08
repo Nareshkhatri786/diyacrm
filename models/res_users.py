@@ -1,8 +1,43 @@
 # -*- coding: utf-8 -*-
-from odoo import models, api
+from odoo import models, fields, api
 
 class ResUsers(models.Model):
     _inherit = "res.users"
+
+    is_property_developer = fields.Boolean(
+        string="Developer (Unit Inventory Only)",
+        compute="_compute_is_property_developer",
+        inverse="_inverse_is_property_developer",
+        help="Check this to restrict the user to Unit Inventory and Visual Matrix only. Blocks access to CRM leads, pipeline, attendance, etc."
+    )
+
+    def _compute_is_property_developer(self):
+        dev_group = self.env.ref('diyacrm.group_property_developer', raise_if_not_found=False)
+        for user in self:
+            user.is_property_developer = bool(dev_group and dev_group in user.groups_id)
+
+    def _inverse_is_property_developer(self):
+        dev_group = self.env.ref('diyacrm.group_property_developer', raise_if_not_found=False)
+        sales_group = self.env.ref('sales_team.group_sale_salesman', raise_if_not_found=False)
+        sales_mgr_group = self.env.ref('sales_team.group_sale_manager', raise_if_not_found=False)
+        matrix_action = self.env.ref('diyacrm.action_crm_unit_matrix', raise_if_not_found=False) or \
+                        self.env.ref('diyacrm.action_crm_property_unit_list', raise_if_not_found=False)
+
+        if not dev_group:
+            return
+
+        for user in self:
+            if user.is_property_developer:
+                cmds = [(4, dev_group.id)]
+                if sales_group and sales_group in user.groups_id:
+                    cmds.append((3, sales_group.id))
+                if sales_mgr_group and sales_mgr_group in user.groups_id:
+                    cmds.append((3, sales_mgr_group.id))
+                user.groups_id = cmds
+                if matrix_action:
+                    user.action_id = matrix_action.id
+            else:
+                user.groups_id = [(3, dev_group.id)]
 
     @api.model_create_multi
     def create(self, vals_list):
