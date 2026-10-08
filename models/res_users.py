@@ -16,6 +16,9 @@ class ResUsers(models.Model):
             user.is_property_developer = user.has_group('diyacrm.group_property_developer')
 
     def _inverse_is_property_developer(self):
+        if self.env.context.get('skip_developer_sync'):
+            return
+
         dev_group = self.env.ref('diyacrm.group_property_developer', raise_if_not_found=False)
         sales_group = self.env.ref('sales_team.group_sale_salesman', raise_if_not_found=False)
         sales_mgr_group = self.env.ref('sales_team.group_sale_manager', raise_if_not_found=False)
@@ -28,16 +31,20 @@ class ResUsers(models.Model):
             return
 
         for user in self:
+            vals = {}
             if user.is_property_developer:
                 cmds = [(4, dev_group.id)]
                 for g in [sales_group, sales_mgr_group, att_group, att_mgr_group]:
                     if g:
                         cmds.append((3, g.id))
-                user.write({'group_ids': cmds})
+                vals['group_ids'] = cmds
                 if matrix_action:
-                    user.sudo().write({'action_id': matrix_action.id})
+                    vals['action_id'] = matrix_action.id
             else:
-                user.write({'group_ids': [(3, dev_group.id)]})
+                vals['group_ids'] = [(3, dev_group.id)]
+
+            if vals:
+                user.with_context(skip_developer_sync=True).sudo().write(vals)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -69,15 +76,3 @@ class ResUsers(models.Model):
                         vals['action_id'] = crm_action.id
 
         return super().create(vals_list)
-
-    def write(self, vals):
-        res = super().write(vals)
-        dev_group = self.env.ref('diyacrm.group_property_developer', raise_if_not_found=False)
-        matrix_action = self.env.ref('diyacrm.action_crm_unit_matrix', raise_if_not_found=False) or \
-                        self.env.ref('diyacrm.action_crm_property_unit_list', raise_if_not_found=False)
-        if dev_group and matrix_action:
-            for user in self:
-                if user.has_group('diyacrm.group_property_developer') and not user.has_group('sales_team.group_sale_salesman') and not user.has_group('base.group_system'):
-                    if user.action_id != matrix_action:
-                        user.sudo().action_id = matrix_action.id
-        return res
