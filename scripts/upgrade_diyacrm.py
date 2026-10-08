@@ -81,6 +81,12 @@ def main():
         print("\n📋 Running The 1st Residency lead reassignment check...")
         subprocess.run([sys.executable, script_path])
 
+    # Auto-run Signature Properties logo update
+    logo_script = os.path.join(os.path.dirname(__file__), "update_signature_properties_logo.py")
+    if os.path.exists(logo_script):
+        print("\n🖼️ Updating Signature Properties Company Logo...")
+        subprocess.run([sys.executable, logo_script])
+
     print("\n🎉 ALL DONE! Diya CRM is now UP TO DATE & LIVE!")
 
 if __name__ == '__main__':

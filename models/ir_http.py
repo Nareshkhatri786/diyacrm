@@ -8,8 +8,11 @@ class IrHttp(models.AbstractModel):
         """
         Ensure home_action_id points to Visual Unit Matrix for Developer users,
         and CRM Pipeline for regular sales staff.
+        Whitelabel support URL.
         """
         res = super().session_info()
+        res['support_url'] = "https://sigprop.in"
+
         user = self.env.user
         if not user.has_group('base.group_system'):
             is_developer_only = (

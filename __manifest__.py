@@ -23,6 +23,7 @@
         "views/crm_dashboard_views.xml",
         "views/crm_site_visit_desk_views.xml",
         "views/login_templates.xml",
+        "views/mail_templates.xml",
         "views/hr_attendance_views.xml",
         "views/hr_employee_views.xml",
         "views/res_users_views.xml",
@@ -31,6 +32,8 @@
         "web.assets_backend": [
             "diyacrm/static/src/css/crm_custom.css",
             "diyacrm/static/src/css/unit_matrix.css",
+            "diyacrm/static/src/core/web/signature_navbar_brand.xml",
+            "diyacrm/static/src/core/web/signature_debrand.js",
             "diyacrm/static/src/core/web/activity_markasdone_patch.xml",
             "diyacrm/static/src/core/web/activity_markasdone_patch.js",
             "diyacrm/static/src/core/web/chatter_whatsapp_patch.xml",

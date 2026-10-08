@@ -1,14 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- 1. Global Web Layout: Favicon & Title -->
+    <template id="web_layout_inherit_signature" inherit_id="web.layout">
+        <xpath expr="//title" position="replace">
+            <title t-esc="title or 'Signature Properties CRM'"/>
+        </xpath>
+        <xpath expr="//link[contains(@rel, 'icon')]" position="replace">
+            <link type="image/x-icon" rel="shortcut icon" href="/diyacrm/static/src/img/favicon.ico"/>
+            <link rel="icon" type="image/png" sizes="32x32" href="/diyacrm/static/src/img/favicon.png"/>
+            <link rel="icon" type="image/png" sizes="64x64" href="/diyacrm/static/src/img/signature_icon.png"/>
+        </xpath>
+    </template>
+
+    <!-- 2. Login Page: Logo, Width, Remove Manage Databases, Clean Footer -->
     <template id="custom_login_layout_inherit" inherit_id="web.login_layout">
-        <!-- Change Browser Tab Title -->
+        <!-- Browser Tab Title for Login -->
         <xpath expr="//t[@t-set='html_data']" position="after">
             <t t-set="title">Signature Properties | CRM Portal</t>
         </xpath>
 
-        <!-- Replace Powered by Odoo with Powered by Signature Properties -->
+        <!-- Enhance Card Width and Styling -->
+        <xpath expr="//div[contains(@class, 'card')]" position="attributes">
+            <attribute name="style">max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 12px;</attribute>
+        </xpath>
+
+        <!-- Replace Login Box Company Logo with Signature Properties Logo -->
+        <xpath expr="//div[hasclass('text-center')]/img" position="replace">
+            <div class="d-flex justify-content-center align-items-center py-2">
+                <img src="/diyacrm/static/src/img/signature_logo.png" 
+                     alt="Signature Properties" 
+                     style="max-height: 85px; max-width: 100%; width: auto; object-fit: contain;"/>
+            </div>
+        </xpath>
+
+        <!-- Remove Manage Databases Link -->
+        <xpath expr="//a[@href='/web/database/manager']" position="replace"/>
+
+        <!-- Replace Powered by Odoo with Signature Properties Branding -->
         <xpath expr="//a[contains(@href, 'odoo.com')]" position="replace">
-            <span class="text-muted">Powered by <b>Signature Properties</b></span>
+            <div class="text-muted small mt-2">
+                <span class="fw-semibold">© Signature Properties</span><br/>
+                <span style="font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase;">Your Growth Partner</span>
+            </div>
         </xpath>
     </template>
 </odoo>

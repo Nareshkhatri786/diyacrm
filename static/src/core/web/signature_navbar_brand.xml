@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-inherit="web.NavBar" t-inherit-mode="extension">
+    <xpath expr="//t[@t-call='web.NavBar.AppsMenu']" position="after">
+        <a href="/odoo" class="o_signature_navbar_brand d-none d-md-flex align-items-center ms-2 me-2 text-decoration-none" title="Signature Properties CRM">
+            <img src="/diyacrm/static/src/img/signature_logo.png" 
+                 alt="Signature Properties" 
+                 style="height: 26px; width: auto; max-width: 160px; object-fit: contain;"/>
+        </a>
+    </xpath>
+</t>
+
+</templates>

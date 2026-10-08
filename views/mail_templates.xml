@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1. Outgoing Mail Notification Layout Footer -->
+    <template id="mail_notification_layout_signature" inherit_id="mail.mail_notification_layout">
+        <xpath expr="//div[@t-if='show_footer']" position="replace">
+            <div t-if="show_footer" style="color: #555555; font-size:11px;">
+                <span>© <b t-out="company.name or 'Signature Properties'"/> • Your Growth Partner</span>
+                <span t-if="show_unfollow" id="mail_unfollow">
+                    | <a href="/mail/unfollow" style="text-decoration:none; color:#555555;">Unfollow</a>
+                </span>
+            </div>
+        </xpath>
+    </template>
+
+    <!-- 2. Outgoing Mail Light Notification Layout Footer -->
+    <template id="mail_notification_light_signature" inherit_id="mail.mail_notification_light">
+        <xpath expr="//a[contains(@href, 'odoo.com')]/.." position="replace">
+            <td align="center" style="min-width: 590px; color: #555555; font-size: 11px;">
+                <span>© <b t-out="company.name or 'Signature Properties'"/> • Your Growth Partner</span>
+                <span t-if="show_unfollow" id="mail_unfollow">
+                    | <a href="/mail/unfollow" style="text-decoration:none; color:#555555;">Unfollow</a>
+                </span>
+            </td>
+        </xpath>
+    </template>
+
+    <!-- 3. Web Brand Promotion Layout Footer -->
+    <template id="brand_promotion_signature" inherit_id="web.brand_promotion">
+        <xpath expr="//div[hasclass('o_brand_promotion')]" position="replace">
+            <div class="o_brand_promotion text-muted small">
+                © <b>Signature Properties</b> • Your Growth Partner
+            </div>
+        </xpath>
+    </template>
+</odoo>
