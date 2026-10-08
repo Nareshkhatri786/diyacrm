@@ -313,6 +313,24 @@ class DiyaCrmCallTrackerController(http.Controller):
             ]
         )
 
+    @http.route(["/download/diyasync-beta.apk", "/download/beta.apk"], type="http", auth="public", methods=["GET"])
+    def download_diyasync_beta_apk(self):
+        apk_path = "/opt/odoo19/custom_addons/diyacrm/static/downloads/diyasync-beta.apk"
+        if not os.path.exists(apk_path):
+            return request.not_found("DiyaSync Beta APK is being prepared. Please check back shortly.")
+
+        with open(apk_path, "rb") as f:
+            apk_data = f.read()
+
+        return Response(
+            apk_data,
+            headers=[
+                ("Content-Type", "application/vnd.android.package-archive"),
+                ("Content-Disposition", "attachment; filename=DiyaSync_Beta.apk"),
+                ("Content-Length", str(len(apk_data)))
+            ]
+        )
+
 
     @http.route('/api/call_tracker/upload_recording', type='http', auth='none',
                 methods=['POST'], csrf=False)
