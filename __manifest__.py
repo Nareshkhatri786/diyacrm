@@ -11,6 +11,7 @@
     "data": [
         "security/crm_property_unit_security.xml",
         "security/ir.model.access.csv",
+        "data/branding_data.xml",
         "data/utm_source_data.xml",
         "data/mail_activity_type_data.xml",
         "data/crm_tag_data.xml",

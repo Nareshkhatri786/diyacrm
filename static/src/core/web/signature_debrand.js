@@ -34,7 +34,7 @@ patch(titleService, {
         // Initialize with Signature Properties branding
         titleObj.setParts({ brand: "Signature Properties" });
 
-        // Ensure Favicon is set to Signature Properties icon
+        // Ensure Favicon & PWA Home Screen icons and titles are set to Signature Properties
         try {
             const head = document.head;
             let iconLink = head.querySelector("link[rel*='icon']");
@@ -45,6 +45,30 @@ patch(titleService, {
                 head.appendChild(iconLink);
             }
             iconLink.href = "/diyacrm/static/src/img/favicon.ico";
+
+            let appleIcon = head.querySelector("link[rel='apple-touch-icon']");
+            if (!appleIcon) {
+                appleIcon = document.createElement("link");
+                appleIcon.rel = "apple-touch-icon";
+                head.appendChild(appleIcon);
+            }
+            appleIcon.href = "/diyacrm/static/src/img/signature_pwa_ios.png";
+
+            let appNameMeta = head.querySelector("meta[name='apple-mobile-web-app-title']");
+            if (!appNameMeta) {
+                appNameMeta = document.createElement("meta");
+                appNameMeta.name = "apple-mobile-web-app-title";
+                head.appendChild(appNameMeta);
+            }
+            appNameMeta.content = "Signature Properties";
+
+            let appName = head.querySelector("meta[name='application-name']");
+            if (!appName) {
+                appName = document.createElement("meta");
+                appName.name = "application-name";
+                head.appendChild(appName);
+            }
+            appName.content = "Signature Properties";
         } catch (e) {
             // ignore
         }

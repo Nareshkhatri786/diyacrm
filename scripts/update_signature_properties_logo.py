@@ -81,8 +81,9 @@ if not company:
 
 if company:
     company.write({{'logo': logo_b64}})
+    env['ir.config_parameter'].sudo().set_param('web.web_app_name', 'Signature Properties')
     env.cr.commit()
-    print(f"✅ SUCCESS: Updated company logo for '{{company.name}}' (ID: {{company.id}})")
+    print(f"✅ SUCCESS: Updated company logo for '{{company.name}}' (ID: {{company.id}}) and set web.web_app_name to 'Signature Properties'")
 else:
     print("⚠️ WARNING: No company found in res.company")
 """
@@ -128,7 +129,11 @@ BEGIN
             write_date = NOW()
         WHERE id = comp_id;
 
-        RAISE NOTICE '✅ Successfully updated logo_web on res_company (ID: %)!', comp_id;
+        INSERT INTO ir_config_parameter (key, value, create_uid, create_date, write_uid, write_date)
+        VALUES ('web.web_app_name', 'Signature Properties', 1, NOW(), 1, NOW())
+        ON CONFLICT (key) DO UPDATE SET value = 'Signature Properties', write_date = NOW();
+
+        RAISE NOTICE '✅ Successfully updated logo_web on res_company (ID: %) and set web.web_app_name!', comp_id;
     ELSE
         RAISE NOTICE '⚠️ Company not found in res_company.';
     END IF;
