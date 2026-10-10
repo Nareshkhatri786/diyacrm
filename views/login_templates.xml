@@ -39,12 +39,12 @@
         </xpath>
 
         <!-- Enhance Card Width and Styling -->
-        <xpath expr="//div[hasclass('card')]" position="attributes">
+        <xpath expr="//div[contains(@class, 'container')]/div" position="attributes">
             <attribute name="style">max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-radius: 12px;</attribute>
         </xpath>
 
         <!-- Replace Login Box Company Logo with Signature Properties Logo -->
-        <xpath expr="//div[hasclass('text-center')]/img" position="replace">
+        <xpath expr="//div[contains(@class, 'container')]//img" position="replace">
             <div class="d-flex justify-content-center align-items-center py-2">
                 <img src="/diyacrm/static/src/img/signature_logo.png" 
                      alt="Signature Properties" 
