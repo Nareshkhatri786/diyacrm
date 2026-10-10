@@ -56,11 +56,35 @@ export class CrmExecutiveDashboard extends Component {
             sources: [],
             leaderboard: [],
             site_visit_insights: {
-                loan_pct: 62,
-                cash_pct: 38,
-                timeline_pct: 48,
-                budget_pct: 71,
-                dm_pct: 82,
+                has_data: false,
+                total_surveys: 0,
+                loan_pct: 0,
+                cash_pct: 0,
+                timeline_pct: 0,
+                budget_pct: 0,
+                dm_pct: 0,
+            },
+            site_visit_funnel: {
+                total_visited: 0,
+                active_visited: 0,
+                hot_visited: 0,
+                won_visited: 0,
+                active_pct: 0,
+                hot_pct: 0,
+            },
+            whatsapp_analytics: {
+                total_sent: 0,
+                total_received: 0,
+                campaign_sent: 0,
+                call_connected_sent: 0,
+                call_missed_sent: 0,
+                direct_sent: 0,
+                response_rate_pct: 0,
+            },
+            conversion_rates: {
+                call_to_visit_pct: 0,
+                visit_to_won_pct: 0,
+                stale_leads: 0,
             },
         });
 
@@ -94,6 +118,15 @@ export class CrmExecutiveDashboard extends Component {
             this.state.calling_outcomes = data.calling_outcomes;
             if (data.site_visit_insights) {
                 this.state.site_visit_insights = data.site_visit_insights;
+            }
+            if (data.site_visit_funnel) {
+                this.state.site_visit_funnel = data.site_visit_funnel;
+            }
+            if (data.whatsapp_analytics) {
+                this.state.whatsapp_analytics = data.whatsapp_analytics;
+            }
+            if (data.conversion_rates) {
+                this.state.conversion_rates = data.conversion_rates;
             }
             
             const stageColors = {
@@ -143,17 +176,39 @@ export class CrmExecutiveDashboard extends Component {
 
     openOpportunities(filterType) {
         let domain = [];
+        let viewTitle = 'Opportunities';
         if (filterType === 'won') {
             domain = [['probability', '=', 100]];
+            viewTitle = 'Won / Booked Opportunities';
         } else if (filterType === 'new') {
             domain = [['stage_id.sequence', '=', 1]];
+            viewTitle = 'New Inquiries';
         } else if (filterType === 'visit') {
             domain = [['stage_id.name', 'ilike', 'Visit']];
+            viewTitle = 'Site Visits';
+        } else if (filterType === 'visited_hot') {
+            domain = [['active', '=', true], ['stage_id.name', 'ilike', 'Visit Done'], ['lead_temperature', '=', 'hot']];
+            viewTitle = '🔥 Hot Leads After Site Visit';
+        } else if (filterType === 'visited_active') {
+            domain = [['active', '=', true], ['stage_id.name', 'ilike', 'Visit Done']];
+            viewTitle = 'Active Leads (Visit Done)';
+        } else if (filterType === 'hot') {
+            domain = [['active', '=', true], ['probability', '<', 100], ['lead_temperature', '=', 'hot']];
+            viewTitle = '🔥 Active Hot Leads (< 30 Days)';
+        } else if (filterType === 'warm') {
+            domain = [['active', '=', true], ['probability', '<', 100], ['lead_temperature', '=', 'warm']];
+            viewTitle = '⛅ Active Warm Leads';
+        } else if (filterType === 'cold') {
+            domain = [['active', '=', true], ['probability', '<', 100], ['lead_temperature', '=', 'cold']];
+            viewTitle = '❄️ Active Cold Leads';
+        } else if (filterType === 'stale') {
+            domain = [['active', '=', true], ['probability', '<', 100]];
+            viewTitle = '⚠️ Leads Needing Attention';
         }
 
         this.action.doAction({
             type: 'ir.actions.act_window',
-            name: 'Opportunities',
+            name: viewTitle,
             res_model: 'crm.lead',
             view_mode: 'kanban,list,form',
             views: [[false, 'kanban'], [false, 'list'], [false, 'form']],

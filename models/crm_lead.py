@@ -380,21 +380,29 @@ class CrmLead(models.Model):
         all_scoped_leads = self.with_context(active_test=False).search(base_domain)
         lead_ids = all_scoped_leads.ids
 
-        # Period leads (for New Opportunities metric)
+        def calc_pct(val, tot):
+            return int(round((val / tot) * 100)) if tot > 0 else 0
+
+        # 1. Strictly Open / Active Leads in Pipeline (active=True, not won, not lost)
+        open_active_leads = all_scoped_leads.filtered(
+            lambda l: l.active and l.probability < 100 and not l.lost_reason_id and not (l.stage_id and "won" in (l.stage_id.name or "").lower())
+        )
+
+        # 2. Period Leads (Fresh / New Opportunities created in selected range)
         period_leads = all_scoped_leads.filtered(
             lambda l: l.create_date and fields.Datetime.to_string(l.create_date) >= start_utc and fields.Datetime.to_string(l.create_date) <= end_utc
         )
 
-        # 1. Calling Analytics from mail.message
+        # 3. Calling Analytics from mail.message
         msg_domain = [
             ("model", "=", "crm.lead"),
             ("date", ">=", start_utc),
             ("date", "<=", end_utc),
             "|", "|", "|",
-            ("body", "ilike", "%Call%"),
-            ("body", "ilike", "%Dialer%"),
-            ("body", "ilike", "%Answered%"),
-            ("body", "ilike", "%Outgoing%")
+            ("body", "ilike", "%📞 Outgoing Call%"),
+            ("body", "ilike", "%📲 Incoming Call%"),
+            ("body", "ilike", "%📲 Missed Call%"),
+            ("body", "ilike", "%Auto-Synced via Diya CRM Dialer%")
         ]
         if lead_ids:
             msg_domain.append(("res_id", "in", lead_ids))
@@ -402,6 +410,19 @@ class CrmLead(models.Model):
             msg_domain.append(("res_id", "in", [-1]))
 
         call_msgs = self.env["mail.message"].search(msg_domain)
+        if not call_msgs:
+            fallback_domain = [
+                ("model", "=", "crm.lead"),
+                ("date", ">=", start_utc),
+                ("date", "<=", end_utc),
+                "|", "|",
+                ("body", "ilike", "%Call%"),
+                ("body", "ilike", "%Dialer%"),
+                ("body", "ilike", "%Answered%")
+            ]
+            if lead_ids:
+                fallback_domain.append(("res_id", "in", lead_ids))
+            call_msgs = self.env["mail.message"].search(fallback_domain)
 
         out_answered = 0
         out_noanswer = 0
@@ -426,57 +447,150 @@ class CrmLead(models.Model):
                 user_call_counts[uid] = user_call_counts.get(uid, 0) + 1
 
         total_calls = len(call_msgs)
-
-        def calc_pct(val, tot):
-            return int(round((val / tot) * 100)) if tot > 0 else 0
-
         connected_pct = calc_pct(out_answered, total_calls)
 
-        # 2. Site Visits & Opportunities
-        visit_done_leads = all_scoped_leads.filtered(
-            lambda l: l.active and any(w in (l.stage_id.name or "").lower() for w in ["visit done", "done"])
-        )
-        visits_done = len(visit_done_leads)
-
-        site_acts = self.env["mail.activity"].search([
+        # 4. Site Visits & Won Deals with accurate date filtering
+        sv_msgs = self.env["mail.message"].search([
+            ("model", "=", "crm.lead"), ("res_id", "in", lead_ids),
+            ("date", ">=", start_utc), ("date", "<=", end_utc),
+            "|", "|",
+            ("body", "ilike", "%Site Visit Done%"),
+            ("body", "ilike", "%thank you for visiting%"),
+            ("body", "ilike", "%Sample House%")
+        ])
+        sv_acts = self.env["mail.activity"].search([
             ("res_model", "=", "crm.lead"), ("res_id", "in", lead_ids),
             ("activity_type_id.name", "ilike", "site"),
             ("create_date", ">=", start_utc), ("create_date", "<=", end_utc)
         ])
+
+        if period == "all":
+            visited_leads = all_scoped_leads.filtered(
+                lambda l: any(w in (l.stage_id.name or "").lower() for w in ["visit done", "5.", "negotiation", "booking", "won"])
+                or l.id in sv_msgs.mapped("res_id")
+            )
+            won_leads = all_scoped_leads.filtered(
+                lambda l: l.probability == 100 or (l.stage_id and "won" in (l.stage_id.name or "").lower())
+            )
+        else:
+            recent_sv_leads = all_scoped_leads.filtered(
+                lambda l: l.write_date and fields.Datetime.to_string(l.write_date) >= start_utc and fields.Datetime.to_string(l.write_date) <= end_utc
+                and any(w in (l.stage_id.name or "").lower() for w in ["visit done", "5."])
+            )
+            visited_lead_ids = set(sv_msgs.mapped("res_id")) | set(sv_acts.mapped("res_id")) | set(recent_sv_leads.ids)
+            visited_leads = all_scoped_leads.filtered(lambda l: l.id in visited_lead_ids)
+
+            won_leads = all_scoped_leads.filtered(
+                lambda l: (l.probability == 100 or (l.stage_id and "won" in (l.stage_id.name or "").lower()))
+                and (
+                    (l.date_closed and fields.Datetime.to_string(l.date_closed) >= start_utc and fields.Datetime.to_string(l.date_closed) <= end_utc)
+                    or (l.write_date and fields.Datetime.to_string(l.write_date) >= start_utc and fields.Datetime.to_string(l.write_date) <= end_utc)
+                )
+            )
+
+        visits_done = len(visited_leads)
+        won_count = len(won_leads)
+        won_all_time = len(all_scoped_leads.filtered(lambda l: l.probability == 100 or (l.stage_id and "won" in (l.stage_id.name or "").lower())))
+
         visits_scheduled = max(
-            len(site_acts),
+            len(sv_acts),
             len(all_scoped_leads.filtered(lambda l: l.active and "scheduled" in (l.stage_id.name or "").lower()))
         )
 
-        won_leads = all_scoped_leads.filtered(
-            lambda l: l.active and (l.probability == 100 or "won" in (l.stage_id.name or "").lower())
-        )
-        won_count = len(won_leads)
         new_opps_count = len(period_leads)
         updated_opps_count = len(set(call_msgs.mapped("res_id")) | set(period_leads.ids))
 
-        # 3. Stages Funnel
+        # Requirement 3: Site Visits Breakdown (Kitne aaye -> Kitne active -> Kitne active HOT)
+        active_visited_leads = visited_leads.filtered(
+            lambda l: l.active and l.probability < 100 and not l.lost_reason_id and not (l.stage_id and "won" in (l.stage_id.name or "").lower())
+        )
+        active_visited_count = len(active_visited_leads)
+
+        hot_visited_leads = active_visited_leads.filtered(lambda l: l.lead_temperature == "hot")
+        hot_visited_count = len(hot_visited_leads)
+
+        won_visited_count = len(visited_leads.filtered(
+            lambda l: l.probability == 100 or (l.stage_id and "won" in (l.stage_id.name or "").lower())
+        ))
+
+        site_visit_funnel = {
+            "total_visited": visits_done,
+            "active_visited": active_visited_count,
+            "hot_visited": hot_visited_count,
+            "won_visited": won_visited_count,
+            "active_pct": calc_pct(active_visited_count, visits_done),
+            "hot_pct": calc_pct(hot_visited_count, active_visited_count),
+        }
+
+        # Stale Leads (> 48 hours without update)
+        two_days_ago_utc = (now_dt - datetime.timedelta(hours=48)).astimezone(pytz.utc).strftime("%Y-%m-%d %H:%M:%S")
+        stale_leads_count = len(open_active_leads.filtered(
+            lambda l: (not l.write_date or fields.Datetime.to_string(l.write_date) < two_days_ago_utc)
+        ))
+
+        # 5. Requirement 4: WhatsApp Campaigns & Call Response Tracking
+        wa_domain = [
+            ("date", ">=", start_utc),
+            ("date", "<=", end_utc)
+        ]
+        if company_id != "all" and company_id:
+            wa_domain.append(("company_id", "in", company_ids))
+        elif allowed_companies:
+            wa_domain.append(("company_id", "in", allowed_companies.ids))
+        if user_id != "all" and user_id:
+            wa_domain.append(("lead_id.user_id", "=", int(user_id)))
+
+        wa_msgs = self.env["crm.lead.whatsapp.message"].search(wa_domain)
+        outbound_wa = wa_msgs.filtered(lambda m: m.direction == "outbound")
+        inbound_wa = wa_msgs.filtered(lambda m: m.direction == "inbound")
+
+        total_wa_sent = len(outbound_wa)
+        total_wa_received = len(inbound_wa)
+
+        campaign_wa_count = len(outbound_wa.filtered(
+            lambda m: "campaign" in (m.body or "").lower() or "re-engagement" in (m.body or "").lower()
+        ))
+        call_connected_wa_count = len(outbound_wa.filtered(
+            lambda m: "connected" in (m.body or "").lower() and "follow-up" in (m.body or "").lower()
+        ))
+        call_missed_wa_count = len(outbound_wa.filtered(
+            lambda m: ("missed" in (m.body or "").lower() or "busy" in (m.body or "").lower()) and "follow-up" in (m.body or "").lower()
+        ))
+        direct_wa_count = max(0, total_wa_sent - (campaign_wa_count + call_connected_wa_count + call_missed_wa_count))
+
+        whatsapp_analytics = {
+            "total_sent": total_wa_sent,
+            "total_received": total_wa_received,
+            "campaign_sent": campaign_wa_count,
+            "call_connected_sent": call_connected_wa_count,
+            "call_missed_sent": call_missed_wa_count,
+            "direct_sent": direct_wa_count,
+            "response_rate_pct": calc_pct(total_wa_received, total_wa_sent),
+        }
+
+        # 6. Stages Funnel
         all_stages = self.env["crm.stage"].search([], order="sequence asc")
         stages_data = []
         for stage in all_stages:
             stg_count = len(all_scoped_leads.filtered(lambda l: l.active and l.stage_id.id == stage.id))
             stages_data.append({"id": stage.id, "name": stage.name, "sequence": stage.sequence, "count": stg_count})
 
-        # 4. Temperature
+        # 7. Requirement 2: Temperature (STRICTLY OPEN ACTIVE LEADS ONLY)
         temp_data = {
-            "hot": len(all_scoped_leads.filtered(lambda l: l.active and l.lead_temperature == "hot")),
-            "warm": len(all_scoped_leads.filtered(lambda l: l.active and l.lead_temperature == "warm")),
-            "cold": len(all_scoped_leads.filtered(lambda l: l.active and l.lead_temperature == "cold")),
+            "hot": len(open_active_leads.filtered(lambda l: l.lead_temperature == "hot")),
+            "warm": len(open_active_leads.filtered(lambda l: l.lead_temperature == "warm")),
+            "cold": len(open_active_leads.filtered(lambda l: l.lead_temperature == "cold" or not l.lead_temperature)),
+            "total_active": len(open_active_leads),
         }
 
-        # 5. Sources
+        # 8. Sources
         source_counts = {}
         for lead in all_scoped_leads.filtered(lambda l: l.active):
             s_name = lead.source_id.name or "Direct / API"
             source_counts[s_name] = source_counts.get(s_name, 0) + 1
         sources_list = sorted([{"name": k, "count": v} for k, v in source_counts.items()], key=lambda x: x["count"], reverse=True)
 
-        # 6. Team Leaderboard
+        # 9. Team Leaderboard
         users = self.env["res.users"].search([
             ("company_ids", "in", company_ids),
             ("share", "=", False),
@@ -491,8 +605,12 @@ class CrmLead(models.Model):
             u_new_opps = len(u_leads.filtered(
                 lambda l: l.create_date and fields.Datetime.to_string(l.create_date) >= start_utc and fields.Datetime.to_string(l.create_date) <= end_utc
             ))
-            u_visits = len(u_leads.filtered(lambda l: l.active and any(w in (l.stage_id.name or "").lower() for w in ["visit done", "done"])))
-            u_won = len(u_leads.filtered(lambda l: l.active and (l.probability == 100 or "won" in (l.stage_id.name or "").lower())))
+            if period == "all":
+                u_visits = len(u_leads.filtered(lambda l: any(w in (l.stage_id.name or "").lower() for w in ["visit done", "5."])))
+                u_won = len(u_leads.filtered(lambda l: l.probability == 100 or "won" in (l.stage_id.name or "").lower()))
+            else:
+                u_visits = len(visited_leads.filtered(lambda l: l.user_id.id == u.id))
+                u_won = len(won_leads.filtered(lambda l: l.user_id.id == u.id))
 
             if not u_leads and u_calls == 0 and u.id != self.env.user.id:
                 continue
@@ -517,31 +635,43 @@ class CrmLead(models.Model):
 
         leaderboard_list.sort(key=lambda x: (x["calls"], x["new_opps"], x["won"]), reverse=True)
 
-        # 7. Site Visit Ground Insights (Dynamic)
-        sv_leads = all_scoped_leads.filtered(lambda l: l.active)
-        sv_loan = len(sv_leads.filtered(lambda l: l.finance_mode == "loan"))
-        sv_cash = len(sv_leads.filtered(lambda l: l.finance_mode == "cash"))
-        sv_fin_tot = (sv_loan + sv_cash) or 1
-        loan_pct = round((sv_loan / sv_fin_tot) * 100) if (sv_loan or sv_cash) else 62
+        # 10. Site Visit Ground Insights (Dynamic, Real Data Only)
+        sv_leads_survey = all_scoped_leads.filtered(lambda l: l.finance_mode or l.purchase_timeline or l.budget_fit or l.decision_maker_present)
+        total_surveys = len(sv_leads_survey)
 
-        sv_u30 = len(sv_leads.filtered(lambda l: l.purchase_timeline in ["immediate", "under_30"]))
-        sv_time_tot = len(sv_leads.filtered(lambda l: l.purchase_timeline)) or 1
-        timeline_pct = round((sv_u30 / sv_time_tot) * 100) if len(sv_leads.filtered(lambda l: l.purchase_timeline)) else 48
+        sv_loan = len(all_scoped_leads.filtered(lambda l: l.finance_mode == "loan"))
+        sv_cash = len(all_scoped_leads.filtered(lambda l: l.finance_mode == "cash"))
+        fin_tot = sv_loan + sv_cash
+        loan_pct = calc_pct(sv_loan, fin_tot) if fin_tot > 0 else 0
+        cash_pct = calc_pct(sv_cash, fin_tot) if fin_tot > 0 else 0
 
-        sv_budget = len(sv_leads.filtered(lambda l: l.budget_fit == "within"))
-        sv_budget_tot = len(sv_leads.filtered(lambda l: l.budget_fit)) or 1
-        budget_pct = round((sv_budget / sv_budget_tot) * 100) if len(sv_leads.filtered(lambda l: l.budget_fit)) else 71
+        sv_u30 = len(all_scoped_leads.filtered(lambda l: l.purchase_timeline in ["immediate", "under_30"]))
+        time_tot = len(all_scoped_leads.filtered(lambda l: l.purchase_timeline))
+        timeline_pct = calc_pct(sv_u30, time_tot) if time_tot > 0 else 0
 
-        sv_dm = len(sv_leads.filtered(lambda l: l.decision_maker_present == "yes"))
-        sv_dm_tot = len(sv_leads.filtered(lambda l: l.decision_maker_present)) or 1
-        dm_pct = round((sv_dm / sv_dm_tot) * 100) if len(sv_leads.filtered(lambda l: l.decision_maker_present)) else 82
+        sv_budget = len(all_scoped_leads.filtered(lambda l: l.budget_fit == "within"))
+        budget_tot = len(all_scoped_leads.filtered(lambda l: l.budget_fit))
+        budget_pct = calc_pct(sv_budget, budget_tot) if budget_tot > 0 else 0
+
+        sv_dm = len(all_scoped_leads.filtered(lambda l: l.decision_maker_present == "yes"))
+        dm_tot = len(all_scoped_leads.filtered(lambda l: l.decision_maker_present))
+        dm_pct = calc_pct(sv_dm, dm_tot) if dm_tot > 0 else 0
 
         site_visit_insights = {
+            "total_surveys": total_surveys,
+            "has_data": total_surveys > 0,
             "loan_pct": loan_pct,
-            "cash_pct": 100 - loan_pct,
+            "cash_pct": cash_pct,
             "timeline_pct": timeline_pct,
             "budget_pct": budget_pct,
             "dm_pct": dm_pct,
+        }
+
+        # Conversion ratios
+        conversion_rates = {
+            "call_to_visit_pct": calc_pct(visits_done, total_calls),
+            "visit_to_won_pct": calc_pct(won_count, visits_done),
+            "stale_leads": stale_leads_count,
         }
 
         return {
@@ -556,6 +686,10 @@ class CrmLead(models.Model):
                 "visits_scheduled": visits_scheduled,
                 "visits_done": visits_done,
                 "won": won_count,
+                "won_all_time": won_all_time,
+                "stale_leads": stale_leads_count,
+                "active_pipeline": len(open_active_leads),
+                "active_visited_hot": hot_visited_count,
             },
             "calling_outcomes": {
                 "answered": out_answered,
@@ -571,7 +705,10 @@ class CrmLead(models.Model):
             "temperature": temp_data,
             "sources": sources_list,
             "leaderboard": leaderboard_list,
+            "site_visit_funnel": site_visit_funnel,
             "site_visit_insights": site_visit_insights,
+            "whatsapp_analytics": whatsapp_analytics,
+            "conversion_rates": conversion_rates,
             "period": period,
         }
 

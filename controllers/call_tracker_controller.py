@@ -922,7 +922,7 @@ class DiyaCrmCallTrackerController(http.Controller):
             _logger.warning("Error searching server recording: %s", str(e))
         return None
 
-    @http.route('/api/call_tracker/sync_server_recordings', type='json', auth='public', methods=['POST'], csrf=False)
+    @http.route('/api/call_tracker/sync_server_recordings', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def sync_server_recordings(self, **kwargs):
         import os, re
         base_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
@@ -978,7 +978,7 @@ class DiyaCrmCallTrackerController(http.Controller):
                     break
         return {"status": "success", "linked": linked_count}
 
-    @http.route('/api/call_tracker/update_recording', type='json', auth='public',
+    @http.route('/api/call_tracker/update_recording', type='jsonrpc', auth='public',
                 methods=['POST'], csrf=False)
     def update_recording(self, call_id=None, recording_url=None, **kwargs):
         import time
