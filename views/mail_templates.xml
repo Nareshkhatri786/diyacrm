@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 1. Outgoing Mail Notification Layout Footer -->
+    <!-- 1. Outgoing Mail Notification Layout: Replace "Powered by Odoo" footer div -->
+    <!--
+        In Odoo 19, mail_notification_layout has TWO show_footer divs:
+          Line 74: <div t-if="show_footer" style="margin-top:16px;">  -> Company info
+          Line 85: <div t-if="show_footer" style="color: #555555; font-size:11px;"> -> "Powered by Odoo" line
+        We replace the second one (the "Powered by Odoo" div) with Signature Properties branding.
+    -->
     <template id="mail_notification_layout_signature" inherit_id="mail.mail_notification_layout">
-        <xpath expr="//div[@t-if='show_footer']" position="replace">
+        <xpath expr="//div[@t-if='show_footer'][@style='color: #555555; font-size:11px;']" position="replace">
             <div t-if="show_footer" style="color: #555555; font-size:11px;">
                 <span>© <b t-out="company.name or 'Signature Properties'"/> • Your Growth Partner</span>
                 <span t-if="show_unfollow" id="mail_unfollow">
