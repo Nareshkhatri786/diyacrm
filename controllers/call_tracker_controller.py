@@ -69,9 +69,13 @@ class DiyaCrmCallTrackerController(http.Controller):
             if not user:
                 user = env["res.users"].search([("share", "=", False), ("login", "!=", "admin")], limit=1)
 
-            target_company_id = int(company_id) if company_id else (user.company_id.id if user else env.company.id)
-            if user and user.company_id.id != target_company_id:
-                target_company_id = user.company_id.id
+            if company_id:
+                try:
+                    target_company_id = int(company_id)
+                except Exception:
+                    target_company_id = user.company_id.id if user else env.company.id
+            else:
+                target_company_id = user.company_id.id if user else env.company.id
 
             company = env["res.company"].browse(target_company_id)
 
@@ -96,10 +100,10 @@ class DiyaCrmCallTrackerController(http.Controller):
                 ("name", "ilike", phone_10)
             ]
 
-            # First try matching via find_lead_by_phone in user's company
+            # First try matching via find_lead_by_phone in target company
             lead = env["crm.lead"].find_lead_by_phone(phone_number or phone_10, company_id=target_company_id, active_test=False)
             if not lead:
-                # Fallback to search domain in user's company
+                # Fallback to search domain in target company
                 matching_leads = Lead.search([("company_id", "=", target_company_id)] + domain, order="write_date desc")
                 if not matching_leads:
                     # Search globally
@@ -109,6 +113,9 @@ class DiyaCrmCallTrackerController(http.Controller):
                 if not lead and matching_leads:
                     real_leads = matching_leads.filtered(lambda l: not (l.name.startswith("Call:") or l.name.startswith("+91")))
                     lead = real_leads[0] if real_leads else matching_leads[0]
+
+            if lead and lead.company_id:
+                company = lead.company_id
 
             # Duration formatting
             dur = int(duration_seconds or 0)
