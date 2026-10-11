@@ -174,8 +174,6 @@ class DiyaCrmCallTrackerController(http.Controller):
                 }
                 if stage_revived:
                     update_vals["stage_id"] = stage_revived.id
-                if "lead_temperature" in env["crm.lead"]._fields:
-                    update_vals["lead_temperature"] = "hot"
                 if "last_call_outcome" in env["crm.lead"]._fields:
                     update_vals["last_call_outcome"] = outcome
 
@@ -254,12 +252,13 @@ class DiyaCrmCallTrackerController(http.Controller):
                 author_id=user.partner_id.id if user else False
             )
 
-            # 7. Automated WhatsApp Follow-up (Connected or Not Connected) with 12h Cooldown
+            # 7. Automated WhatsApp Follow-up in Gujarati (1 per day limit per outcome)
             try:
                 lead.with_context(mail_notrack=True).send_call_followup_whatsapp(
                     call_outcome=outcome,
                     executive_user=user,
-                    force_send=False
+                    force_send=False,
+                    lang_choice="gu"
                 )
             except Exception as _we:
                 _logger.warning("Automated Call WhatsApp trigger failed on lead #%s: %s", lead.id, str(_we))

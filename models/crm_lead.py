@@ -72,6 +72,8 @@ class CrmLead(models.Model):
         ("answered", "Connected"),
         ("no_answer", "Missed / Busy")
     ], string="Last Call WhatsApp Type", readonly=True)
+    last_connected_whatsapp_date = fields.Datetime("Last Connected Call WhatsApp Sent", readonly=True)
+    last_missed_whatsapp_date = fields.Datetime("Last Missed Call WhatsApp Sent", readonly=True)
 
     whatsapp_message_ids = fields.One2many("crm.lead.whatsapp.message", "lead_id", string="WhatsApp Messages")
     whatsapp_message_count = fields.Integer("WhatsApp Messages Count", compute="_compute_whatsapp_message_count")
@@ -867,7 +869,7 @@ class CrmLead(models.Model):
             self.stage_id = stage_5.id
         return self.send_site_visit_whatsapp()
 
-    def send_call_followup_whatsapp(self, call_outcome="answered", executive_user=None, force_send=False, lang_choice="en"):
+    def send_call_followup_whatsapp(self, call_outcome="answered", executive_user=None, force_send=False, lang_choice="gu"):
         self.ensure_one()
         phone_raw = self.phone or (self.partner_id and self.partner_id.phone) or ''
         digits = ''.join(filter(str.isdigit, phone_raw))
@@ -877,13 +879,23 @@ class CrmLead(models.Model):
             _logger.warning("Invalid phone for Call WhatsApp on lead #%s: %s", self.id, phone_raw)
             return False
 
-        # Anti-Spam Check: Max 1 automated call follow-up WhatsApp every 12 hours unless force_send
-        if not force_send and self.last_call_whatsapp_date:
-            now = fields.Datetime.now()
-            diff_hours = (now - self.last_call_whatsapp_date).total_seconds() / 3600.0
-            if diff_hours < 12.0:
-                _logger.info("Call WhatsApp skipped for lead #%s: sent %.1f hours ago (cooldown 12h)", self.id, diff_hours)
-                return False
+        # Anti-Spam Check: Max 1 Connected and Max 1 Missed WhatsApp per day per lead
+        is_connected = (call_outcome == "answered")
+        if not force_send:
+            user_tz = pytz.timezone(self.env.user.tz or "Asia/Kolkata")
+            today_date = datetime.datetime.now(user_tz).date()
+            target_date_field = "last_connected_whatsapp_date" if is_connected else "last_missed_whatsapp_date"
+            last_sent_dt = getattr(self, target_date_field, False)
+            if last_sent_dt:
+                last_sent_date = pytz.utc.localize(last_sent_dt).astimezone(user_tz).date()
+                if last_sent_date == today_date:
+                    _logger.info(
+                        "Call WhatsApp (%s) skipped for lead #%s: already sent today on %s (1 per day limit)",
+                        "Connected" if is_connected else "Missed / Not Connected",
+                        self.id,
+                        last_sent_date
+                    )
+                    return False
 
         # 1. Resolve Executive details
         exec_name = "our team"
@@ -1023,10 +1035,15 @@ class CrmLead(models.Model):
             if res.status_code == 200:
                 res_data = res.json()
                 msg_id = res_data.get('messages', [{}])[0].get('id', 'N/A')
-                self.write({
+                write_vals = {
                     'last_call_whatsapp_date': fields.Datetime.now(),
-                    'last_call_whatsapp_type': 'answered' if is_connected else 'no_answer'
-                })
+                    'last_call_whatsapp_type': 'answered' if is_connected else 'no_answer',
+                }
+                if is_connected:
+                    write_vals['last_connected_whatsapp_date'] = fields.Datetime.now()
+                else:
+                    write_vals['last_missed_whatsapp_date'] = fields.Datetime.now()
+                self.write(write_vals)
                 self.env['crm.lead.whatsapp.message'].create({
                     'lead_id': self.id,
                     'direction': 'outbound',

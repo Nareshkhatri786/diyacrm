@@ -393,7 +393,6 @@ class WhatsAppWebhookController(http.Controller):
                 'probability': False,
                 'lost_reason_id': False,
                 'user_id': target_user.id,
-                'lead_temperature': 'hot',
             })
 
             if message:
