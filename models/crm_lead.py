@@ -5,7 +5,7 @@ _logger = logging.getLogger(__name__)
 import datetime
 import pytz
 import re
-from odoo import models, fields, api, _
+from odoo import models, fields, api, SUPERUSER_ID, _
 from odoo.exceptions import UserError
 
 
