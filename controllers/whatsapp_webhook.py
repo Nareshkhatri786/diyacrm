@@ -1,4 +1,17 @@
 
+# -*- coding: utf-8 -*-
+import json
+import logging
+import re
+import odoo
+from odoo import http, fields, SUPERUSER_ID
+from odoo.http import request, Response
+from odoo.orm.registry import Registry
+
+_logger = logging.getLogger(__name__)
+
+META_VERIFY_TOKEN = "diyacrm_secret_token"
+
 def format_whatsapp_phone(raw_phone):
     """
     Smart Phone Formatter:
@@ -23,21 +36,6 @@ def format_whatsapp_phone(raw_phone):
     # International number (outside India)
     else:
         return f"+{digits}" if digits else ""
-
-# -*- coding: utf-8 -*-
-import json
-import logging
-import re
-import odoo
-from odoo import http, fields
-from odoo.http import request, Response
-from odoo.orm.registry import Registry
-
-SUPERUSER_ID = getattr(odoo, 'SUPERUSER_ID', 1)
-
-_logger = logging.getLogger(__name__)
-
-META_VERIFY_TOKEN = "diyacrm_secret_token"
 
 COMPANY_RULES = {
     'the1st': {
@@ -134,7 +132,8 @@ class WhatsAppWebhookController(http.Controller):
             db_name = request.db or request.httprequest.headers.get('X-Odoo-Db') or 'diyacrm'
             registry = Registry(db_name)
             with registry.cursor() as cr:
-                env = odoo.api.Environment(cr, SUPERUSER_ID, {})
+                su_id = getattr(odoo, 'SUPERUSER_ID', 1)
+                env = odoo.api.Environment(cr, su_id, {})
 
                 if 'entry' in payload and isinstance(payload['entry'], list):
                     results = self._parse_and_process_meta_payload(env, payload)

@@ -21,8 +21,8 @@ else:
 import odoo
 from odoo import api, fields, models, SUPERUSER_ID
 from odoo.orm.registry import Registry
-from odoo.tools import config
-from diyacrm.controllers.whatsapp_webhook import WhatsAppWebhookController
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from controllers.whatsapp_webhook import WhatsAppWebhookController
 
 config.parse_config(['-c', config_path, '-d', db_name])
 
