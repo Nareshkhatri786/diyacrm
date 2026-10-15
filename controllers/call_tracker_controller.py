@@ -584,8 +584,19 @@ class DiyaCrmCallTrackerController(http.Controller):
                         continue
                     break
 
+            # Map our outcome labels to the crm.lead field's valid selection values
+            # Valid: 'answered', 'no_answer', 'busy', 'switched_off'
+            OUTCOME_TO_FIELD = {
+                'interested':     'answered',
+                'callback':       'busy',
+                'no_answer':      'no_answer',
+                'not_interested': 'no_answer',
+                'site_visit':     'answered',
+                'revisit':        'busy',
+            }
             if 'last_call_outcome' in env['crm.lead']._fields:
-                lead.with_context(mail_notrack=True).write({'last_call_outcome': str(outcome).lower()})
+                field_val = OUTCOME_TO_FIELD.get(str(outcome).lower(), 'no_answer')
+                lead.with_context(mail_notrack=True).write({'last_call_outcome': field_val})
 
             # ── Step 3: Schedule Next Follow-up Activity ────────────────────
             next_act_id = False
