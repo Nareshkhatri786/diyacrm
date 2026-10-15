@@ -45,7 +45,7 @@ def recover_missed_leads():
                 pass
 
     try:
-        cmd = "sudo journalctl -u odoo19 --since '10 days ago' --no-pager | grep 'Diya CRM Webhook Payload Processing:' | tail -n 500"
+        cmd = "journalctl -u odoo19 --since '10 days ago' --no-pager 2>/dev/null | grep 'Diya CRM Webhook Payload Processing:' | tail -n 500"
         out = subprocess.check_output(cmd, shell=True, text=True)
         if out:
             for l in out.strip().split('\n'):

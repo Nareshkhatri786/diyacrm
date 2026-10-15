@@ -167,14 +167,14 @@ def run_audit():
         try:
             # Check journalctl for Webhook Exceptions
             print("\n   🚨 Odoo Journalctl Webhook Exceptions (Errors in Webhook Processing):")
-            cmd = "sudo journalctl -u odoo19 --since '10 days ago' --no-pager | grep -i 'Webhook Ingestion Exception\\|matched_key' | tail -n 20"
+            cmd = "journalctl -u odoo19 --since '10 days ago' --no-pager 2>/dev/null | grep -i 'Webhook Ingestion Exception\\|matched_key\\|SUPERUSER_ID' | tail -n 20"
             out = subprocess.check_output(cmd, shell=True, text=True)
             if out.strip():
                 print(out)
             else:
-                print("   No 'matched_key' or Webhook Ingestion Exception found in journalctl.")
+                print("   No recent Webhook Ingestion Exception found in journalctl.")
         except Exception as e:
-            print(f"   Journalctl read error: {e}")
+            print(f"   Journalctl read note (requires root/adm group): {e}")
     else:
         print("   (Local environment - server logs not present locally)")
 

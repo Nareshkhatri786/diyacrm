@@ -29,9 +29,11 @@ import json
 import logging
 import re
 import odoo
-from odoo import http, fields, SUPERUSER_ID
+from odoo import http, fields
 from odoo.http import request, Response
 from odoo.orm.registry import Registry
+
+SUPERUSER_ID = getattr(odoo, 'SUPERUSER_ID', 1)
 
 _logger = logging.getLogger(__name__)
 
