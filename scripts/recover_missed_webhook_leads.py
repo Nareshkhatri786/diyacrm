@@ -113,29 +113,39 @@ def recover_missed_leads():
             if os.path.isfile(f):
                 resolved_files.add(f)
 
+    import gzip
     for lf in sorted(resolved_files):
+        file_matches = 0
         try:
-            grep_cmd = "zgrep" if lf.endswith('.gz') else "grep"
-            cmd = f"{grep_cmd} 'Diya CRM Webhook Payload Processing:' '{lf}'"
-            out = subprocess.check_output(cmd, shell=True, text=True, errors='ignore')
-            if out:
-                for l in out.strip().split('\n'):
-                    if l and l not in log_lines:
-                        log_lines.append(l)
-        except Exception:
-            pass
+            opener = gzip.open(lf, 'rt', encoding='utf-8', errors='ignore') if lf.endswith('.gz') else open(lf, 'r', encoding='utf-8', errors='ignore')
+            with opener as f:
+                for line in f:
+                    if 'Diya CRM Webhook Payload Processing:' in line:
+                        sline = line.strip()
+                        if sline and sline not in log_lines:
+                            log_lines.append(sline)
+                            file_matches += 1
+            if file_matches > 0:
+                print(f"   📁 {lf}: extracted {file_matches} payload entries")
+        except Exception as e:
+            print(f"File scan note ({lf}): {e}")
 
     try:
-        cmd = "journalctl -u odoo19 --since '10 days ago' --no-pager 2>/dev/null | grep 'Diya CRM Webhook Payload Processing:' | tail -n 1000"
-        out = subprocess.check_output(cmd, shell=True, text=True)
+        cmd = "journalctl -u odoo19 --since '10 days ago' --no-pager 2>/dev/null | grep -a 'Diya CRM Webhook Payload Processing:' | tail -n 1000"
+        out = subprocess.check_output(cmd, shell=True, text=True, errors='ignore')
         if out:
+            j_matches = 0
             for l in out.strip().split('\n'):
-                if l and l not in log_lines:
-                    log_lines.append(l)
+                sline = l.strip()
+                if sline and sline not in log_lines:
+                    log_lines.append(sline)
+                    j_matches += 1
+            if j_matches > 0:
+                print(f"   📋 Journalctl: extracted {j_matches} additional payload entries")
     except Exception as e:
         print(f"Journalctl scan note: {e}")
 
-    print(f"📥 Found {len(log_lines)} webhook payload entries in server logs.")
+    print(f"📥 Found {len(log_lines)} total webhook payload entries in server logs.")
 
     recovered_count = 0
     updated_count = 0
