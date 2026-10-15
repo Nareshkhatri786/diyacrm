@@ -98,14 +98,21 @@ def recover_missed_leads():
     print("==========================================================================================")
 
     log_lines = []
-    log_files = ['/var/log/odoo19/odoo-server.log', '/var/log/odoo/odoo-server.log']
+    log_files = [
+        '/tmp/odoo_logs.txt',
+        '/tmp/webhook_logs.txt',
+        '/var/log/odoo19/odoo-server.log',
+        '/var/log/odoo/odoo-server.log'
+    ]
     for lf in log_files:
         if os.path.exists(lf):
             try:
-                cmd = f"grep -h 'Diya CRM Webhook Payload Processing:' {lf} | tail -n 500"
+                cmd = f"grep -h 'Diya CRM Webhook Payload Processing:' {lf} | tail -n 1000"
                 out = subprocess.check_output(cmd, shell=True, text=True)
                 if out:
-                    log_lines.extend(out.strip().split('\n'))
+                    for l in out.strip().split('\n'):
+                        if l and l not in log_lines:
+                            log_lines.append(l)
             except Exception:
                 pass
 
@@ -129,6 +136,11 @@ def recover_missed_leads():
     registry = Registry(db_name)
     with registry.cursor() as cr:
         env = api.Environment(cr, SUPERUSER_ID, {})
+
+        # Clean up diagnostic test lead if created
+        test_leads = env['crm.lead'].search([('phone', '=', '9876543210'), ('name', 'ilike', 'Live Verification')])
+        if test_leads:
+            test_leads.unlink()
 
         utm_source = env['utm.source'].search([('name', '=ilike', 'AI WhatsApp Agent')], limit=1) or env['utm.source'].search([('name', '=ilike', 'WhatsApp')], limit=1)
         if not utm_source:
