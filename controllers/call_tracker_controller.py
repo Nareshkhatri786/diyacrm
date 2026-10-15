@@ -344,12 +344,13 @@ class DiyaCrmCallTrackerController(http.Controller):
     @http.route('/api/call_tracker/get_due_queue', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
     def get_due_queue(self, user_id=None, company_id=None, limit=50, **kwargs):
         """
-        Returns a prioritized queue of leads for auto-dialing.
+        Returns a STRICTLY ISOLATED, prioritized queue of leads for the logged-in user and company.
         Priority:
-          1. Overdue Call activities (deadline < today, not done)
-          2. New uncontacted Inbound WhatsApp Leads (source=WhatsApp, stage=New Lead, no activity)
-          3. Today's scheduled Call activities
-          4. Leads marked busy/no-answer in last 4 hours (retry queue)
+          1. Overdue Call activities for this user & company (deadline < today, not done)
+          2. New uncontacted Inbound WhatsApp Leads for this user & company (no activity yet)
+          3. Today's scheduled Call activities for this user & company
+          4. Retry queue – leads marked no_answer in last 4 hours for this user & company
+          5. Active leads with NO follow-up scheduled (to ensure no active lead is left behind)
         """
         try:
             env = request.env(user=SUPERUSER_ID, su=True)
@@ -357,7 +358,7 @@ class DiyaCrmCallTrackerController(http.Controller):
             now = fields.Datetime.now()
             four_hrs_ago = now - datetime.timedelta(hours=4)
 
-            # Resolve user
+            # 1. Resolve logged-in user strictly
             caller_user = False
             if user_id:
                 try:
@@ -367,15 +368,27 @@ class DiyaCrmCallTrackerController(http.Controller):
                 except Exception:
                     pass
 
-            # Resolve company filter
-            comp_domain = []
+            if not caller_user:
+                return {'status': 'error', 'message': 'Missing or invalid user_id. Please login first.'}
+
+            # 2. Resolve primary company strictly
+            target_company_id = False
             if company_id:
                 try:
-                    comp_domain = [('company_id', '=', int(company_id))]
+                    c = env['res.company'].browse(int(company_id))
+                    if c.exists():
+                        target_company_id = c.id
                 except Exception:
                     pass
-            elif caller_user:
-                comp_domain = [('company_id', 'in', caller_user.company_ids.ids)]
+            if not target_company_id:
+                target_company_id = caller_user.company_id.id if caller_user.company_id else env.company.id
+
+            # Base domain strictly enforcing user & company on crm.lead
+            user_comp_domain = [
+                ('user_id', '=', caller_user.id),
+                ('company_id', '=', target_company_id),
+                ('active', '=', True),
+            ]
 
             # Helper: serialize a lead into queue item dict
             def _lead_dict(lead, priority_label, activity=None):
@@ -392,7 +405,7 @@ class DiyaCrmCallTrackerController(http.Controller):
                     import html, re as _re
                     last_note = _re.sub('<[^>]+>', '', html.unescape(last_msg.body or ''))[:120]
 
-                assigned_name = lead.user_id.name if lead.user_id else (caller_user.name if caller_user else '')
+                assigned_name = lead.user_id.name if lead.user_id else caller_user.name
                 return {
                     'lead_id': lead.id,
                     'lead_name': lead.name or '',
@@ -410,34 +423,34 @@ class DiyaCrmCallTrackerController(http.Controller):
             queue = []
             seen_lead_ids = set()
 
-            # ── Priority 1: Overdue Call Activities ──────────────────────────
+            # ── Priority 1: Overdue Call Activities for THIS user & company ─────
             overdue_activities = env['mail.activity'].search([
                 ('res_model', '=', 'crm.lead'),
                 ('activity_type_id.category', '=', 'phonecall'),
                 ('date_deadline', '<', today),
-            ] + ([('user_id', '=', caller_user.id)] if caller_user else []), order='date_deadline asc', limit=int(limit))
+                ('user_id', '=', caller_user.id),
+            ], order='date_deadline asc', limit=int(limit))
 
             for act in overdue_activities:
                 lead = env['crm.lead'].browse(act.res_id)
                 if not lead.exists() or not lead.active:
                     continue
-                if comp_domain and lead.company_id.id not in [c for c in (
-                    [company_id] if company_id else (caller_user.company_ids.ids if caller_user else [])
-                )]:
+                if lead.company_id.id != target_company_id or lead.user_id.id != caller_user.id:
                     continue
                 if lead.id not in seen_lead_ids:
                     queue.append(_lead_dict(lead, '🔴 Overdue Follow-up', act))
                     seen_lead_ids.add(lead.id)
 
-            # ── Priority 2: New WhatsApp Leads (no activity at all, stage=New Lead) ─
+            # ── Priority 2: New Inbound WhatsApp Leads (no activity yet) ────────
             whatsapp_source = env['utm.source'].search([('name', 'ilike', 'WhatsApp')], limit=1)
             new_lead_stage = env['crm.stage'].search([('name', 'ilike', 'New Lead')], limit=1)
             if whatsapp_source and new_lead_stage and len(queue) < int(limit):
                 new_wa_leads = env['crm.lead'].search(
-                    [('source_id', '=', whatsapp_source.id),
-                     ('stage_id', '=', new_lead_stage.id),
-                     ('active', '=', True),
-                     ('activity_ids', '=', False)] + comp_domain,
+                    user_comp_domain + [
+                        ('source_id', '=', whatsapp_source.id),
+                        ('stage_id', '=', new_lead_stage.id),
+                        ('activity_ids', '=', False),
+                    ],
                     order='create_date asc', limit=int(limit) - len(queue)
                 )
                 for lead in new_wa_leads:
@@ -451,11 +464,14 @@ class DiyaCrmCallTrackerController(http.Controller):
                     ('res_model', '=', 'crm.lead'),
                     ('activity_type_id.category', '=', 'phonecall'),
                     ('date_deadline', '=', today),
-                ] + ([('user_id', '=', caller_user.id)] if caller_user else []), order='date_deadline asc', limit=int(limit) - len(queue))
+                    ('user_id', '=', caller_user.id),
+                ], order='date_deadline asc', limit=int(limit) - len(queue))
 
                 for act in today_activities:
                     lead = env['crm.lead'].browse(act.res_id)
                     if not lead.exists() or not lead.active:
+                        continue
+                    if lead.company_id.id != target_company_id or lead.user_id.id != caller_user.id:
                         continue
                     if lead.id not in seen_lead_ids:
                         queue.append(_lead_dict(lead, '🔵 Today\'s Follow-up', act))
@@ -464,9 +480,10 @@ class DiyaCrmCallTrackerController(http.Controller):
             # ── Priority 4: Retry – leads with 'no_answer' in last 4 hours ───
             if len(queue) < int(limit) and 'last_call_outcome' in env['crm.lead']._fields:
                 retry_leads = env['crm.lead'].search(
-                    [('last_call_outcome', '=', 'no_answer'),
-                     ('active', '=', True),
-                     ('write_date', '>=', four_hrs_ago.strftime('%Y-%m-%d %H:%M:%S'))] + comp_domain,
+                    user_comp_domain + [
+                        ('last_call_outcome', '=', 'no_answer'),
+                        ('write_date', '>=', four_hrs_ago.strftime('%Y-%m-%d %H:%M:%S')),
+                    ],
                     order='write_date asc', limit=int(limit) - len(queue)
                 )
                 for lead in retry_leads:
@@ -474,8 +491,25 @@ class DiyaCrmCallTrackerController(http.Controller):
                         queue.append(_lead_dict(lead, '🟠 Retry – No Answer Earlier', None))
                         seen_lead_ids.add(lead.id)
 
+            # ── Priority 5: Active Leads with NO Follow-up Scheduled ─────────
+            # When all due calls are done, pull unattended active leads
+            if len(queue) < int(limit):
+                no_act_leads = env['crm.lead'].search(
+                    user_comp_domain + [
+                        ('activity_ids', '=', False),
+                    ],
+                    order='write_date desc', limit=int(limit) - len(queue)
+                )
+                for lead in no_act_leads:
+                    if lead.id not in seen_lead_ids:
+                        queue.append(_lead_dict(lead, '⚪ Active Lead (No Follow-up Scheduled)', None))
+                        seen_lead_ids.add(lead.id)
+
             return {
                 'status': 'success',
+                'user_id': caller_user.id,
+                'user_name': caller_user.name,
+                'company_id': target_company_id,
                 'count': len(queue),
                 'queue': queue,
             }
@@ -691,17 +725,22 @@ class DiyaCrmCallTrackerController(http.Controller):
                 author_id=caller_user.partner_id.id if caller_user else False,
             )
 
-            # ── Step 5: WhatsApp follow-up trigger ─────────────────────────
-            if str(outcome).lower() in ('interested', 'callback', 'no_answer', 'revisit'):
-                try:
-                    lead.with_context(mail_notrack=True).send_call_followup_whatsapp(
-                        call_outcome=str(outcome).lower(),
-                        executive_user=caller_user,
-                        force_send=False,
-                        lang_choice='gu'
-                    )
-                except Exception as _we:
-                    _logger.warning("Auto-dialer WA trigger: %s", str(_we))
+            # ── Step 5: WhatsApp follow-up trigger in Gujarati (Always send) ───
+            wa_sent = False
+            try:
+                # 2 Options: Connected (answered) or Not Answered (no_answer)
+                is_connected_outcome = str(outcome).lower() in ('interested', 'site_visit', 'revisit', 'callback', 'answered', 'connected')
+                wa_outcome = "answered" if is_connected_outcome else "no_answer"
+
+                wa_sent = lead.with_context(mail_notrack=True).send_call_followup_whatsapp(
+                    call_outcome=wa_outcome,
+                    executive_user=caller_user,
+                    force_send=True,
+                    lang_choice='gu'
+                )
+                _logger.info("Auto-dialer WA trigger: lead #%s, outcome=%s -> wa_outcome=%s, sent=%s", lead.id, outcome, wa_outcome, wa_sent)
+            except Exception as _we:
+                _logger.warning("Auto-dialer WA trigger error: %s", str(_we))
 
             return {
                 'status': 'success',
@@ -709,6 +748,7 @@ class DiyaCrmCallTrackerController(http.Controller):
                 'lead_name': lead.name,
                 'stage_name': lead.stage_id.name if lead.stage_id else '',
                 'next_activity_id': next_act_id,
+                'whatsapp_sent': bool(wa_sent),
                 'message': f"Wrap-up saved for {lead.name}",
             }
 
@@ -1196,17 +1236,26 @@ document.getElementById('loginUser').addEventListener('keydown',e=>{if(e.key==='
 </html>"""
         return Response(html_content, content_type='text/html; charset=utf-8', status=200)
 
-    @http.route('/api/call_tracker/upload_recording', type='http', auth='none',
+    @http.route('/api/call_tracker/upload_recording', type='http', auth='public',
                 methods=['POST'], csrf=False)
     def upload_recording(self, **kwargs):
-        import os, time, re
+        import os, time, re, json
         try:
-            env = request.env(user=SUPERUSER_ID, su=True)
+            su_id = getattr(odoo, 'SUPERUSER_ID', 1)
+            try:
+                env = request.env(user=su_id, su=True)
+            except Exception:
+                db_name = getattr(request, 'db', None) or 'diyacrm'
+                registry = Registry(db_name)
+                cr = registry.cursor()
+                env = odoo.api.Environment(cr, su_id, {})
+
             headers = request.httprequest.headers
 
             call_id = kwargs.get('call_id', '') or headers.get('X-Call-Id', '')
             user_id = kwargs.get('user_id', '') or headers.get('X-User-Id', '')
             company_id = kwargs.get('company_id', '') or headers.get('X-Company-Id', '')
+            orig_name = headers.get('X-Filename', '')
 
             # 1. Resolve Staff User & Company
             user = False
@@ -1240,39 +1289,51 @@ document.getElementById('loginUser').addEventListener('keydown',e=>{if(e.key==='
             user_slug = slugify(user.name or user.login)
 
             # 2. Extract clean 10-digit phone
+            if not call_id or call_id == 'Unknown':
+                # Try finding in filename if X-Call-Id wasn't passed
+                m = re.search(r'(\d{10,12})', orig_name or '')
+                if m:
+                    call_id = m.group(1)
+
             digits = re.sub(r'\D', '', str(call_id or ''))
             phone_10 = digits[-10:] if len(digits) >= 10 else (digits or 'Unknown')
 
-            # 3. Create nested folder structure:
-            # /opt/odoo19/custom_addons/diyacrm/static/recordings/[Company]/[User]/[Phone]/
+            # 3. Create nested folder structure with safe fallback:
             save_base_dir = '/opt/odoo19/custom_addons/diyacrm/static/recordings/'
+            try:
+                os.makedirs(save_base_dir, exist_ok=True)
+            except Exception:
+                save_base_dir = '/tmp/recordings/'
+                os.makedirs(save_base_dir, exist_ok=True)
+
             target_dir = os.path.join(save_base_dir, comp_slug, user_slug, phone_10)
             os.makedirs(target_dir, exist_ok=True)
 
             file_obj = request.httprequest.files.get('file')
             if file_obj:
-                orig_name = getattr(file_obj, 'filename', '') or ''
-                ext = os.path.splitext(orig_name)[1].lower()
-                if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg']:
-                    ext = '.aac' if 'aac' in orig_name.lower() else ('.m4a' if 'm4a' in orig_name.lower() else ('.mp3' if 'mp3' in orig_name.lower() else '.amr'))
-                clean_orig = re.sub(r'[^a-zA-Z0-9_.-]', '_', orig_name) if orig_name else f"rec_{int(time.time())}{ext}"
+                raw_filename = getattr(file_obj, 'filename', '') or orig_name or 'recording.aac'
+                ext = os.path.splitext(raw_filename)[1].lower()
+                if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg', '.opus', '.3gp']:
+                    ext = '.aac'
+                clean_orig = re.sub(r'[^a-zA-Z0-9_.-]', '_', raw_filename)
                 filename = clean_orig if clean_orig.endswith(ext) else f"{clean_orig}{ext}"
                 filepath = os.path.join(target_dir, filename)
                 file_obj.save(filepath)
             else:
-                raw_data = request.httprequest.data
-                if not raw_data or not call_id:
+                raw_data = request.httprequest.get_data() or request.httprequest.data
+                if not raw_data:
                     return request.make_response(
-                        '{"status":"error","message":"Missing file or call_id"}',
+                        json.dumps({"status": "error", "message": "Missing file data"}),
                         headers=[('Content-Type', 'application/json')])
-                orig_name = headers.get('X-Filename', '') or 'recording.aac'
-                ext = os.path.splitext(orig_name)[1].lower()
-                if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg']:
-                    ext = '.aac' if 'aac' in orig_name.lower() else ('.m4a' if 'm4a' in orig_name.lower() else ('.mp3' if 'mp3' in orig_name.lower() else '.amr'))
-                clean_orig = re.sub(r'[^a-zA-Z0-9_.-]', '_', orig_name) if orig_name else f"rec_{int(time.time())}{ext}"
+                raw_filename = orig_name or 'recording.aac'
+                ext = os.path.splitext(raw_filename)[1].lower()
+                if ext not in ['.aac', '.m4a', '.mp3', '.amr', '.wav', '.ogg', '.opus', '.3gp']:
+                    ext = '.aac'
+                clean_orig = re.sub(r'[^a-zA-Z0-9_.-]', '_', raw_filename)
                 filename = clean_orig if clean_orig.endswith(ext) else f"{clean_orig}{ext}"
                 filepath = os.path.join(target_dir, filename)
                 with open(filepath, 'wb') as f:
+                    f.write(raw_data)
                     f.write(raw_data)
 
             # Ensure proper read permissions for web streaming

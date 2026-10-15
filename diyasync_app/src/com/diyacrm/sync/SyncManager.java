@@ -105,11 +105,12 @@ public class SyncManager {
         if (name == null) return false;
         String lower = name.toLowerCase();
         return lower.endsWith(".aac") || lower.endsWith(".m4a") || lower.endsWith(".mp3")
-                || lower.endsWith(".amr") || lower.endsWith(".wav") || lower.endsWith(".ogg");
+                || lower.endsWith(".amr") || lower.endsWith(".wav") || lower.endsWith(".ogg")
+                || lower.endsWith(".opus") || lower.endsWith(".3gp");
     }
 
     private static String extractPhoneNumber(String parentDirName, String filename) {
-        // 1. Infinix style: parent directory is the phone number e.g. "9574466663"
+        // 1. Infinix/Tecno/Samsung folder style: parent directory has digits
         if (parentDirName != null && !parentDirName.isEmpty()) {
             String digits = parentDirName.replaceAll("\\D", "");
             if (digits.length() >= 10) {
@@ -117,8 +118,15 @@ public class SyncManager {
             }
         }
 
-        // 2. Check filename for phone digits
+        // 2. Check filename for phone digits (e.g. "+91 98765 43210", "9876543210_20261015", "Call-9876543210")
         if (filename != null) {
+            String clean = filename.replaceAll("[^0-9]", " ");
+            String[] parts = clean.trim().split("\\s+");
+            for (String part : parts) {
+                if (part.length() >= 10 && part.length() <= 13) {
+                    return part.substring(part.length() - 10);
+                }
+            }
             Matcher m = PHONE_PATTERN.matcher(filename);
             if (m.find()) {
                 String match = m.group(1);
@@ -162,7 +170,21 @@ public class SyncManager {
             os.flush();
 
             int code = conn.getResponseCode();
-            return code == 200 || code == 201;
+            InputStream respStream = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
+            String respStr = "";
+            if (respStream != null) {
+                java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(respStream, "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
+                respStr = sb.toString();
+            }
+            Log.i(TAG, "Upload response for " + filename + " [code=" + code + "]: " + respStr);
+            if ((code == 200 || code == 201) && !respStr.contains("\"error\"")) {
+                return true;
+            }
+            return false;
 
         } catch (Exception e) {
             Log.e(TAG, "Upload failed for " + filename, e);
