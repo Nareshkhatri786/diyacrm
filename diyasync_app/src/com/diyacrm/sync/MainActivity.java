@@ -283,5 +283,87 @@ public class MainActivity extends Activity {
             SyncDbHelper db = new SyncDbHelper(context);
             return db.getRecentLogsJson();
         }
+
+        /**
+         * Auto-Dialer: Initiate a phone call directly via Android dialer (SIM).
+         * Keeps the app in foreground — user taps Call from Android dialer and
+         * comes back to the app after the call ends.
+         */
+        @JavascriptInterface
+        public void initiateCall(final String phoneNumber) {
+            try {
+                String digits = phoneNumber.replaceAll("[^0-9]", "");
+                if (digits.length() >= 10 && !digits.startsWith("+")) {
+                    digits = "+91" + digits.substring(digits.length() - 10);
+                }
+                final String dialUri = "tel:" + digits;
+                final android.app.Activity activity = (android.app.Activity) context;
+                activity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_DIAL);
+                            intent.setData(android.net.Uri.parse(dialUri));
+                            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                            context.startActivity(intent);
+                        } catch (Exception e) {
+                            android.widget.Toast.makeText(context, "Call start nahi ho saka: " + e.getMessage(), android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                android.util.Log.e("DiyaBridge", "initiateCall error: " + e.getMessage());
+            }
+        }
+
+        /**
+         * Auto-Dialer: CORS-free JSON-RPC API bridge.
+         * Allows JS to call Odoo APIs without browser CORS restrictions.
+         * Returns the full JSON response string.
+         */
+        @JavascriptInterface
+        public String apiCall(final String endpoint, final String paramsJson) {
+            try {
+                SharedPreferences prefs = context.getSharedPreferences("DiyaSync_Prefs", Context.MODE_PRIVATE);
+                String serverUrl = prefs.getString("server_url", "https://crm.sigprop.in").replaceAll("/+$", "");
+                String fullUrl = serverUrl + endpoint;
+
+                org.json.JSONObject params = new org.json.JSONObject(paramsJson);
+                org.json.JSONObject rpc = new org.json.JSONObject();
+                rpc.put("jsonrpc", "2.0");
+                rpc.put("method", "call");
+                rpc.put("id", System.currentTimeMillis());
+                rpc.put("params", params);
+
+                java.net.URL url = new java.net.URL(fullUrl);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setConnectTimeout(12000);
+                conn.setReadTimeout(20000);
+                conn.setDoOutput(true);
+
+                byte[] body = rpc.toString().getBytes("UTF-8");
+                conn.getOutputStream().write(body);
+                conn.getOutputStream().close();
+
+                java.io.BufferedReader br = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(conn.getInputStream(), "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
+                return sb.toString();
+            } catch (Exception e) {
+                try {
+                    org.json.JSONObject err = new org.json.JSONObject();
+                    err.put("result", new org.json.JSONObject().put("status", "error").put("message", e.getMessage()));
+                    return err.toString();
+                } catch (Exception ignored) {
+                    return "{\"result\":{\"status\":\"error\",\"message\":\"network_error\"}}";
+                }
+            }
+        }
     }
 }

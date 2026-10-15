@@ -6,7 +6,7 @@
     <title>DiyaSync</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: #f8fafc; color: #1e293b; padding: 16px; min-height: 100vh; display: flex; flex-direction: column; }
+        body { background: #f8fafc; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; }
         .card { background: #ffffff; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 20px; margin-bottom: 14px; }
         .input-group { margin-bottom: 14px; text-align: left; }
         .input-label { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 5px; display: block; }
@@ -24,244 +24,618 @@
         }
         .log-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 12.5px; }
         .log-item:last-child { border-bottom: none; }
+
+        /* ── Bottom Tab Bar ── */
+        .tab-bar { display: flex; background: #fff; border-top: 1px solid #e2e8f0; position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; }
+        .tab-btn { flex: 1; padding: 10px 0 8px; border: none; background: transparent; cursor: pointer; font-size: 11px; font-weight: 600; color: #94a3b8; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .tab-btn.active { color: #2563eb; }
+        .tab-btn .tab-icon { font-size: 22px; }
+        .tab-content { display: none; padding: 16px 16px 80px; max-width: 480px; margin: 0 auto; width: 100%; }
+        .tab-content.active { display: block; }
+
+        /* ── Auto-Dialer Styles ── */
+        .dialer-dark { background: #0f172a; }
+        .dialer-card { background: #1e293b; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; border: 1px solid #334155; }
+        .queue-item { background: #1e293b; border-radius: 12px; padding: 14px; margin-bottom: 10px; border: 2px solid #334155; cursor: pointer; }
+        .queue-item.active-item { border-color: #3b82f6; background: #1d3461; }
+        .prio-label { font-size: 11.5px; font-weight: 700; margin-bottom: 4px; }
+        .lead-name { color: #f1f5f9; font-size: 15px; font-weight: 700; }
+        .lead-sub { color: #94a3b8; font-size: 12px; margin-top: 3px; }
+        .lead-note { color: #64748b; font-size: 11.5px; margin-top: 4px; font-style: italic; }
+        .outcome-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .oc-btn { background: #1e293b; border: 2px solid #334155; border-radius: 10px; padding: 12px 8px; text-align: center; cursor: pointer; color: #e2e8f0; font-size: 12.5px; font-weight: 600; }
+        .oc-btn.sel { border-color: #3b82f6; background: #1d3461; color: #93c5fd; }
+        .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip { background: #1e293b; border: 2px solid #334155; border-radius: 20px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; color: #cbd5e1; }
+        .chip.sel { border-color: #3b82f6; background: #1d3461; color: #93c5fd; }
+        .timer-display { color: #4ade80; font-size: 28px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+        .countdown-box { background: #1e293b; border-radius: 10px; padding: 14px; text-align: center; margin-bottom: 12px; border: 1px solid #334155; }
+        .countdown-num { color: #4ade80; font-size: 40px; font-weight: 700; }
+        .dl-inp { width: 100%; padding: 10px 12px; background: #0f172a; border: 1px solid #475569; border-radius: 8px; color: #fff; font-size: 13px; margin-bottom: 8px; outline: none; }
+        .dl-inp:focus { border-color: #3b82f6; }
+        textarea.dl-inp { resize: vertical; min-height: 64px; }
+        .dl-btn { width: 100%; padding: 13px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+        .dl-btn-green { background: #16a34a; color: #fff; }
+        .dl-btn-blue { background: #2563eb; color: #fff; }
+        .dl-btn-gray { background: #334155; color: #cbd5e1; }
+        .dl-btn-red { background: #dc2626; color: #fff; }
+        .dl-btn-yellow { background: #ca8a04; color: #fff; }
+        .section-label { color: #94a3b8; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin: 14px 0 7px; }
+        .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #16a34a; color: #fff; padding: 10px 22px; border-radius: 20px; font-size: 13px; font-weight: 700; z-index: 999; opacity: 0; transition: opacity .3s; white-space: nowrap; }
+        .toast.show { opacity: 1; }
     </style>
 </head>
 <body>
 
     <!-- 1. LOGIN SCREEN -->
-    <div id="loginView" style="max-width: 380px; margin: 30px auto; width: 100%;">
+    <div id="loginView" style="max-width: 380px; margin: 30px auto; padding: 16px; width: 100%;">
         <div class="card" style="text-align: center;">
             <div style="width: 68px; height: 68px; border-radius: 50%; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 30px; margin-bottom: 14px; box-shadow: 0 6px 16px rgba(37,99,235,0.35);">
                 🔄
             </div>
             <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 4px;">DiyaSync</h2>
-            <p style="color: #64748b; font-size: 13px; margin-bottom: 24px;">Auto-Sync Call Recordings to Odoo CRM</p>
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 24px;">Call Sync + Auto-Dialer for Diya CRM</p>
 
             <div class="input-group">
                 <label class="input-label">CRM Server URL</label>
                 <input type="text" id="serverUrl" class="form-input" value="https://crm.sigprop.in">
             </div>
-
             <div class="input-group">
                 <label class="input-label">Staff Login / ID</label>
-                <input type="text" id="username" class="form-input" placeholder="e.g. Megha / Hemant / Heer">
+                <input type="text" id="username" class="form-input" placeholder="e.g. Nikita / Hemant / Vidhi">
             </div>
-
             <div class="input-group" style="margin-bottom: 24px;">
                 <label class="input-label">Password</label>
                 <input type="password" id="password" class="form-input" placeholder="••••••••">
             </div>
-
             <button class="btn-primary" onclick="doLogin()">Sign In &amp; Connect</button>
         </div>
     </div>
 
-    <!-- 2. MAIN DASHBOARD -->
-    <div id="mainView" style="display: none; max-width: 420px; margin: 0 auto; width: 100%;">
-        
-        <!-- Header User Profile -->
-        <div class="card" style="padding: 16px 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h3 id="headerName" style="font-size: 18px; font-weight: 800; color: #0f172a;">Staff Member</h3>
-                    <div id="headerCompany" style="color: #15803d; font-size: 12.5px; font-weight: 700; margin-top: 2px;">🏢 Company</div>
-                </div>
-                <button onclick="doLogout()" style="background: #fee2e2; border: none; padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; color: #dc2626; cursor: pointer;">
-                    Logout
-                </button>
-            </div>
-        </div>
+    <!-- 2. MAIN APP (Tabs) -->
+    <div id="mainView" style="display: none; flex: 1; flex-direction: column;">
 
-        <!-- 1-Click Folder Picker Card -->
-        <div class="card" style="padding: 16px 20px;">
-            <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
-                📁 CALL RECORDINGS FOLDER
-            </div>
-            <div id="folderStatusDiv">
-                <!-- Dynamically updated by JS -->
-            </div>
-        </div>
+        <!-- TAB CONTENTS -->
 
-        <!-- Live Sync Status -->
-        <div class="card" style="padding: 16px 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span class="pulse-dot"></span>
+        <!-- ── SYNC TAB ── -->
+        <div id="tab-sync" class="tab-content active">
+            <div class="card" style="padding: 16px 20px; margin-top: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div style="font-size: 13.5px; font-weight: 800; color: #0f172a;">Background Sync Active</div>
-                        <div id="syncSummary" style="font-size: 11.5px; color: #64748b; margin-top: 2px;">0 recordings synced</div>
+                        <h3 id="headerName" style="font-size: 18px; font-weight: 800; color: #0f172a;">Staff Member</h3>
+                        <div id="headerCompany" style="color: #15803d; font-size: 12.5px; font-weight: 700; margin-top: 2px;">🏢 Company</div>
+                    </div>
+                    <button onclick="doLogout()" style="background: #fee2e2; border: none; padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; color: #dc2626; cursor: pointer;">Logout</button>
+                </div>
+            </div>
+
+            <div class="card" style="padding: 16px 20px;">
+                <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">📁 CALL RECORDINGS FOLDER</div>
+                <div id="folderStatusDiv"></div>
+            </div>
+
+            <div class="card" style="padding: 16px 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="pulse-dot"></span>
+                        <div>
+                            <div style="font-size: 13.5px; font-weight: 800; color: #0f172a;">Background Sync Active</div>
+                            <div id="syncSummary" style="font-size: 11.5px; color: #64748b; margin-top: 2px;">0 recordings synced</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button onclick="doSyncNow()" id="btnSyncNow" style="background: #eff6ff; color: #2563eb; border: 1.5px solid #bfdbfe; padding: 8px 12px; border-radius: 12px; font-size: 11.5px; font-weight: 700; cursor: pointer;">🔄 Sync Now</button>
+                        <button onclick="doForceResync()" id="btnForceResync" style="background: #f8fafc; color: #475569; border: 1.5px solid #cbd5e1; padding: 8px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 600; cursor: pointer;">⚡ Re-sync</button>
                     </div>
                 </div>
-                <div style="display: flex; gap: 6px;">
-                    <button onclick="doSyncNow()" id="btnSyncNow" style="background: #eff6ff; color: #2563eb; border: 1.5px solid #bfdbfe; padding: 8px 12px; border-radius: 12px; font-size: 11.5px; font-weight: 700; cursor: pointer;">
-                        🔄 Sync Now
-                    </button>
-                    <button onclick="doForceResync()" id="btnForceResync" style="background: #f8fafc; color: #475569; border: 1.5px solid #cbd5e1; padding: 8px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 600; cursor: pointer;" title="Re-upload all finalized recordings">
-                        ⚡ Re-sync All
-                    </button>
+                <div id="lastSyncStatus" style="font-size: 11px; color: #94a3b8; margin-top: 10px;">Checking folder every few minutes...</div>
+            </div>
+
+            <div class="card" style="padding: 16px 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Recently Synced Recordings</span>
+                    <button onclick="loadLogs()" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;">Refresh</button>
+                </div>
+                <div id="logsContainer">
+                    <div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 14px;">No recordings uploaded yet.</div>
                 </div>
             </div>
-            <div id="lastSyncStatus" style="font-size: 11px; color: #94a3b8; margin-top: 10px;">Checking folder every few minutes...</div>
         </div>
 
-        <!-- Recent Uploads Log -->
-        <div class="card" style="padding: 16px 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <span style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Recently Synced Recordings</span>
-                <button onclick="loadLogs()" class="btn-secondary" style="padding: 4px 8px; font-size: 11px;">Refresh</button>
+        <!-- ── AUTO-DIALER TAB ── -->
+        <div id="tab-dialer" class="tab-content" style="background: #0f172a; min-height: 100vh; padding: 12px 12px 80px;">
+
+            <!-- Queue View -->
+            <div id="dialerQueueView">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <div>
+                        <div style="color: #fff; font-weight: 700; font-size: 15px;">📋 Today's Call Queue</div>
+                        <div id="queueMeta" style="color: #64748b; font-size: 11.5px; margin-top: 2px;"></div>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span id="queueBadge" style="background: #3b82f6; color: #fff; border-radius: 20px; padding: 2px 12px; font-size: 12px; font-weight: 700;">0</span>
+                        <button onclick="refreshQueue()" style="background: #334155; border: none; color: #94a3b8; padding: 7px 10px; border-radius: 8px; font-size: 13px; cursor: pointer;">🔄</button>
+                    </div>
+                </div>
+                <button onclick="startAutoDialer()" style="width: 100%; padding: 14px; border: none; border-radius: 12px; background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 14px; box-shadow: 0 4px 14px rgba(22,163,74,0.35);">
+                    ▶️ Start Auto-Dialer
+                </button>
+                <div id="queueList"></div>
             </div>
-            <div id="logsContainer">
-                <div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 14px;">No recordings uploaded yet.</div>
+
+            <!-- Active Call View -->
+            <div id="dialerCallView" style="display: none;">
+                <div class="dialer-card" style="margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <div id="callLeadName" style="color: #fff; font-size: 18px; font-weight: 800;"></div>
+                            <div id="callCompany" style="color: #94a3b8; font-size: 12px; margin-top: 3px;"></div>
+                        </div>
+                        <span id="callProgress" style="color: #475569; font-size: 12px;"></span>
+                    </div>
+                    <div id="callPhone" style="color: #3b82f6; font-size: 26px; font-weight: 700; margin: 12px 0 4px; letter-spacing: 1px;"></div>
+                    <div id="callStage" style="color: #64748b; font-size: 12px;"></div>
+                    <div id="callPriority" style="font-size: 12px; margin-top: 4px;"></div>
+                </div>
+                <div class="dialer-card" style="margin-bottom: 10px;">
+                    <div style="color: #64748b; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing:.5px; margin-bottom: 6px;">Last Note</div>
+                    <div id="callLastNote" style="color: #cbd5e1; font-size: 13px;">—</div>
+                </div>
+                <div class="timer-display" id="callTimer" style="margin: 10px 0;">00:00</div>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button id="callBtn" onclick="handleCallBtn()" class="dl-btn dl-btn-green" style="flex: 2;">📞 Dial Now</button>
+                    <button onclick="skipLead()" class="dl-btn dl-btn-gray" style="flex: 1;">⏭ Skip</button>
+                    <button onclick="stopDialer()" class="dl-btn dl-btn-red" style="flex: 1;">⏹ Stop</button>
+                </div>
             </div>
+
+            <!-- Wrap-up View -->
+            <div id="dialerWrapupView" style="display: none;">
+                <div class="dialer-card" style="margin-bottom: 10px;">
+                    <div id="wuLeadName" style="color: #fff; font-weight: 700; font-size: 15px;"></div>
+                    <div id="wuPhone" style="color: #94a3b8; font-size: 12px; margin-top: 2px;"></div>
+                </div>
+
+                <div class="section-label">📞 Call Outcome</div>
+                <div class="outcome-grid" style="margin-bottom: 4px;">
+                    <div class="oc-btn" id="oc-interested" onclick="selectOutcome('interested')">🟢 Interested</div>
+                    <div class="oc-btn" id="oc-callback" onclick="selectOutcome('callback')">🟡 Callback Later</div>
+                    <div class="oc-btn" id="oc-no_answer" onclick="selectOutcome('no_answer')">🔴 No Answer</div>
+                    <div class="oc-btn" id="oc-revisit" onclick="selectOutcome('revisit')">🔁 Will Think</div>
+                    <div class="oc-btn" id="oc-site_visit" onclick="selectOutcome('site_visit')">🏠 Site Visit</div>
+                    <div class="oc-btn" id="oc-not_interested" onclick="selectOutcome('not_interested')">⚫ Not Interested</div>
+                </div>
+
+                <div class="section-label" id="followupLabel">📅 Next Follow-up</div>
+                <div class="chip-row" id="chipRow" style="margin-bottom: 8px;">
+                    <div class="chip" onclick="selectChip(this, 0)">Aaj Shaam</div>
+                    <div class="chip sel" onclick="selectChip(this, 1)">Kal Subah</div>
+                    <div class="chip" onclick="selectChip(this, 2)">2 Din Baad</div>
+                    <div class="chip" onclick="selectChip(this, 7)">Agle Hafte</div>
+                    <div class="chip" onclick="selectChip(this, -1)">📆 Custom</div>
+                </div>
+                <input class="dl-inp" type="date" id="customDate" style="display: none; margin-bottom: 8px;">
+
+                <div class="section-label">📝 Notes</div>
+                <textarea class="dl-inp" id="wuNotes" placeholder="Client ne kya kaha? Budget? BHK? Preference? (Bolkar bhi bol sakte ho)..."></textarea>
+                <button onclick="toggleVoice()" id="voiceBtn" class="dl-btn dl-btn-gray" style="font-size: 13px; padding: 10px; margin-bottom: 12px;">🎤 Voice Note Start</button>
+
+                <div class="countdown-box" id="countdownBox" style="display: none;">
+                    <div class="countdown-num" id="countdownNum">5</div>
+                    <div style="color: #94a3b8; font-size: 12px;">seconds me next call...</div>
+                    <div onclick="cancelCountdown()" style="color: #475569; font-size: 12px; margin-top: 6px; cursor: pointer; text-decoration: underline;">⏸ Pause</div>
+                </div>
+
+                <button onclick="submitWrapup(false)" class="dl-btn dl-btn-blue" style="font-size: 15px; padding: 15px;">✅ Save &amp; Next Lead</button>
+                <button onclick="submitWrapup(true)" class="dl-btn dl-btn-gray">💾 Save &amp; Pause Dialer</button>
+                <button onclick="stopDialer()" class="dl-btn dl-btn-red" style="margin-top: 4px; font-size: 13px; padding: 10px;">⏹ Stop Auto-Dialer</button>
+            </div>
+
         </div>
 
     </div>
 
-    <script>
-        function checkInit() {
-            if (window.DiyaBridge && window.DiyaBridge.getAuthInfo) {
-                try {
-                    let info = JSON.parse(window.DiyaBridge.getAuthInfo() || "{}");
-                    updateUI(info);
-                } catch(e) {}
-            }
-        }
+    <!-- BOTTOM TAB BAR -->
+    <div class="tab-bar" id="tabBar" style="display: none;">
+        <button class="tab-btn active" id="tabBtnSync" onclick="switchTab('sync')">
+            <span class="tab-icon">🔄</span>
+            <span>Sync</span>
+        </button>
+        <button class="tab-btn" id="tabBtnDialer" onclick="switchTab('dialer')">
+            <span class="tab-icon">📞</span>
+            <span>Auto-Dialer</span>
+        </button>
+    </div>
 
-        window.addEventListener('DOMContentLoaded', checkInit);
-        setTimeout(checkInit, 300);
+    <div class="toast" id="toast"></div>
 
-        function updateUI(info) {
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let SESSION = {};
+let QUEUE = [];
+let QUEUE_IDX = 0;
+let CURRENT_LEAD = null;
+let CALL_TIMER = null;
+let CALL_SECS = 0;
+let CALL_STARTED = false;
+let SELECTED_OUTCOME = null;
+let SELECTED_DAYS = 1;
+let COUNTDOWN_TIMER = null;
+let recognition = null;
+
+// ─── TOAST ───────────────────────────────────────────────────────────────────
+function showToast(msg, color) {
+    color = color || '#16a34a';
+    var t = document.getElementById('toast');
+    t.style.background = color; t.textContent = msg; t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+    document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById('tab-' + name).classList.add('active');
+    document.getElementById('tabBtn' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+    if (name === 'dialer' && !QUEUE.length) refreshQueue();
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function checkInit() {
+    if (window.DiyaBridge && window.DiyaBridge.getAuthInfo) {
+        try {
+            var info = JSON.parse(window.DiyaBridge.getAuthInfo() || "{}");
             if (info.isLoggedIn) {
-                document.getElementById('loginView').style.display = 'none';
-                document.getElementById('mainView').style.display = 'block';
-                document.getElementById('headerName').innerText = info.userName || "Staff Member";
-                document.getElementById('headerCompany').innerText = "🏢 " + (info.companyName || "Company");
-                document.getElementById('syncSummary').innerText = (info.syncCount || 0) + " recordings synced";
-                
-                // Folder status
-                let folderDiv = document.getElementById('folderStatusDiv');
-                if (info.hasFolder) {
-                    folderDiv.innerHTML = `
-                        <div style="display: flex; align-items: center; justify-content: space-between; background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 12px 14px;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 20px;">✅</span>
-                                <div>
-                                    <div style="font-size: 13px; font-weight: 700; color: #166534;">Folder Linked</div>
-                                    <div style="font-size: 11px; color: #15803d;">Recordings auto-sync to CRM</div>
-                                </div>
-                            </div>
-                            <button onclick="pickFolder()" class="btn-secondary" style="background: white; border-color: #bbf7d0; color: #166534;">Change</button>
-                        </div>
-                    `;
-                } else {
-                    folderDiv.innerHTML = `
-                        <button onclick="pickFolder()" style="width: 100%; padding: 14px; background: #eff6ff; border: 2px dashed #3b82f6; border-radius: 14px; color: #1d4ed8; font-size: 13.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <span>📁</span> Select Recording Folder (PhoneRecord)
-                        </button>
-                        <div style="font-size: 11.5px; color: #64748b; margin-top: 6px; text-align: center;">Tap once &amp; select <b>Music &gt; PhoneRecord</b> &rarr; tap "Use this folder"</div>
-                    `;
-                }
-
-                loadLogs();
-            } else {
-                document.getElementById('loginView').style.display = 'block';
-                document.getElementById('mainView').style.display = 'none';
+                SESSION.user_id = info.userId;
+                SESSION.company_id = info.companyId;
+                SESSION.user_name = info.userName;
+                SESSION.company_name = info.companyName;
+                SESSION.server_url = info.serverUrl || 'https://crm.sigprop.in';
             }
-        }
+            updateUI(info);
+        } catch(e) {}
+    }
+}
 
-        function doLogin() {
-            let u = document.getElementById('username').value.trim();
-            let p = document.getElementById('password').value.trim();
-            let s = document.getElementById('serverUrl').value.trim();
-            if (!u || !p) {
-                alert("Please enter username and password");
-                return;
-            }
-            if (window.DiyaBridge && window.DiyaBridge.login) {
-                window.DiyaBridge.login(s, u, p);
-            }
-        }
+window.addEventListener('DOMContentLoaded', checkInit);
+setTimeout(checkInit, 300);
 
-        function doLogout() {
-            if (confirm("Logout from DiyaSync?")) {
-                if (window.DiyaBridge && window.DiyaBridge.logout) {
-                    window.DiyaBridge.logout();
-                }
-            }
-        }
+function updateUI(info) {
+    if (info.isLoggedIn) {
+        document.getElementById('loginView').style.display = 'none';
+        var mv = document.getElementById('mainView');
+        mv.style.display = 'flex';
+        mv.style.flexDirection = 'column';
+        mv.style.flex = '1';
+        document.getElementById('tabBar').style.display = 'flex';
+        document.getElementById('headerName').innerText = info.userName || "Staff Member";
+        document.getElementById('headerCompany').innerText = "🏢 " + (info.companyName || "Company");
+        document.getElementById('syncSummary').innerText = (info.syncCount || 0) + " recordings synced";
 
-        function pickFolder() {
-            if (window.DiyaBridge && window.DiyaBridge.pickFolder) {
-                window.DiyaBridge.pickFolder();
-            }
+        var folderDiv = document.getElementById('folderStatusDiv');
+        if (info.hasFolder) {
+            folderDiv.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:20px;">✅</span><div><div style="font-size:13px;font-weight:700;color:#166534;">Folder Linked</div><div style="font-size:11px;color:#15803d;">Recordings auto-sync to CRM</div></div></div><button onclick="pickFolder()" class="btn-secondary" style="background:white;border-color:#bbf7d0;color:#166534;">Change</button></div>';
+        } else {
+            folderDiv.innerHTML = '<button onclick="pickFolder()" style="width:100%;padding:14px;background:#eff6ff;border:2px dashed #3b82f6;border-radius:14px;color:#1d4ed8;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><span>📁</span> Select Recording Folder</button><div style="font-size:11.5px;color:#64748b;margin-top:6px;text-align:center;">Music &gt; PhoneRecord → "Use this folder"</div>';
         }
+        loadLogs();
+    } else {
+        document.getElementById('loginView').style.display = 'block';
+        document.getElementById('mainView').style.display = 'none';
+        document.getElementById('tabBar').style.display = 'none';
+    }
+}
 
-        function doSyncNow() {
-            let btn = document.getElementById('btnSyncNow');
-            btn.innerText = "Syncing...";
-            btn.disabled = true;
-            if (window.DiyaBridge && window.DiyaBridge.syncNow) {
-                window.DiyaBridge.syncNow();
-            }
-            setTimeout(function() {
-                btn.innerText = "🔄 Sync Now";
-                btn.disabled = false;
-                checkInit();
-            }, 3000);
-        }
+// ─── LOGIN / LOGOUT ──────────────────────────────────────────────────────────
+function doLogin() {
+    var u = document.getElementById('username').value.trim();
+    var p = document.getElementById('password').value.trim();
+    var s = document.getElementById('serverUrl').value.trim();
+    if (!u || !p) { alert("Please enter username and password"); return; }
+    if (window.DiyaBridge && window.DiyaBridge.login) window.DiyaBridge.login(s, u, p);
+}
+function doLogout() {
+    if (confirm("Logout from DiyaSync?")) {
+        if (window.DiyaBridge && window.DiyaBridge.logout) window.DiyaBridge.logout();
+    }
+}
+function onLoginSuccess() { checkInit(); }
+function onLoginFailed(msg) { alert(msg || "Login failed"); }
 
-        function doForceResync() {
-            if (!confirm("Kya aap phone ki sabhi call recordings ko dobara fresh sync karna chahte hain?")) return;
-            let btn = document.getElementById('btnForceResync');
-            btn.innerText = "Re-syncing...";
-            btn.disabled = true;
-            document.getElementById('lastSyncStatus').innerText = "⚡ Re-syncing all recordings to CRM...";
-            if (window.DiyaBridge && window.DiyaBridge.forceResync) {
-                window.DiyaBridge.forceResync();
-            }
-            setTimeout(function() {
-                btn.innerText = "⚡ Re-sync All";
-                btn.disabled = false;
-                checkInit();
-            }, 5000);
-        }
+// ─── SYNC ────────────────────────────────────────────────────────────────────
+function pickFolder() { if (window.DiyaBridge && window.DiyaBridge.pickFolder) window.DiyaBridge.pickFolder(); }
 
-        function loadLogs() {
-            if (window.DiyaBridge && window.DiyaBridge.getRecentLogs) {
-                try {
-                    let logs = JSON.parse(window.DiyaBridge.getRecentLogs() || "[]");
-                    let container = document.getElementById('logsContainer');
-                    if (!logs || logs.length === 0) {
-                        container.innerHTML = '<div style="text-align: center; color: #94a3b8; font-size: 12px; padding: 14px;">No recordings uploaded yet.</div>';
-                        return;
-                    }
-                    let html = '';
-                    logs.slice(0, 10).forEach(function(l) {
-                        html += `
-                            <div class="log-item">
-                                <div>
-                                    <div style="font-weight: 700; color: #1e293b;">📞 ${l.phone || 'Call Recording'}</div>
-                                    <div style="font-size: 11px; color: #64748b;">${l.filename || ''}</div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <span style="background: #dcfce7; color: #15803d; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px;">CRM Synced</span>
-                                    <div style="font-size: 10.5px; color: #94a3b8; margin-top: 2px;">${l.time || ''}</div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    container.innerHTML = html;
-                } catch(e) {}
-            }
-        }
+function doSyncNow() {
+    var btn = document.getElementById('btnSyncNow');
+    btn.innerText = "Syncing..."; btn.disabled = true;
+    if (window.DiyaBridge && window.DiyaBridge.syncNow) window.DiyaBridge.syncNow();
+    setTimeout(function() { btn.innerText = "🔄 Sync Now"; btn.disabled = false; checkInit(); }, 3000);
+}
+function doForceResync() {
+    if (!confirm("Sabhi recordings ko fresh sync karna chahte hain?")) return;
+    var btn = document.getElementById('btnForceResync');
+    btn.innerText = "Re-syncing..."; btn.disabled = true;
+    if (window.DiyaBridge && window.DiyaBridge.forceResync) window.DiyaBridge.forceResync();
+    setTimeout(function() { btn.innerText = "⚡ Re-sync"; btn.disabled = false; checkInit(); }, 5000);
+}
 
-        // Bridge callbacks from Android
-        function onLoginSuccess() { checkInit(); }
-        function onLoginFailed(msg) { alert(msg || "Login failed"); }
-        function onSyncFinished(uploadedCount) {
-            document.getElementById('lastSyncStatus').innerText = "Last sync: Just now (" + uploadedCount + " new uploaded)";
-            checkInit();
+function loadLogs() {
+    if (window.DiyaBridge && window.DiyaBridge.getRecentLogs) {
+        try {
+            var logs = JSON.parse(window.DiyaBridge.getRecentLogs() || "[]");
+            var container = document.getElementById('logsContainer');
+            if (!logs || !logs.length) { container.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:12px;padding:14px;">No recordings uploaded yet.</div>'; return; }
+            var html = '';
+            logs.slice(0, 10).forEach(function(l) {
+                html += '<div class="log-item"><div><div style="font-weight:700;color:#1e293b;">📞 ' + (l.phone || 'Call Recording') + '</div><div style="font-size:11px;color:#64748b;">' + (l.filename || '') + '</div></div><div style="text-align:right;"><span style="background:#dcfce7;color:#15803d;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;">CRM Synced</span><div style="font-size:10.5px;color:#94a3b8;margin-top:2px;">' + (l.time || '') + '</div></div></div>';
+            });
+            container.innerHTML = html;
+        } catch(e) {}
+    }
+}
+
+function onSyncFinished(uploadedCount) {
+    document.getElementById('lastSyncStatus').innerText = "Last sync: Just now (" + uploadedCount + " new uploaded)";
+    checkInit();
+}
+
+// ─── AUTO-DIALER ─────────────────────────────────────────────────────────────
+async function rpc(endpoint, params) {
+    var serverUrl = SESSION.server_url || 'https://crm.sigprop.in';
+    // Use native bridge if available (avoids CORS on some Android versions)
+    if (window.DiyaBridge && window.DiyaBridge.apiCall) {
+        try {
+            var res = JSON.parse(window.DiyaBridge.apiCall(endpoint, JSON.stringify(params)));
+            return res.result || res;
+        } catch(e) {}
+    }
+    try {
+        var r = await fetch(serverUrl + endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ jsonrpc: '2.0', method: 'call', id: Date.now(), params: params })
+        });
+        var j = await r.json();
+        return j.result || j.error || j;
+    } catch(e) { return { status: 'error', message: e.message }; }
+}
+
+async function refreshQueue() {
+    document.getElementById('queueBadge').textContent = '...';
+    var res = await rpc('/api/call_tracker/get_due_queue', {
+        user_id: SESSION.user_id,
+        company_id: SESSION.company_id,
+        limit: 60
+    });
+    if (res && res.status === 'success') {
+        QUEUE = res.queue || [];
+        QUEUE_IDX = 0;
+        document.getElementById('queueBadge').textContent = QUEUE.length;
+        document.getElementById('queueMeta').textContent = 'Kul ' + QUEUE.length + ' leads queue mein';
+        renderQueueList();
+    } else {
+        document.getElementById('queueBadge').textContent = '!';
+    }
+}
+
+function prioColor(p) {
+    if (!p) return '#94a3b8';
+    if (p.indexOf('Overdue') >= 0) return '#f87171';
+    if (p.indexOf('WhatsApp') >= 0) return '#fbbf24';
+    if (p.indexOf('Today') >= 0) return '#60a5fa';
+    if (p.indexOf('Retry') >= 0) return '#fb923c';
+    return '#94a3b8';
+}
+
+function renderQueueList() {
+    var el = document.getElementById('queueList');
+    if (!QUEUE.length) {
+        el.innerHTML = '<div style="text-align:center;color:#475569;padding:40px 0;font-size:14px;">🎉 Aaj ke saare due calls complete ho gaye!</div>';
+        return;
+    }
+    var html = '';
+    QUEUE.forEach(function(l, i) {
+        html += '<div class="queue-item ' + (i === QUEUE_IDX ? 'active-item' : '') + '" onclick="selectQueueItem(' + i + ')">' +
+            '<div class="prio-label" style="color:' + prioColor(l.priority_label) + '">' + (l.priority_label || '') + '</div>' +
+            '<div class="lead-name">' + (l.lead_name || l.phone) + '</div>' +
+            '<div class="lead-sub">' + (l.phone || '') + ' · ' + (l.company_name || '') + ' · ' + (l.stage_name || '') + '</div>' +
+            (l.last_note ? '<div class="lead-note">"' + l.last_note.substring(0, 80) + '..."</div>' : '') +
+            '</div>';
+    });
+    el.innerHTML = html;
+}
+
+function selectQueueItem(idx) { QUEUE_IDX = idx; renderQueueList(); }
+
+function startAutoDialer() {
+    if (!QUEUE.length) { showToast('Queue khali hai! Refresh karo.', '#dc2626'); return; }
+    QUEUE_IDX = 0;
+    loadCallView();
+}
+
+function loadCallView() {
+    if (QUEUE_IDX >= QUEUE.length) {
+        showDialerSection('queue');
+        showToast('🎉 Saare ' + QUEUE.length + ' calls complete!');
+        return;
+    }
+    CURRENT_LEAD = QUEUE[QUEUE_IDX];
+    CALL_STARTED = false;
+    CALL_SECS = 0;
+    clearInterval(CALL_TIMER);
+
+    document.getElementById('callLeadName').textContent = CURRENT_LEAD.lead_name || CURRENT_LEAD.phone;
+    document.getElementById('callCompany').textContent = (CURRENT_LEAD.company_name || '') + ' · ' + (CURRENT_LEAD.assigned_to || '');
+    document.getElementById('callPhone').textContent = CURRENT_LEAD.phone || '';
+    document.getElementById('callStage').textContent = 'Stage: ' + (CURRENT_LEAD.stage_name || '');
+    document.getElementById('callPriority').textContent = CURRENT_LEAD.priority_label || '';
+    document.getElementById('callLastNote').textContent = CURRENT_LEAD.last_note || '—';
+    document.getElementById('callTimer').textContent = '00:00';
+    document.getElementById('callProgress').textContent = (QUEUE_IDX + 1) + ' / ' + QUEUE.length;
+    document.getElementById('callBtn').textContent = '📞 Dial Now';
+    document.getElementById('callBtn').style.background = '#16a34a';
+    showDialerSection('call');
+}
+
+function handleCallBtn() {
+    if (!CALL_STARTED) {
+        var phone = (CURRENT_LEAD.phone || '').replace(/\D/g, '');
+        // Use native bridge to initiate call (keeps app in foreground)
+        if (window.DiyaBridge && window.DiyaBridge.initiateCall) {
+            window.DiyaBridge.initiateCall(phone);
+        } else {
+            window.location.href = 'tel:' + phone;
         }
-    </script>
+        CALL_STARTED = true;
+        document.getElementById('callBtn').textContent = '✅ Wrapup Karo';
+        document.getElementById('callBtn').style.background = '#2563eb';
+        CALL_SECS = 0;
+        CALL_TIMER = setInterval(function() {
+            CALL_SECS++;
+            var m = Math.floor(CALL_SECS / 60).toString().padStart(2, '0');
+            var s = (CALL_SECS % 60).toString().padStart(2, '0');
+            document.getElementById('callTimer').textContent = m + ':' + s;
+        }, 1000);
+    } else {
+        clearInterval(CALL_TIMER);
+        showWrapup();
+    }
+}
+
+function skipLead() { clearInterval(CALL_TIMER); QUEUE_IDX++; loadCallView(); }
+
+function stopDialer() {
+    clearInterval(CALL_TIMER);
+    cancelCountdown();
+    showDialerSection('queue');
+    showToast('Auto-Dialer paused.', '#ca8a04');
+}
+
+function showDialerSection(name) {
+    document.getElementById('dialerQueueView').style.display = name === 'queue' ? 'block' : 'none';
+    document.getElementById('dialerCallView').style.display = name === 'call' ? 'block' : 'none';
+    document.getElementById('dialerWrapupView').style.display = name === 'wrapup' ? 'block' : 'none';
+}
+
+function showWrapup() {
+    document.getElementById('wuLeadName').textContent = CURRENT_LEAD.lead_name || CURRENT_LEAD.phone;
+    document.getElementById('wuPhone').textContent = (CURRENT_LEAD.phone || '') + ' · ' + (CURRENT_LEAD.company_name || '');
+    document.getElementById('wuNotes').value = '';
+    SELECTED_OUTCOME = null;
+    document.querySelectorAll('.oc-btn').forEach(function(b) { b.classList.remove('sel'); });
+    // Default: Kal Subah chip
+    document.querySelectorAll('.chip').forEach(function(c, i) { c.classList.remove('sel'); if (i === 1) c.classList.add('sel'); });
+    SELECTED_DAYS = 1;
+    var tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('customDate').value = tomorrow.toISOString().split('T')[0];
+    document.getElementById('customDate').style.display = 'none';
+    document.getElementById('countdownBox').style.display = 'none';
+    document.getElementById('followupLabel').style.opacity = '1';
+    document.getElementById('chipRow').style.opacity = '1';
+    showDialerSection('wrapup');
+}
+
+function selectOutcome(val) {
+    SELECTED_OUTCOME = val;
+    document.querySelectorAll('.oc-btn').forEach(function(b) { b.classList.remove('sel'); });
+    var el = document.getElementById('oc-' + val);
+    if (el) el.classList.add('sel');
+
+    var chipMap = { interested: 1, callback: 0, no_answer: 0, site_visit: 3, revisit: 2, not_interested: -1 };
+    var days = chipMap[val] !== undefined ? chipMap[val] : 1;
+    SELECTED_DAYS = days >= 0 ? days : 1;
+
+    if (val === 'not_interested') {
+        document.getElementById('followupLabel').style.opacity = '.3';
+        document.getElementById('chipRow').style.opacity = '.3';
+        return;
+    }
+    document.getElementById('followupLabel').style.opacity = '1';
+    document.getElementById('chipRow').style.opacity = '1';
+    var chips = document.querySelectorAll('.chip');
+    chips.forEach(function(c) { c.classList.remove('sel'); });
+    if (days === 0 && chips[0]) chips[0].classList.add('sel');
+    else if (days === 1 && chips[1]) chips[1].classList.add('sel');
+    else if (days === 2 && chips[2]) chips[2].classList.add('sel');
+    else if (days >= 7 && chips[3]) chips[3].classList.add('sel');
+}
+
+function selectChip(el, days) {
+    document.querySelectorAll('.chip').forEach(function(c) { c.classList.remove('sel'); });
+    el.classList.add('sel');
+    if (days === -1) {
+        SELECTED_DAYS = -1;
+        document.getElementById('customDate').style.display = 'block';
+    } else {
+        SELECTED_DAYS = days;
+        document.getElementById('customDate').style.display = 'none';
+        var d = new Date(); d.setDate(d.getDate() + days);
+        document.getElementById('customDate').value = d.toISOString().split('T')[0];
+    }
+}
+
+function toggleVoice() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { showToast('Voice recognition supported nahi hai.', '#dc2626'); return; }
+    if (recognition) { recognition.stop(); recognition = null; document.getElementById('voiceBtn').textContent = '🎤 Voice Note Start'; return; }
+    recognition = new SR();
+    recognition.lang = 'hi-IN'; recognition.continuous = true; recognition.interimResults = false;
+    recognition.onresult = function(e) {
+        var t = Array.from(e.results).map(function(r) { return r[0].transcript; }).join(' ');
+        document.getElementById('wuNotes').value += ' ' + t;
+    };
+    recognition.onend = function() { recognition = null; document.getElementById('voiceBtn').textContent = '🎤 Voice Note Start'; };
+    recognition.start();
+    document.getElementById('voiceBtn').textContent = '🛑 Voice Note Stop';
+}
+
+async function submitWrapup(pause) {
+    if (!SELECTED_OUTCOME) { showToast('Pehle Call Outcome chunein!', '#dc2626'); return; }
+    if (recognition) { recognition.stop(); recognition = null; }
+
+    var customDateVal = document.getElementById('customDate').value;
+    var notes = document.getElementById('wuNotes').value.trim();
+
+    var payload = {
+        lead_id: CURRENT_LEAD.lead_id,
+        outcome: SELECTED_OUTCOME,
+        notes: notes,
+        next_followup_days: SELECTED_DAYS === -1 ? 1 : SELECTED_DAYS,
+        next_followup_date: SELECTED_DAYS === -1 ? customDateVal : '',
+        activity_id: CURRENT_LEAD.activity_id || false,
+        user_id: SESSION.user_id,
+        duration_seconds: CALL_SECS,
+        phone_number: CURRENT_LEAD.phone
+    };
+
+    var res = await rpc('/api/call_tracker/submit_call_wrapup', payload);
+    if (res && res.status === 'success') {
+        showToast('✅ ' + (res.lead_name || 'Saved') + ' – Done!');
+        QUEUE_IDX++;
+        if (pause || QUEUE_IDX >= QUEUE.length) {
+            showDialerSection('queue');
+            renderQueueList();
+            if (QUEUE_IDX >= QUEUE.length) showToast('🎉 Sabhi leads complete!');
+            return;
+        }
+        document.getElementById('countdownBox').style.display = 'block';
+        var count = 5;
+        document.getElementById('countdownNum').textContent = count;
+        COUNTDOWN_TIMER = setInterval(function() {
+            count--;
+            document.getElementById('countdownNum').textContent = count;
+            if (count <= 0) { cancelCountdown(); loadCallView(); }
+        }, 1000);
+    } else {
+        showToast('Error: ' + (res && res.message ? res.message : 'Unknown error'), '#dc2626');
+    }
+}
+
+function cancelCountdown() {
+    clearInterval(COUNTDOWN_TIMER); COUNTDOWN_TIMER = null;
+    document.getElementById('countdownBox').style.display = 'none';
+}
+</script>
 </body>
 </html>
