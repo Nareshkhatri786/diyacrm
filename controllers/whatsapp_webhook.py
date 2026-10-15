@@ -265,7 +265,7 @@ class WhatsAppWebhookController(http.Controller):
         if not company:
             company = env['res.company'].create({'name': rule['company_name']})
 
-        return company, rule
+        return company, rule, matched_key
 
     def _get_or_create_salesperson(self, env, company, rule, direct_param=None):
         target_name = direct_param or rule['default_salesperson']['name']
@@ -308,7 +308,7 @@ class WhatsAppWebhookController(http.Controller):
         if not clean_mobile_10 and not raw_phone and not message:
             return {'status': 'ignored', 'message': 'Empty webhook payload'}
 
-        company, rule = self._determine_company_and_rule(env, data)
+        company, rule, matched_key = self._determine_company_and_rule(env, data)
         company_id = company.id
         company_name = company.name
 
