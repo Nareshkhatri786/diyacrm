@@ -337,6 +337,853 @@ class DiyaCrmCallTrackerController(http.Controller):
             ]
         )
 
+    # ─────────────────────────────────────────────────────────────────────────
+    # AUTO-DIALER FEATURE
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @http.route('/api/call_tracker/get_due_queue', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    def get_due_queue(self, user_id=None, company_id=None, limit=50, **kwargs):
+        """
+        Returns a prioritized queue of leads for auto-dialing.
+        Priority:
+          1. Overdue Call activities (deadline < today, not done)
+          2. New uncontacted Inbound WhatsApp Leads (source=WhatsApp, stage=New Lead, no activity)
+          3. Today's scheduled Call activities
+          4. Leads marked busy/no-answer in last 4 hours (retry queue)
+        """
+        try:
+            env = request.env(user=SUPERUSER_ID, su=True)
+            today = fields.Date.today()
+            now = fields.Datetime.now()
+            four_hrs_ago = now - datetime.timedelta(hours=4)
+
+            # Resolve user
+            caller_user = False
+            if user_id:
+                try:
+                    u = env['res.users'].browse(int(user_id))
+                    if u.exists() and u.login != 'public':
+                        caller_user = u
+                except Exception:
+                    pass
+
+            # Resolve company filter
+            comp_domain = []
+            if company_id:
+                try:
+                    comp_domain = [('company_id', '=', int(company_id))]
+                except Exception:
+                    pass
+            elif caller_user:
+                comp_domain = [('company_id', 'in', caller_user.company_ids.ids)]
+
+            # Helper: serialize a lead into queue item dict
+            def _lead_dict(lead, priority_label, activity=None):
+                last_note = ''
+                if activity:
+                    last_note = activity.note or activity.summary or ''
+                # Fetch last chatter note
+                last_msg = env['mail.message'].search([
+                    ('model', '=', 'crm.lead'),
+                    ('res_id', '=', lead.id),
+                    ('subtype_id.internal', '=', True),
+                ], order='id desc', limit=1)
+                if last_msg and not last_note:
+                    import html, re as _re
+                    last_note = _re.sub('<[^>]+>', '', html.unescape(last_msg.body or ''))[:120]
+
+                assigned_name = lead.user_id.name if lead.user_id else (caller_user.name if caller_user else '')
+                return {
+                    'lead_id': lead.id,
+                    'lead_name': lead.name or '',
+                    'phone': lead.phone or '',
+                    'company_name': lead.company_id.name or '',
+                    'stage_name': lead.stage_id.name if lead.stage_id else 'New Lead',
+                    'priority_label': priority_label,
+                    'assigned_to': assigned_name,
+                    'last_note': last_note,
+                    'activity_id': activity.id if activity else False,
+                    'activity_summary': activity.summary if activity else '',
+                    'activity_deadline': activity.date_deadline.isoformat() if activity and activity.date_deadline else '',
+                }
+
+            queue = []
+            seen_lead_ids = set()
+
+            # ── Priority 1: Overdue Call Activities ──────────────────────────
+            overdue_activities = env['mail.activity'].search([
+                ('res_model', '=', 'crm.lead'),
+                ('activity_type_id.category', '=', 'phonecall'),
+                ('date_deadline', '<', today),
+            ] + ([('user_id', '=', caller_user.id)] if caller_user else []), order='date_deadline asc', limit=int(limit))
+
+            for act in overdue_activities:
+                lead = env['crm.lead'].browse(act.res_id)
+                if not lead.exists() or not lead.active:
+                    continue
+                if comp_domain and lead.company_id.id not in [c for c in (
+                    [company_id] if company_id else (caller_user.company_ids.ids if caller_user else [])
+                )]:
+                    continue
+                if lead.id not in seen_lead_ids:
+                    queue.append(_lead_dict(lead, '🔴 Overdue Follow-up', act))
+                    seen_lead_ids.add(lead.id)
+
+            # ── Priority 2: New WhatsApp Leads (no activity at all, stage=New Lead) ─
+            whatsapp_source = env['utm.source'].search([('name', 'ilike', 'WhatsApp')], limit=1)
+            new_lead_stage = env['crm.stage'].search([('name', 'ilike', 'New Lead')], limit=1)
+            if whatsapp_source and new_lead_stage and len(queue) < int(limit):
+                new_wa_leads = env['crm.lead'].search(
+                    [('source_id', '=', whatsapp_source.id),
+                     ('stage_id', '=', new_lead_stage.id),
+                     ('active', '=', True),
+                     ('activity_ids', '=', False)] + comp_domain,
+                    order='create_date asc', limit=int(limit) - len(queue)
+                )
+                for lead in new_wa_leads:
+                    if lead.id not in seen_lead_ids:
+                        queue.append(_lead_dict(lead, '🟡 New WhatsApp Enquiry (First Call!)', None))
+                        seen_lead_ids.add(lead.id)
+
+            # ── Priority 3: Today's Scheduled Call Activities ─────────────────
+            if len(queue) < int(limit):
+                today_activities = env['mail.activity'].search([
+                    ('res_model', '=', 'crm.lead'),
+                    ('activity_type_id.category', '=', 'phonecall'),
+                    ('date_deadline', '=', today),
+                ] + ([('user_id', '=', caller_user.id)] if caller_user else []), order='date_deadline asc', limit=int(limit) - len(queue))
+
+                for act in today_activities:
+                    lead = env['crm.lead'].browse(act.res_id)
+                    if not lead.exists() or not lead.active:
+                        continue
+                    if lead.id not in seen_lead_ids:
+                        queue.append(_lead_dict(lead, '🔵 Today\'s Follow-up', act))
+                        seen_lead_ids.add(lead.id)
+
+            # ── Priority 4: Retry – leads with 'no_answer' in last 4 hours ───
+            if len(queue) < int(limit) and 'last_call_outcome' in env['crm.lead']._fields:
+                retry_leads = env['crm.lead'].search(
+                    [('last_call_outcome', '=', 'no_answer'),
+                     ('active', '=', True),
+                     ('write_date', '>=', four_hrs_ago.strftime('%Y-%m-%d %H:%M:%S'))] + comp_domain,
+                    order='write_date asc', limit=int(limit) - len(queue)
+                )
+                for lead in retry_leads:
+                    if lead.id not in seen_lead_ids:
+                        queue.append(_lead_dict(lead, '🟠 Retry – No Answer Earlier', None))
+                        seen_lead_ids.add(lead.id)
+
+            return {
+                'status': 'success',
+                'count': len(queue),
+                'queue': queue,
+            }
+
+        except Exception as e:
+            _logger.exception("get_due_queue error: %s", str(e))
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/api/call_tracker/submit_call_wrapup', type='jsonrpc', auth='public', methods=['POST'], csrf=False)
+    def submit_call_wrapup(self, lead_id, outcome, notes='', next_followup_days=1,
+                           next_followup_date=None, next_followup_type='call',
+                           activity_id=None, user_id=None, duration_seconds=0,
+                           phone_number=None, **kwargs):
+        """
+        One-shot post-call wrap-up API:
+          1. Marks existing activity as DONE with feedback
+          2. Schedules next follow-up activity
+          3. Auto-updates lead stage based on outcome
+          4. Posts a rich chatter note
+          5. Triggers WhatsApp follow-up (if applicable)
+        """
+        try:
+            env = request.env(user=SUPERUSER_ID, su=True)
+            today = fields.Date.today()
+            now = fields.Datetime.now()
+
+            lead = env['crm.lead'].browse(int(lead_id))
+            if not lead.exists():
+                return {'status': 'error', 'message': f'Lead #{lead_id} not found'}
+
+            # Resolve caller user
+            caller_user = env.ref('base.user_admin')
+            if user_id:
+                try:
+                    u = env['res.users'].browse(int(user_id))
+                    if u.exists() and u.login != 'public':
+                        caller_user = u
+                except Exception:
+                    pass
+
+            # Duration formatting
+            dur = int(duration_seconds or 0)
+            mins, secs = dur // 60, dur % 60
+            dur_str = f"{mins}m {secs}s" if mins > 0 else (f"{secs}s" if secs > 0 else "—")
+
+            # Outcome mapping
+            outcome_map = {
+                'interested': {'label': '🟢 Interested', 'color': '#16a34a', 'bg': '#dcfce7'},
+                'callback':   {'label': '🟡 Busy / Callback Later', 'color': '#ca8a04', 'bg': '#fef9c3'},
+                'no_answer':  {'label': '🔴 No Answer', 'color': '#dc2626', 'bg': '#fee2e2'},
+                'not_interested': {'label': '⚫ Not Interested', 'color': '#64748b', 'bg': '#f1f5f9'},
+                'site_visit': {'label': '🏠 Site Visit Scheduled', 'color': '#2563eb', 'bg': '#dbeafe'},
+                'revisit':    {'label': '🔁 Will Revisit / Think', 'color': '#7c3aed', 'bg': '#ede9fe'},
+            }
+            oc = outcome_map.get(str(outcome).lower(), outcome_map['callback'])
+
+            # ── Step 1: Mark existing activity as DONE ─────────────────────
+            done_act = False
+            if activity_id:
+                try:
+                    act = env['mail.activity'].browse(int(activity_id))
+                    if act.exists():
+                        done_act = act
+                except Exception:
+                    pass
+            if not done_act:
+                done_act = env['mail.activity'].search([
+                    ('res_model', '=', 'crm.lead'),
+                    ('res_id', '=', lead.id),
+                    ('activity_type_id.category', '=', 'phonecall'),
+                ], order='id asc', limit=1)
+
+            feedback_text = f"Call Outcome: {oc['label']}\nDuration: {dur_str}\n"
+            if notes:
+                feedback_text += f"Notes: {notes}"
+
+            if done_act:
+                try:
+                    done_act._action_done(feedback=feedback_text)
+                except Exception:
+                    try:
+                        done_act.action_done_schedule_next(feedback=feedback_text)
+                    except Exception:
+                        done_act.write({'active': False})
+
+            # ── Step 2: Auto Stage Update based on Outcome ─────────────────
+            stage_map = {
+                'interested':     [['Contacted', 'Qualified']],
+                'callback':       [['Contacted', 'New Lead']],
+                'site_visit':     [['Site Visit Scheduled', 'Site Visit']],
+                'revisit':        [['Contacted']],
+                'no_answer':      None,
+                'not_interested': None,
+            }
+            stage_keywords = stage_map.get(str(outcome).lower())
+            if stage_keywords:
+                for kw_list in stage_keywords:
+                    for kw in kw_list:
+                        new_stage = env['crm.stage'].search([('name', 'ilike', kw)], limit=1)
+                        if new_stage:
+                            # Only advance stage, never go back
+                            if not lead.stage_id or (lead.stage_id.sequence or 0) < (new_stage.sequence or 0):
+                                lead.with_context(mail_notrack=True).write({'stage_id': new_stage.id})
+                            break
+                    else:
+                        continue
+                    break
+
+            if 'last_call_outcome' in env['crm.lead']._fields:
+                lead.with_context(mail_notrack=True).write({'last_call_outcome': str(outcome).lower()})
+
+            # ── Step 3: Schedule Next Follow-up Activity ────────────────────
+            next_act_id = False
+            schedule_next = str(outcome).lower() not in ('not_interested',)
+            if schedule_next:
+                # Determine next follow-up date
+                if next_followup_date:
+                    try:
+                        import datetime as _dt
+                        next_date = _dt.date.fromisoformat(str(next_followup_date))
+                    except Exception:
+                        next_date = today + datetime.timedelta(days=int(next_followup_days or 1))
+                else:
+                    days_map = {
+                        'interested':     1,
+                        'callback':       0,   # Same day
+                        'no_answer':      0,   # Retry same day (afternoon)
+                        'site_visit':     3,
+                        'revisit':        2,
+                    }
+                    days_delta = days_map.get(str(outcome).lower(), int(next_followup_days or 1))
+                    next_date = today + datetime.timedelta(days=days_delta)
+
+                # Determine activity type
+                if str(outcome).lower() == 'site_visit' or str(next_followup_type).lower() in ('visit', 'meeting', 'site_visit'):
+                    act_type = env['mail.activity.type'].search([
+                        '|', ('name', 'ilike', 'Site Visit'), ('name', 'ilike', 'Meeting')
+                    ], limit=1)
+                    act_summary = "🏠 Site Visit – Confirm & Prepare"
+                else:
+                    act_type = env.ref('mail.mail_activity_data_call', raise_if_not_found=False)
+                    if not act_type:
+                        act_type = env['mail.activity.type'].search([('category', '=', 'phonecall')], limit=1)
+                    outcome_summary_map = {
+                        'interested':  "🔥 Follow-up Call – High Priority Lead",
+                        'callback':    "📞 Callback Requested",
+                        'no_answer':   "📞 Retry Call – Did Not Answer",
+                        'revisit':     "📞 Follow-up – Will Think About It",
+                        'site_visit':  "📞 Post Site-Visit Follow-up",
+                    }
+                    act_summary = outcome_summary_map.get(str(outcome).lower(), "📞 Follow-up Call")
+
+                if act_type:
+                    scheduled_act = lead.activity_schedule(
+                        activity_type_id=act_type.id,
+                        summary=act_summary,
+                        date_deadline=next_date,
+                        user_id=caller_user.id,
+                        note=notes or f"Post-call follow-up after: {oc['label']}"
+                    )
+                    next_act_id = scheduled_act.id if scheduled_act else False
+
+            # ── Step 4: Post rich chatter note ─────────────────────────────
+            notes_html = f'<div style="margin-top:6px;background:#f8fafc;padding:6px 10px;border-radius:4px;font-size:12px;color:#334155;white-space:pre-wrap;">{notes}</div>' if notes else ''
+            next_followup_html = ''
+            if next_act_id:
+                nact = env['mail.activity'].browse(next_act_id)
+                next_followup_html = f'''
+                <div style="margin-top:8px;padding:6px 10px;border-radius:4px;background:#eff6ff;border:1px solid #bfdbfe;font-size:11.5px;color:#1e40af;">
+                    📅 <b>Next Follow-up Scheduled:</b> {nact.date_deadline.strftime("%d %b %Y") if nact.date_deadline else "Today"} — {nact.summary or "Call"}
+                </div>'''
+
+            chatter_html = f'''
+<div style="padding:10px 14px;border-left:4px solid {oc["color"]};background:#f8fafc;border-radius:6px;margin:4px 0;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-weight:700;color:{oc["color"]};font-size:13.5px;">
+            {oc["label"]} &nbsp;
+            <span style="font-size:11px;font-weight:600;background:{oc["bg"]};color:{oc["color"]};padding:2px 8px;border-radius:10px;">
+                Auto-Dialer Wrap-up
+            </span>
+        </span>
+        <span style="font-weight:700;color:{oc["color"]};background:{oc["bg"]};padding:2px 10px;border-radius:12px;font-size:12px;">
+            ⏱️ {dur_str}
+        </span>
+    </div>
+    <div style="font-size:12px;color:#475569;margin-top:5px;">
+        <b>Executive:</b> {caller_user.name} &nbsp;|&nbsp;
+        <b>Project:</b> {lead.company_id.name or ""} &nbsp;|&nbsp;
+        <b>Client:</b> {lead.phone or phone_number or ""}
+    </div>
+    {notes_html}
+    {next_followup_html}
+    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+        {now.strftime("%d-%b-%Y %I:%M %p")} &bull; Auto-Synced via Diya CRM Auto-Dialer
+    </div>
+</div>'''
+
+            lead.message_post(
+                body=Markup(chatter_html),
+                message_type='comment',
+                subtype_xmlid='mail.mt_note',
+                author_id=caller_user.partner_id.id if caller_user else False,
+            )
+
+            # ── Step 5: WhatsApp follow-up trigger ─────────────────────────
+            if str(outcome).lower() in ('interested', 'callback', 'no_answer', 'revisit'):
+                try:
+                    lead.with_context(mail_notrack=True).send_call_followup_whatsapp(
+                        call_outcome=str(outcome).lower(),
+                        executive_user=caller_user,
+                        force_send=False,
+                        lang_choice='gu'
+                    )
+                except Exception as _we:
+                    _logger.warning("Auto-dialer WA trigger: %s", str(_we))
+
+            return {
+                'status': 'success',
+                'lead_id': lead.id,
+                'lead_name': lead.name,
+                'stage_name': lead.stage_id.name if lead.stage_id else '',
+                'next_activity_id': next_act_id,
+                'message': f"Wrap-up saved for {lead.name}",
+            }
+
+        except Exception as e:
+            _logger.exception("submit_call_wrapup error: %s", str(e))
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/auto-dialer', type='http', auth='public', methods=['GET'], csrf=False)
+    def auto_dialer_page(self, **kwargs):
+        """
+        Standalone Auto-Dialer Web Interface.
+        Works on both Desktop (CRM Web) and Mobile Browser.
+        """
+        html_content = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>🚀 Diya CRM Auto-Dialer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+body{background:#0f172a;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:#1e293b;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #334155}
+.topbar h1{color:#fff;font-size:16px;font-weight:700}
+.topbar .meta{color:#94a3b8;font-size:12px}
+#loginPanel{max-width:360px;margin:60px auto 0;background:#1e293b;border-radius:12px;padding:28px;border:1px solid #334155}
+#loginPanel h2{color:#fff;font-size:18px;margin-bottom:20px;text-align:center}
+.inp{width:100%;padding:10px 12px;background:#0f172a;border:1px solid #475569;border-radius:8px;color:#fff;font-size:14px;margin-bottom:12px;outline:none}
+.inp:focus{border-color:#3b82f6}
+.btn{width:100%;padding:12px;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn-primary{background:#3b82f6;color:#fff}
+.btn-primary:hover{opacity:.88}
+.btn-success{background:#16a34a;color:#fff}
+.btn-warn{background:#ca8a04;color:#fff}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-secondary{background:#475569;color:#fff}
+.btn-violet{background:#7c3aed;color:#fff}
+.btn-blue{background:#2563eb;color:#fff}
+#dialerPanel{display:none;flex:1;flex-direction:column}
+.queue-header{background:#1e293b;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #334155}
+.badge{background:#3b82f6;color:#fff;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700}
+.queue-list{flex:1;overflow-y:auto;padding:12px}
+.queue-item{background:#1e293b;border-radius:10px;padding:12px 14px;margin-bottom:8px;border:1px solid #334155;cursor:pointer;transition:border-color .15s}
+.queue-item:hover,.queue-item.active{border-color:#3b82f6}
+.queue-item .prio{font-size:12px;font-weight:700;margin-bottom:4px}
+.queue-item .name{color:#fff;font-size:14px;font-weight:700}
+.queue-item .sub{color:#94a3b8;font-size:12px;margin-top:2px}
+#callPanel{display:none;position:fixed;inset:0;background:#0f172a;flex-direction:column;z-index:100}
+.call-header{background:#1e293b;padding:16px;border-bottom:1px solid #334155}
+.call-name{color:#fff;font-size:20px;font-weight:700}
+.call-sub{color:#94a3b8;font-size:13px;margin-top:2px}
+.call-phone{color:#3b82f6;font-size:28px;font-weight:700;text-align:center;margin:20px 0 4px}
+.call-stage{color:#94a3b8;font-size:13px;text-align:center;margin-bottom:8px}
+.call-note-prev{background:#1e293b;border-radius:8px;margin:0 16px;padding:10px 12px;color:#cbd5e1;font-size:12px;min-height:36px}
+.call-btn-row{display:flex;gap:10px;padding:16px;justify-content:center}
+.call-btn-row .btn{width:auto;flex:1;padding:14px 0;font-size:14px}
+.timer{text-align:center;color:#4ade80;font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;margin:10px 0}
+#wrapupPanel{display:none;position:fixed;inset:0;background:#0f172a;flex-direction:column;overflow-y:auto;z-index:200}
+.wrapup-inner{max-width:480px;margin:0 auto;padding:20px}
+.wrapup-inner h2{color:#fff;font-size:18px;font-weight:700;margin-bottom:16px}
+.section-label{color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;margin-top:16px}
+.outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.outcome-btn{background:#1e293b;border:2px solid #334155;border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;color:#e2e8f0;font-size:13px;font-weight:600;transition:all .15s}
+.outcome-btn.sel{border-color:#3b82f6;background:#1d3461;color:#93c5fd}
+.follow-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.chip{background:#1e293b;border:2px solid #334155;border-radius:20px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;color:#cbd5e1;white-space:nowrap}
+.chip.sel{border-color:#3b82f6;background:#1d3461;color:#93c5fd}
+textarea.inp{resize:vertical;min-height:72px}
+.countdown-bar{background:#1e293b;border-radius:8px;padding:14px;text-align:center;margin-bottom:14px}
+.countdown-num{color:#4ade80;font-size:36px;font-weight:700;font-variant-numeric:tabular-nums}
+.countdown-sub{color:#94a3b8;font-size:12px;margin-top:2px}
+.skip-link{color:#64748b;text-align:center;font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline}
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#16a34a;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <h1>🚀 Diya CRM Auto-Dialer</h1>
+  <div class="meta" id="userMeta"></div>
+</div>
+
+<!-- LOGIN PANEL -->
+<div id="loginPanel">
+  <h2>🔐 Login to Start Calling</h2>
+  <input class="inp" id="loginUser" type="text" placeholder="Username / Email" autocomplete="username">
+  <input class="inp" id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
+  <button class="btn btn-primary" onclick="doLogin()">Login & Load My Queue</button>
+  <div id="loginError" style="color:#f87171;font-size:12px;margin-top:10px;text-align:center"></div>
+</div>
+
+<!-- DIALER PANEL (Queue List) -->
+<div id="dialerPanel">
+  <div class="queue-header">
+    <div>
+      <div style="color:#fff;font-weight:700;font-size:14px">📋 Today's Call Queue</div>
+      <div class="meta" id="queueMeta"></div>
+    </div>
+    <span class="badge" id="queueCount">0</span>
+    <button class="btn btn-success" style="width:auto;padding:8px 16px;margin-left:auto;font-size:13px" onclick="startAutoDialer()">▶️ Start Auto-Dialer</button>
+    <button class="btn btn-secondary" style="width:auto;padding:8px 12px;font-size:13px" onclick="refreshQueue()" title="Refresh Queue">🔄</button>
+  </div>
+  <div class="queue-list" id="queueList"></div>
+</div>
+
+<!-- ACTIVE CALL PANEL -->
+<div id="callPanel">
+  <div class="call-header">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div class="call-name" id="callLeadName"></div>
+        <div class="call-sub" id="callCompany"></div>
+      </div>
+      <div style="color:#64748b;font-size:12px" id="callProgress"></div>
+    </div>
+  </div>
+  <div class="call-phone" id="callPhone"></div>
+  <div class="call-stage" id="callStage"></div>
+  <div style="padding:0 16px 8px;color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Last Note</div>
+  <div class="call-note-prev" id="callLastNote">—</div>
+  <div class="timer" id="callTimer">00:00</div>
+  <div class="call-btn-row">
+    <button class="btn btn-success" id="callBtn" onclick="handleCallBtn()">📞 Dial Now</button>
+    <button class="btn btn-secondary" onclick="skipLead()">⏭ Skip</button>
+    <button class="btn btn-danger" onclick="stopAutoDialer()">⏹ Stop</button>
+  </div>
+  <div style="padding:0 16px 8px">
+    <div style="color:#94a3b8;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Priority</div>
+    <div id="callPriority" style="font-size:13px;color:#e2e8f0"></div>
+  </div>
+</div>
+
+<!-- WRAP-UP PANEL -->
+<div id="wrapupPanel">
+  <div class="wrapup-inner">
+    <h2>📋 Call Wrap-up</h2>
+    <div style="background:#1e293b;border-radius:8px;padding:10px 12px;margin-bottom:4px">
+      <div style="color:#fff;font-weight:700" id="wuLeadName"></div>
+      <div style="color:#94a3b8;font-size:12px" id="wuPhone"></div>
+    </div>
+
+    <div class="section-label">Call Outcome</div>
+    <div class="outcome-grid">
+      <div class="outcome-btn" onclick="selectOutcome('interested')">🟢 Interested</div>
+      <div class="outcome-btn" onclick="selectOutcome('callback')">🟡 Callback Later</div>
+      <div class="outcome-btn" onclick="selectOutcome('no_answer')">🔴 No Answer</div>
+      <div class="outcome-btn" onclick="selectOutcome('revisit')">🔁 Will Think</div>
+      <div class="outcome-btn" onclick="selectOutcome('site_visit')">🏠 Site Visit Booked</div>
+      <div class="outcome-btn" onclick="selectOutcome('not_interested')">⚫ Not Interested</div>
+    </div>
+
+    <div class="section-label" id="followupLabel">Next Follow-up</div>
+    <div class="follow-chips" id="followChips">
+      <div class="chip" onclick="selectChip(this,0)">📞 Aaj Shaam</div>
+      <div class="chip" onclick="selectChip(this,1)">📅 Kal Subah</div>
+      <div class="chip" onclick="selectChip(this,2)">2 Din Baad</div>
+      <div class="chip" onclick="selectChip(this,3)">Agle Hafte</div>
+      <div class="chip sel" onclick="selectChip(this,-1)">📆 Custom</div>
+    </div>
+    <input class="inp" type="date" id="customDate" style="margin-bottom:0">
+
+    <div class="section-label">Notes (Voice ya Type karo)</div>
+    <textarea class="inp" id="wuNotes" placeholder="Client ne kya kaha? Budget? BHK? Location preference? (Bolkar bhi bol sakte ho)..."></textarea>
+    <button class="btn btn-secondary" id="voiceBtn" onclick="toggleVoice()" style="margin-bottom:12px;padding:10px">🎤 Voice Note Start</button>
+
+    <div class="countdown-bar" id="countdownBar" style="display:none">
+      <div class="countdown-num" id="countdownNum">5</div>
+      <div class="countdown-sub">seconds me next call start hoga...</div>
+      <div class="skip-link" onclick="cancelCountdown()">⏸ Pause / Cancel Countdown</div>
+    </div>
+
+    <button class="btn btn-primary" onclick="submitWrapup()" style="padding:14px;font-size:15px;margin-bottom:10px">✅ Save & Next Lead</button>
+    <button class="btn btn-secondary" onclick="submitWrapup(true)" style="padding:12px;font-size:14px">💾 Save & Pause Dialer</button>
+    <button class="btn btn-danger" style="margin-top:8px;padding:10px;font-size:13px" onclick="stopAutoDialer()">⏹ Stop Auto-Dialer</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = window.location.origin;
+let SESSION = {};
+let QUEUE = [];
+let QUEUE_IDX = 0;
+let CURRENT_LEAD = null;
+let CALL_TIMER = null;
+let CALL_SECS = 0;
+let CALL_STARTED = false;
+let SELECTED_OUTCOME = null;
+let SELECTED_DAYS = 1;
+let COUNTDOWN_TIMER = null;
+let recognition = null;
+
+function showToast(msg, color='#16a34a'){
+  const t=document.getElementById('toast');
+  t.style.background=color;t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ── LOGIN ────────────────────────────────────────────────────────────────
+async function doLogin(){
+  const login=document.getElementById('loginUser').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  document.getElementById('loginError').textContent='';
+  if(!login||!pass){document.getElementById('loginError').textContent='Login aur Password dono bharein.';return;}
+  const res=await rpc('/api/call_tracker/login',{login,password:pass});
+  if(res&&res.status==='success'){
+    SESSION=res;
+    document.getElementById('userMeta').textContent=res.user_name+' · '+res.company_name;
+    document.getElementById('loginPanel').style.display='none';
+    document.getElementById('dialerPanel').style.display='flex';
+    document.getElementById('dialerPanel').style.flexDirection='column';
+    await refreshQueue();
+  } else {
+    document.getElementById('loginError').textContent=res?.message||'Login failed. Please check credentials.';
+  }
+}
+
+// ── QUEUE ────────────────────────────────────────────────────────────────
+async function refreshQueue(){
+  document.getElementById('queueCount').textContent='...';
+  const res=await rpc('/api/call_tracker/get_due_queue',{
+    user_id:SESSION.user_id,
+    company_id:SESSION.company_id,
+    limit:60
+  });
+  if(res&&res.status==='success'){
+    QUEUE=res.queue||[];
+    QUEUE_IDX=0;
+    document.getElementById('queueCount').textContent=QUEUE.length;
+    document.getElementById('queueMeta').textContent='Kul '+QUEUE.length+' leads queue mein hai';
+    renderQueueList();
+  }
+}
+
+function renderQueueList(){
+  const el=document.getElementById('queueList');
+  if(!QUEUE.length){
+    el.innerHTML='<div style="text-align:center;color:#64748b;padding:40px 0">🎉 Aaj ke saare due calls complete ho gaye!</div>';
+    return;
+  }
+  el.innerHTML=QUEUE.map((l,i)=>`
+    <div class="queue-item ${i===QUEUE_IDX?'active':''}" onclick="selectLead(${i})">
+      <div class="prio" style="color:${prioColor(l.priority_label)}">${l.priority_label}</div>
+      <div class="name">${l.lead_name||l.phone}</div>
+      <div class="sub">${l.phone} · ${l.company_name} · <span style="color:#cbd5e1">${l.stage_name}</span></div>
+      ${l.last_note?`<div class="sub" style="margin-top:4px;font-style:italic">"${l.last_note.substring(0,80)}..."</div>`:''}
+    </div>`).join('');
+}
+
+function prioColor(p){
+  if(p.includes('Overdue'))return'#f87171';
+  if(p.includes('WhatsApp'))return'#fbbf24';
+  if(p.includes('Today'))return'#60a5fa';
+  if(p.includes('Retry'))return'#fb923c';
+  return'#94a3b8';
+}
+
+function selectLead(idx){
+  QUEUE_IDX=idx;
+  renderQueueList();
+  CURRENT_LEAD=QUEUE[idx];
+}
+
+// ── AUTO-DIALER ──────────────────────────────────────────────────────────
+function startAutoDialer(){
+  if(!QUEUE.length){showToast('Queue empty hai! Refresh karo.','#dc2626');return;}
+  QUEUE_IDX=0;
+  loadCurrentLead();
+}
+
+function loadCurrentLead(){
+  if(QUEUE_IDX>=QUEUE.length){
+    showCallPanel(false);
+    showToast('🎉 Saare '+QUEUE.length+' calls complete!');
+    document.getElementById('dialerPanel').style.display='flex';
+    return;
+  }
+  CURRENT_LEAD=QUEUE[QUEUE_IDX];
+  CALL_STARTED=false;
+  CALL_SECS=0;
+  clearInterval(CALL_TIMER);
+
+  showCallPanel(true);
+  document.getElementById('callLeadName').textContent=CURRENT_LEAD.lead_name||CURRENT_LEAD.phone;
+  document.getElementById('callCompany').textContent=CURRENT_LEAD.company_name+' · '+CURRENT_LEAD.assigned_to;
+  document.getElementById('callPhone').textContent=CURRENT_LEAD.phone;
+  document.getElementById('callStage').textContent='Stage: '+CURRENT_LEAD.stage_name;
+  document.getElementById('callLastNote').textContent=CURRENT_LEAD.last_note||'—';
+  document.getElementById('callTimer').textContent='00:00';
+  document.getElementById('callProgress').textContent=(QUEUE_IDX+1)+' / '+QUEUE.length;
+  document.getElementById('callPriority').textContent=CURRENT_LEAD.priority_label;
+  document.getElementById('callBtn').textContent='📞 Dial Now';
+  document.getElementById('callBtn').style.background='#16a34a';
+}
+
+function showCallPanel(show){
+  document.getElementById('callPanel').style.display=show?'flex':'none';
+  document.getElementById('wrapupPanel').style.display='none';
+  if(show){document.getElementById('callPanel').style.flexDirection='column';}
+}
+
+function handleCallBtn(){
+  if(!CALL_STARTED){
+    // Initiate call via tel: link (mobile SIM) or Odoo click-to-call
+    const phone=CURRENT_LEAD.phone.replace(/\\D/g,'');
+    window.location.href='tel:+91'+phone;
+    CALL_STARTED=true;
+    document.getElementById('callBtn').textContent='✅ Call Ho Rahi Hai – Wrapup Karo';
+    document.getElementById('callBtn').style.background='#2563eb';
+    // Start timer
+    CALL_SECS=0;
+    CALL_TIMER=setInterval(()=>{
+      CALL_SECS++;
+      const m=Math.floor(CALL_SECS/60).toString().padStart(2,'0');
+      const s=(CALL_SECS%60).toString().padStart(2,'0');
+      document.getElementById('callTimer').textContent=m+':'+s;
+    },1000);
+  } else {
+    clearInterval(CALL_TIMER);
+    showWrapup();
+  }
+}
+
+function skipLead(){
+  clearInterval(CALL_TIMER);
+  QUEUE_IDX++;
+  loadCurrentLead();
+}
+
+function stopAutoDialer(){
+  clearInterval(CALL_TIMER);
+  cancelCountdown();
+  showCallPanel(false);
+  document.getElementById('wrapupPanel').style.display='none';
+  document.getElementById('dialerPanel').style.display='flex';
+  showToast('Auto-Dialer paused.','#ca8a04');
+}
+
+// ── WRAP-UP ──────────────────────────────────────────────────────────────
+function showWrapup(){
+  document.getElementById('callPanel').style.display='none';
+  const wu=document.getElementById('wrapupPanel');
+  wu.style.display='flex';
+  wu.style.flexDirection='column';
+  document.getElementById('wuLeadName').textContent=CURRENT_LEAD.lead_name||CURRENT_LEAD.phone;
+  document.getElementById('wuPhone').textContent=CURRENT_LEAD.phone+' · '+CURRENT_LEAD.company_name;
+  document.getElementById('wuNotes').value='';
+  SELECTED_OUTCOME=null;
+  SELECTED_DAYS=1;
+  document.querySelectorAll('.outcome-btn').forEach(b=>b.classList.remove('sel'));
+  // Default chip: Kal Subah
+  document.querySelectorAll('.chip').forEach((c,i)=>{c.classList.remove('sel');if(i===1)c.classList.add('sel');});
+  SELECTED_DAYS=1;
+  const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+  document.getElementById('customDate').value=tomorrow.toISOString().split('T')[0];
+  document.getElementById('countdownBar').style.display='none';
+}
+
+function selectOutcome(val){
+  SELECTED_OUTCOME=val;
+  document.querySelectorAll('.outcome-btn').forEach(b=>b.classList.remove('sel'));
+  event.target.classList.add('sel');
+  // Auto-chips based on outcome
+  const chipMap={interested:1,callback:0,no_answer:0,site_visit:3,revisit:2,not_interested:-1};
+  const days=chipMap[val]??1;
+  SELECTED_DAYS=days;
+  const chips=document.querySelectorAll('.chip');
+  chips.forEach(c=>c.classList.remove('sel'));
+  if(val==='not_interested'){
+    document.getElementById('followupLabel').style.opacity='.3';
+    document.getElementById('followChips').style.opacity='.3';
+  } else {
+    document.getElementById('followupLabel').style.opacity='1';
+    document.getElementById('followChips').style.opacity='1';
+    if(days===0)chips[0]?.classList.add('sel');
+    else if(days===1)chips[1]?.classList.add('sel');
+    else if(days===2)chips[2]?.classList.add('sel');
+    else if(days>=3)chips[3]?.classList.add('sel');
+  }
+}
+
+function selectChip(el,days){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  if(days===-1){
+    SELECTED_DAYS=-1; // custom date
+  } else {
+    SELECTED_DAYS=days;
+    const d=new Date();d.setDate(d.getDate()+days);
+    document.getElementById('customDate').value=d.toISOString().split('T')[0];
+  }
+}
+
+function toggleVoice(){
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){showToast('Voice recognition supported nahi hai is browser mein.','#dc2626');return;}
+  if(recognition){recognition.stop();recognition=null;document.getElementById('voiceBtn').textContent='🎤 Voice Note Start';return;}
+  recognition=new SpeechRecognition();
+  recognition.lang='hi-IN';
+  recognition.continuous=true;
+  recognition.interimResults=false;
+  recognition.onresult=e=>{
+    const t=Array.from(e.results).map(r=>r[0].transcript).join(' ');
+    document.getElementById('wuNotes').value+=' '+t;
+  };
+  recognition.onend=()=>{recognition=null;document.getElementById('voiceBtn').textContent='🎤 Voice Note Start';};
+  recognition.start();
+  document.getElementById('voiceBtn').textContent='🛑 Voice Note Stop';
+}
+
+async function submitWrapup(pause=false){
+  if(!SELECTED_OUTCOME){showToast('Pehle Call Outcome chunein!','#dc2626');return;}
+  if(recognition){recognition.stop();recognition=null;}
+
+  const customDateVal=document.getElementById('customDate').value;
+  const notes=document.getElementById('wuNotes').value.trim();
+
+  const payload={
+    lead_id:CURRENT_LEAD.lead_id,
+    outcome:SELECTED_OUTCOME,
+    notes,
+    next_followup_days:SELECTED_DAYS===-1?1:SELECTED_DAYS,
+    next_followup_date:SELECTED_DAYS===-1?customDateVal:'',
+    activity_id:CURRENT_LEAD.activity_id||false,
+    user_id:SESSION.user_id,
+    duration_seconds:CALL_SECS,
+    phone_number:CURRENT_LEAD.phone,
+  };
+
+  const res=await rpc('/api/call_tracker/submit_call_wrapup',payload);
+  if(res&&res.status==='success'){
+    showToast('✅ '+res.lead_name+' – Saved!');
+    QUEUE_IDX++;
+
+    if(pause||QUEUE_IDX>=QUEUE.length){
+      document.getElementById('wrapupPanel').style.display='none';
+      document.getElementById('dialerPanel').style.display='flex';
+      renderQueueList();
+      if(QUEUE_IDX>=QUEUE.length)showToast('🎉 Sabhi leads complete ho gayi!');
+      return;
+    }
+
+    // Countdown to next call
+    document.getElementById('countdownBar').style.display='block';
+    let count=5;
+    document.getElementById('countdownNum').textContent=count;
+    COUNTDOWN_TIMER=setInterval(()=>{
+      count--;
+      document.getElementById('countdownNum').textContent=count;
+      if(count<=0){cancelCountdown();loadCurrentLead();}
+    },1000);
+  } else {
+    showToast('Error: '+(res?.message||'Unknown error'),'#dc2626');
+  }
+}
+
+function cancelCountdown(){
+  clearInterval(COUNTDOWN_TIMER);
+  COUNTDOWN_TIMER=null;
+  document.getElementById('countdownBar').style.display='none';
+}
+
+// ── JSON-RPC HELPER ──────────────────────────────────────────────────────
+async function rpc(url,params){
+  try{
+    const r=await fetch(BASE+url,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body:JSON.stringify({jsonrpc:'2.0',method:'call',id:Date.now(),params})
+    });
+    const j=await r.json();
+    return j.result||j.error?.data||j;
+  }catch(e){return{status:'error',message:e.message};}
+}
+
+// Enter key on login
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('loginUser').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginPass').focus();});
+</script>
+</body>
+</html>"""
+        return Response(html_content, content_type='text/html; charset=utf-8', status=200)
 
     @http.route('/api/call_tracker/upload_recording', type='http', auth='none',
                 methods=['POST'], csrf=False)
