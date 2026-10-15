@@ -6,6 +6,7 @@ import ast
 import json
 import subprocess
 import datetime
+import glob
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -98,26 +99,34 @@ def recover_missed_leads():
     print("==========================================================================================")
 
     log_lines = []
-    log_files = [
+    candidate_paths = [
+        '/var/log/odoo19.log*',
+        '/var/log/odoo*.log*',
         '/tmp/odoo_logs.txt',
         '/tmp/webhook_logs.txt',
-        '/var/log/odoo19/odoo-server.log',
-        '/var/log/odoo/odoo-server.log'
+        '/var/log/odoo19/odoo-server.log*',
+        '/var/log/odoo/odoo-server.log*',
     ]
-    for lf in log_files:
-        if os.path.exists(lf):
-            try:
-                cmd = f"grep -h 'Diya CRM Webhook Payload Processing:' {lf} | tail -n 1000"
-                out = subprocess.check_output(cmd, shell=True, text=True)
-                if out:
-                    for l in out.strip().split('\n'):
-                        if l and l not in log_lines:
-                            log_lines.append(l)
-            except Exception:
-                pass
+    resolved_files = set()
+    for pat in candidate_paths:
+        for f in glob.glob(pat):
+            if os.path.isfile(f):
+                resolved_files.add(f)
+
+    for lf in sorted(resolved_files):
+        try:
+            grep_cmd = "zgrep" if lf.endswith('.gz') else "grep"
+            cmd = f"{grep_cmd} 'Diya CRM Webhook Payload Processing:' '{lf}'"
+            out = subprocess.check_output(cmd, shell=True, text=True, errors='ignore')
+            if out:
+                for l in out.strip().split('\n'):
+                    if l and l not in log_lines:
+                        log_lines.append(l)
+        except Exception:
+            pass
 
     try:
-        cmd = "journalctl -u odoo19 --since '10 days ago' --no-pager 2>/dev/null | grep 'Diya CRM Webhook Payload Processing:' | tail -n 500"
+        cmd = "journalctl -u odoo19 --since '10 days ago' --no-pager 2>/dev/null | grep 'Diya CRM Webhook Payload Processing:' | tail -n 1000"
         out = subprocess.check_output(cmd, shell=True, text=True)
         if out:
             for l in out.strip().split('\n'):
