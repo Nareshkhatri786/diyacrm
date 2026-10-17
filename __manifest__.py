@@ -1,6 +1,6 @@
 {
     "name": "Diya CRM",
-    "version": "1.2",
+    "version": "1.3",
     "category": "Sales/CRM",
     "summary": "Custom CRM Enhancements, Telecalling Dashboard, Selfie Camera & 150m GPS Geofenced Attendance",
     "description": "Comprehensive CRM & Attendance enhancements for Diya CRM without touching core Odoo files.",
