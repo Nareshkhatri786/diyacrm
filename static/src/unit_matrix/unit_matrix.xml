@@ -105,16 +105,16 @@
                         </div>
                     </div>
 
-                    <!-- Facing Filter -->
-                    <div class="d-flex align-items-center gap-1">
+                    <!-- Facing Filter (Dynamic per Company) -->
+                    <div class="d-flex align-items-center gap-1" t-if="state.data.available_facings and state.data.available_facings.length > 0">
                         <span class="small fw-bold text-muted me-1">Facing:</span>
                         <div class="btn-group btn-group-sm" role="group">
                             <button t-attf-class="btn #{state.filterFacing === 'all' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('all')">All</button>
-                            <button t-attf-class="btn #{state.filterFacing === 'garden_view' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('garden_view')">🌳 Garden</button>
-                            <button t-attf-class="btn #{state.filterFacing === 'main_road' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('main_road')">🛣️ Main Road</button>
-                            <button t-attf-class="btn #{state.filterFacing === 'internal_road' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('internal_road')">🏘️ Internal Road</button>
-                            <button t-attf-class="btn #{state.filterFacing === 'project_facing' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('project_facing')">🏢 Project</button>
-                            <button t-attf-class="btn #{state.filterFacing === 'plot_facing' ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter('plot_facing')">🏞️ Plot</button>
+                            <t t-foreach="state.data.available_facings" t-as="fc" t-key="fc.key">
+                                <button t-attf-class="btn #{state.filterFacing === fc.key ? 'btn-primary' : 'btn-outline-secondary'}" t-on-click="() => this.setFacingFilter(fc.key)">
+                                    <t t-esc="fc.icon"/> <t t-esc="fc.label"/>
+                                </button>
+                            </t>
                         </div>
                     </div>
 
@@ -206,8 +206,10 @@
                                                 <t t-if="unit.facing === 'garden_view'"><i class="fa fa-tree text-success me-1"/> Garden View</t>
                                                 <t t-elif="unit.facing === 'main_road'"><i class="fa fa-road text-primary me-1"/> Main Road</t>
                                                 <t t-elif="unit.facing === 'internal_road'"><i class="fa fa-compass text-secondary me-1"/> Internal Road</t>
+                                                <t t-elif="unit.facing === 'temple_facing'"><i class="fa fa-bell text-warning me-1"/> Temple Facing</t>
                                                 <t t-elif="unit.facing === 'project_facing'"><i class="fa fa-building-o text-primary me-1"/> Project Facing</t>
-                                                <t t-else=""><i class="fa fa-map-o text-secondary me-1"/> Plot Facing</t>
+                                                <t t-elif="unit.facing === 'plot_facing'"><i class="fa fa-map-o text-secondary me-1"/> Plot Facing</t>
+                                                <t t-else=""><i class="fa fa-compass text-secondary me-1"/> <t t-esc="unit.facing_label || unit.facing"/></t>
                                             </div>
                                             <div t-if="unit.plc" class="text-warning fw-bold small mt-1">
                                                 <i class="fa fa-star me-1"/> PLC Applicable

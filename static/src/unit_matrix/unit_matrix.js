@@ -51,6 +51,12 @@ export class CrmUnitMatrix extends Component {
                 } else {
                     this.state.activeBlock = "";
                 }
+                if (this.state.filterSize !== "all" && res.available_sizes && !res.available_sizes.includes(this.state.filterSize)) {
+                    this.state.filterSize = "all";
+                }
+                if (this.state.filterFacing !== "all" && res.available_facings && !res.available_facings.some(f => f.key === this.state.filterFacing)) {
+                    this.state.filterFacing = "all";
+                }
             }
         } catch (err) {
             console.error("Error loading unit matrix data:", err);

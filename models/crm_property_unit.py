@@ -213,6 +213,26 @@ class CrmPropertyUnit(models.Model):
                 "floors": floor_groups,
             }
 
+        # Dynamic facing options present in this company
+        distinct_facing_keys = sorted(list(set(units.mapped("facing"))))
+        facing_icons = {
+            "garden_view": "🌳",
+            "main_road": "🛣️",
+            "internal_road": "🏘️",
+            "temple_facing": "🛕",
+            "project_facing": "🏢",
+            "plot_facing": "🏞️",
+            "road_facing": "🛣️",
+        }
+        available_facings = []
+        for fk in distinct_facing_keys:
+            if fk:
+                available_facings.append({
+                    "key": fk,
+                    "label": facing_dict.get(fk, fk.replace("_", " ").title()),
+                    "icon": facing_icons.get(fk, "🧭"),
+                })
+
         # Dynamic size stats for available units
         distinct_sizes = sorted(list(set(units.mapped("size_sq_yard"))))
         size_stats = {
@@ -231,4 +251,19 @@ class CrmPropertyUnit(models.Model):
             "block_data": block_data,
             "size_stats": size_stats,
             "available_sizes": distinct_sizes,
+            "available_facings": available_facings,
         }
+
+    @api.model
+    def search_panel_select_range(self, field_name, **kwargs):
+        res = super().search_panel_select_range(field_name, **kwargs)
+        if isinstance(res, dict) and 'values' in res:
+            res['values'] = [v for v in res['values'] if v.get('__count', 0) > 0]
+        return res
+
+    @api.model
+    def search_panel_select_multi_range(self, field_name, **kwargs):
+        res = super().search_panel_select_multi_range(field_name, **kwargs)
+        if isinstance(res, dict) and 'values' in res:
+            res['values'] = [v for v in res['values'] if v.get('__count', 0) > 0]
+        return res
