@@ -335,6 +335,8 @@ class DiyaCrmCallTrackerController(http.Controller):
                 ("Content-Disposition", "attachment; filename=DiyaSync_Beta.apk"),
                 ("Content-Length", str(len(apk_data)))
             ]
+        )
+
     @http.route(["/download/inventory_sample.csv", "/download/sample_property_units_inventory.csv"], type="http", auth="public", methods=["GET"])
     def download_inventory_sample_csv(self):
         csv_path = "/opt/odoo19/custom_addons/diyacrm/static/downloads/sample_property_units_inventory.csv"
