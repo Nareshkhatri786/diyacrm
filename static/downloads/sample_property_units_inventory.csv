@@ -1,0 +1,17 @@
+unit_no,block,floor,size_sq_yard,facing,location_charge,status,company_id,customer_name,customer_phone,salesperson_id,booking_date,remarks
+101,A,01,285,main_road,TRUE,available,New Project Name,,,,Corner unit with main road visibility
+102,A,01,285,garden_view,FALSE,available,New Project Name,,,,Peaceful garden facing
+103,A,01,315,internal_road,FALSE,available,New Project Name,,,,Standard 3BHK layout
+104,A,01,380,garden_view,TRUE,available,New Project Name,,,,Premium large unit with PLC
+201,A,02,285,main_road,TRUE,hold,New Project Name,,,,Client token in discussion
+202,A,02,285,garden_view,FALSE,available,New Project Name,,,,Available for booking
+203,A,02,315,internal_road,FALSE,available,New Project Name,,,,East facing entry
+204,A,02,380,garden_view,TRUE,booked,New Project Name,Ramesh Patel,9825012345,Nikita,2026-10-15,Booked with 10% advance
+101,B,01,295,garden_view,TRUE,available,New Project Name,,,,Ground floor garden view
+102,B,01,295,internal_road,FALSE,available,New Project Name,,,,Standard unit
+201,B,02,295,garden_view,TRUE,available,New Project Name,,,,Second floor open view
+202,B,02,400,road_facing,TRUE,available,New Project Name,,,,Largest 400 sq yard penthouse
+101,C,01,315,project_facing,FALSE,available,New Project Name,,,,Central courtyard facing
+102,C,01,380,plot_facing,TRUE,available,New Project Name,,,,Corner plot facing
+201,C,02,315,project_facing,FALSE,available,New Project Name,,,,Mid floor unit
+301,C,03,400,garden_view,TRUE,available,New Project Name,,,,Top floor luxury unit

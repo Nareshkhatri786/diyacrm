@@ -335,6 +335,24 @@ class DiyaCrmCallTrackerController(http.Controller):
                 ("Content-Disposition", "attachment; filename=DiyaSync_Beta.apk"),
                 ("Content-Length", str(len(apk_data)))
             ]
+    @http.route(["/download/inventory_sample.csv", "/download/sample_property_units_inventory.csv"], type="http", auth="public", methods=["GET"])
+    def download_inventory_sample_csv(self):
+        csv_path = "/opt/odoo19/custom_addons/diyacrm/static/downloads/sample_property_units_inventory.csv"
+        if not os.path.exists(csv_path):
+            csv_path = os.path.join(os.path.dirname(__file__), "..", "static", "downloads", "sample_property_units_inventory.csv")
+        if not os.path.exists(csv_path):
+            return request.not_found("Sample CSV file not found.")
+
+        with open(csv_path, "rb") as f:
+            data = f.read()
+
+        return Response(
+            data,
+            headers=[
+                ("Content-Type", "text/csv; charset=utf-8"),
+                ("Content-Disposition", "attachment; filename=sample_property_units_inventory.csv"),
+                ("Content-Length", str(len(data)))
+            ]
         )
 
     # ─────────────────────────────────────────────────────────────────────────
