@@ -179,13 +179,18 @@
                             <div class="card-body py-2">
                                 <t t-set="max_count" t-value="Math.max(...state.stage_funnel.map(s => s.count), 1)"/>
                                 <t t-foreach="state.stage_funnel" t-as="stage" t-key="stage.stage">
-                                    <div class="mb-2">
+                                    <div class="mb-2 cursor-pointer p-1 rounded"
+                                         t-on-click="() => this.onStageClick(stage)"
+                                         t-att-title="'Click to view ' + stage.count + ' leads in ' + stage.stage">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <span class="small fw-semibold text-truncate" style="max-width:70%;"><t t-esc="stage.stage"/></span>
-                                            <span class="badge bg-primary ms-2"><t t-esc="stage.count"/></span>
+                                            <span t-attf-class="small fw-semibold text-truncate #{stage.is_lost_sv ? 'text-danger' : ''}" style="max-width:70%;">
+                                                <t t-if="stage.is_lost_sv">❌ </t>
+                                                <t t-esc="stage.stage"/>
+                                            </span>
+                                            <span t-attf-class="badge #{stage.badge_class || 'bg-primary'} ms-2"><t t-esc="stage.count"/></span>
                                         </div>
                                         <div class="progress" style="height:8px;">
-                                            <div class="progress-bar bg-primary"
+                                            <div t-attf-class="progress-bar #{stage.bar_class || 'bg-primary'}"
                                                  t-attf-style="width: #{Math.round(stage.count / max_count * 100)}%"/>
                                         </div>
                                     </div>

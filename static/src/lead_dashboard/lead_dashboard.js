@@ -309,6 +309,14 @@ export class CrmLeadAnalyticsDashboard extends Component {
         }
         else this.openLeads([]);
     }
+
+    onStageClick(stage) {
+        if (stage.lead_ids && stage.lead_ids.length > 0) {
+            this.openLeads([["id", "in", stage.lead_ids]]);
+        } else {
+            this.openLeads([["stage_id.name", "=", stage.stage]]);
+        }
+    }
 }
 
 registry.category("actions").add("crm_lead_analytics_dashboard", CrmLeadAnalyticsDashboard);

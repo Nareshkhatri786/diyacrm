@@ -1576,16 +1576,92 @@ class CrmLead(models.Model):
         )
 
         # ── Stage funnel ─────────────────────────────────────────────────────
+        # Active and won leads grouped by stage
+        # Requirement: From lost leads, ONLY include leads where Site Visit was Done!
+        all_lead_ids = all_leads.ids
+        sv_lead_ids = set()
+        if all_lead_ids:
+            try:
+                self.env.cr.execute("""
+                    SELECT DISTINCT res_id 
+                    FROM mail_message 
+                    WHERE model = 'crm.lead' 
+                      AND res_id IN %s 
+                      AND (
+                          body ILIKE '%%Site Visit Done%%' 
+                          OR body ILIKE '%%thank you for visiting%%'
+                          OR body ILIKE '%%Sample House%%'
+                      )
+                """, [tuple(all_lead_ids)])
+                sv_lead_ids |= {r[0] for r in self.env.cr.fetchall()}
+            except Exception:
+                pass
+
+            try:
+                self.env.cr.execute("""
+                    SELECT DISTINCT res_id 
+                    FROM mail_activity 
+                    WHERE res_model = 'crm.lead' 
+                      AND res_id IN %s 
+                      AND activity_type_id IN (
+                          SELECT id FROM mail_activity_type WHERE name ILIKE '%%site%%'
+                      )
+                """, [tuple(all_lead_ids)])
+                sv_lead_ids |= {r[0] for r in self.env.cr.fetchall()}
+            except Exception:
+                pass
+
         stage_dict = {}
+        lost_sv_lead_ids = []
+
         for lead in all_leads:
-            if not is_lost(lead):  # exclude lost from funnel
+            if not is_lost(lead):
                 stage_name = lead.stage_id.name if lead.stage_id else "No Stage"
                 seq = lead.stage_id.sequence if lead.stage_id else 999
                 if stage_name not in stage_dict:
-                    stage_dict[stage_name] = {"stage": stage_name, "count": 0, "seq": seq}
+                    stage_dict[stage_name] = {
+                        "stage": stage_name,
+                        "count": 0,
+                        "seq": seq,
+                        "lead_ids": [],
+                        "badge_class": "bg-primary",
+                        "bar_class": "bg-primary",
+                    }
                 stage_dict[stage_name]["count"] += 1
+                stage_dict[stage_name]["lead_ids"].append(lead.id)
+            else:
+                # Check if Site Visit was completed on this lost lead
+                was_visited = (
+                    (lead.id in sv_lead_ids) or
+                    (lead.stage_id and any(w in (lead.stage_id.name or "").lower() for w in ["visit done", "5."]))
+                )
+                if was_visited:
+                    lost_sv_lead_ids.append(lead.id)
 
         stage_funnel = sorted(stage_dict.values(), key=lambda x: x["seq"])
+
+        # Add "Lost (Site Visit Done)" entry right after Site Visit Done stage
+        if lost_sv_lead_ids:
+            sv_seq = 6.0
+            for s in stage_funnel:
+                if any(w in s["stage"].lower() for w in ["visit done", "5."]):
+                    sv_seq = s["seq"] + 0.5
+                    break
+
+            stage_funnel.append({
+                "stage": "Lost (Site Visit Done)",
+                "count": len(lost_sv_lead_ids),
+                "seq": sv_seq,
+                "lead_ids": lost_sv_lead_ids[:1000],
+                "badge_class": "bg-danger",
+                "bar_class": "bg-danger",
+                "is_lost_sv": True,
+            })
+            stage_funnel = sorted(stage_funnel, key=lambda x: x["seq"])
+
+        # Truncate lead_ids for RPC safety
+        for s in stage_funnel:
+            s["lead_ids"] = s["lead_ids"][:1000]
 
         # ── Daily trend (last 60 days or filtered range) ─────────────────────
         daily_dict = {}
