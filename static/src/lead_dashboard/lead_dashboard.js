@@ -27,7 +27,19 @@ export class CrmLeadAnalyticsDashboard extends Component {
             dateFrom: "",
             dateTo: "",
             companyFilter: "all",
-            kpi: { total: 0, active: 0, lost: 0, won: 0, repeat: 0, total_cost: 0, conversion_pct: 0 },
+            kpi: {
+                total: 0,
+                active: 0,
+                lost: 0,
+                won: 0,
+                repeat: 0,
+                repeat_leads: 0,
+                fresh_cost: 0,
+                repeat_cost: 0,
+                total_cost: 0,
+                conversion_pct: 0,
+                repeat_lead_ids: [],
+            },
             source_data: [],
             company_data: [],
             stage_funnel: [],
@@ -243,7 +255,7 @@ export class CrmLeadAnalyticsDashboard extends Component {
                         callbacks: {
                             label: (item) => {
                                 const d = top[item.dataIndex];
-                                return [`Leads: ${d.total}`, `Active: ${d.active}`, `Lost: ${d.lost}`, `Cost: ₹${d.cost.toLocaleString("en-IN")}`];
+                                return [`Leads: ${d.total}`, `Active: ${d.active}`, `Lost: ${d.lost}`, `Won: ${d.won}`, `Repeat Hits: ${d.repeat || 0}`];
                             },
                         },
                     },
@@ -287,6 +299,14 @@ export class CrmLeadAnalyticsDashboard extends Component {
         if (type === "active") this.openLeads([["active", "=", true], ["probability", "<", 100]]);
         else if (type === "lost") this.openLeads([["active", "=", false]]);
         else if (type === "won") this.openLeads([["active", "=", true], ["probability", "=", 100]]);
+        else if (type === "repeat") {
+            const rids = this.state.kpi.repeat_lead_ids || [];
+            if (rids.length > 0) {
+                this.openLeads([["id", "in", rids]]);
+            } else {
+                this.notification.add("No repeat enquiry leads found for this filter.", { type: "info" });
+            }
+        }
         else this.openLeads([]);
     }
 }

@@ -96,26 +96,29 @@
                         <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-warning h-100 cursor-pointer"
                              t-on-click="() => this.onKpiClick('won')">
                             <div class="text-muted small fw-semibold text-uppercase">🏆 Won/Booked</div>
-                            <div class="fs-2 fw-bold text-warning mt-1"><t t-esc="state.kpi.won.toLocaleString('en-IN')"/></div>
+                            <div class="fs-2 fw-bold mt-1" style="color: #b45309 !important;"><t t-esc="state.kpi.won.toLocaleString('en-IN')"/></div>
                             <div class="small text-muted"><t t-esc="state.kpi.conversion_pct"/>% conversion</div>
                         </div>
                     </div>
                     <!-- Repeat -->
                     <div class="col-6 col-md-4 col-lg-2">
-                        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-info h-100">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-info h-100 cursor-pointer"
+                             t-on-click="() => this.onKpiClick('repeat')">
                             <div class="text-muted small fw-semibold text-uppercase">🔄 Repeat</div>
                             <div class="fs-2 fw-bold text-info mt-1"><t t-esc="state.kpi.repeat.toLocaleString('en-IN')"/></div>
-                            <div class="small text-muted">Duplicate enquiries</div>
+                            <div class="small text-muted"><t t-esc="state.kpi.repeat_leads || 0"/> unique clients</div>
                         </div>
                     </div>
                     <!-- Cost -->
                     <div class="col-6 col-md-4 col-lg-2">
-                        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-secondary h-100">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-success h-100">
                             <div class="text-muted small fw-semibold text-uppercase">💰 Total Cost</div>
-                            <div class="fs-2 fw-bold text-secondary mt-1">
+                            <div class="fs-2 fw-bold mt-1" style="color: #0f172a !important; font-weight: 800;">
                                 <t t-esc="this.fmt_inr(state.kpi.total_cost)"/>
                             </div>
-                            <div class="small text-muted">Lead acquisition spend</div>
+                            <div class="small text-muted mt-1" style="font-size: 0.76rem;">
+                                Fresh: <strong class="text-dark"><t t-esc="this.fmt_inr(state.kpi.fresh_cost || 0)"/></strong> · Rep: <strong class="text-dark"><t t-esc="this.fmt_inr(state.kpi.repeat_cost || 0)"/></strong>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -138,8 +141,8 @@
                                                 <th class="text-center">Total</th>
                                                 <th class="text-center text-success">Active</th>
                                                 <th class="text-center text-danger">Lost</th>
-                                                <th class="text-center text-warning">Won</th>
-                                                <th class="text-center text-info">Repeat</th>
+                                                <th class="text-center fw-bold" style="color: #b45309 !important;">Won</th>
+                                                <th class="text-center text-info">Repeat Hits</th>
                                                 <th class="text-end">₹/Lead</th>
                                                 <th class="text-end">Total Cost</th>
                                             </tr>
@@ -151,10 +154,10 @@
                                                     <td class="text-center fw-bold"><t t-esc="c.total"/></td>
                                                     <td class="text-center text-success"><t t-esc="c.active"/></td>
                                                     <td class="text-center text-danger"><t t-esc="c.lost"/></td>
-                                                    <td class="text-center text-warning"><t t-esc="c.won"/></td>
-                                                    <td class="text-center text-info"><t t-esc="c.repeat"/></td>
+                                                    <td class="text-center fw-bold" style="color: #b45309 !important;"><t t-esc="c.won"/></td>
+                                                    <td class="text-center text-info fw-semibold"><t t-esc="c.repeat"/></td>
                                                     <td class="text-end text-muted">₹<t t-esc="c.cost_per_lead"/></td>
-                                                    <td class="text-end fw-bold text-secondary"><t t-esc="this.fmt_inr(c.cost)"/></td>
+                                                    <td class="text-end fw-bold text-dark" style="color: #0f172a !important; font-size: 0.95rem;"><t t-esc="this.fmt_inr(c.cost)"/></td>
                                                 </tr>
                                             </t>
                                             <tr t-if="state.company_data.length === 0">
@@ -211,9 +214,8 @@
                                                 <th class="text-center">Total</th>
                                                 <th class="text-center text-success">Active</th>
                                                 <th class="text-center text-danger">Lost</th>
-                                                <th class="text-center text-warning">Won</th>
-                                                <th class="text-center text-info">Repeat</th>
-                                                <th class="text-end">Cost</th>
+                                                <th class="text-center fw-bold" style="color: #b45309 !important;">Won</th>
+                                                <th class="text-center text-info">Repeat Hits</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -223,13 +225,12 @@
                                                     <td class="text-center fw-bold"><t t-esc="src.total"/></td>
                                                     <td class="text-center text-success"><t t-esc="src.active"/></td>
                                                     <td class="text-center text-danger"><t t-esc="src.lost"/></td>
-                                                    <td class="text-center text-warning"><t t-esc="src.won"/></td>
-                                                    <td class="text-center text-info"><t t-esc="src.repeat"/></td>
-                                                    <td class="text-end fw-bold text-secondary"><t t-esc="this.fmt_inr(src.cost)"/></td>
+                                                    <td class="text-center fw-bold" style="color: #b45309 !important;"><t t-esc="src.won"/></td>
+                                                    <td class="text-center text-info fw-semibold"><t t-esc="src.repeat"/></td>
                                                 </tr>
                                             </t>
                                             <tr t-if="state.source_data.length === 0">
-                                                <td colspan="7" class="text-center text-muted py-3">No data</td>
+                                                <td colspan="6" class="text-center text-muted py-3">No data</td>
                                             </tr>
                                         </tbody>
                                     </table>

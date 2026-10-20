@@ -1447,52 +1447,78 @@ class CrmLead(models.Model):
         def is_active(lead):
             return lead.active and not is_won(lead) and not is_lost(lead)
 
-        # Repeat: phone already seen before this lead (within same company scope)
-        # We detect repeat by counting leads where phone appears more than once
-        phone_company_map = {}
-        repeat_ids = set()
-        for lead in all_leads:
-            raw = lead.phone or ""
-            digits = _re.sub(r"\D", "", raw)
-            phone_10 = digits[-10:] if len(digits) >= 10 else digits
-            if not phone_10:
-                continue
-            key = (lead.company_id.id, phone_10)
-            if key in phone_company_map:
-                # second+ occurrence
-                repeat_ids.add(lead.id)
-            else:
-                phone_company_map[key] = lead.id
+        # ── Repeat Enquiries via Logic 1 (Inbound WhatsApp Hits) ─────────────
+        # Inbound WhatsApp messages arriving on distinct days after lead creation date
+        company_repeat_hits = {}
+        company_repeat_leads = {}
+        lead_repeat_hits = {}
+        repeat_lead_ids = set()
+        total_repeat_hits = 0
+
+        try:
+            repeat_query = """
+                SELECT 
+                    m.lead_id,
+                    l.company_id,
+                    l.source_id,
+                    count(DISTINCT m.date::date) AS repeat_days
+                FROM crm_lead_whatsapp_message m
+                JOIN crm_lead l ON l.id = m.lead_id
+                WHERE m.direction = 'inbound'
+                  AND m.date::date > l.create_date::date
+                  AND l.company_id IN %s
+            """
+            params = [tuple(company_ids)]
+            if start_utc:
+                repeat_query += " AND m.date >= %s"
+                params.append(start_utc)
+            if end_utc:
+                repeat_query += " AND m.date <= %s"
+                params.append(end_utc)
+
+            repeat_query += " GROUP BY m.lead_id, l.company_id, l.source_id"
+
+            self.env.cr.execute(repeat_query, params)
+            repeat_rows = self.env.cr.fetchall()
+
+            for lid, cid, sid, hits in repeat_rows:
+                repeat_lead_ids.add(lid)
+                lead_repeat_hits[lid] = hits
+                total_repeat_hits += hits
+                company_repeat_hits[cid] = company_repeat_hits.get(cid, 0) + hits
+                company_repeat_leads[cid] = company_repeat_leads.get(cid, 0) + 1
+        except Exception:
+            pass
 
         total_count = len(all_leads)
         active_count = sum(1 for l in all_leads if is_active(l))
         lost_count = sum(1 for l in all_leads if is_lost(l))
         won_count = sum(1 for l in all_leads if is_won(l))
-        repeat_count = len(repeat_ids)
 
-        total_cost = sum(cost_for(l.company_id.id) for l in all_leads)
+        fresh_cost = sum(cost_for(l.company_id.id) for l in all_leads)
+        repeat_cost = sum(hits * cost_for(cid) for cid, hits in company_repeat_hits.items())
+        total_cost = fresh_cost + repeat_cost
         conversion_pct = round((won_count / total_count * 100), 1) if total_count > 0 else 0
 
-        # ── Source breakdown ─────────────────────────────────────────────────
+        # ── Source breakdown (Cost excluded per user requirement) ────────────
         source_dict = {}
         for lead in all_leads:
             src_name = (lead.source_id.name if lead.source_id else "Unknown / Direct")
             if src_name not in source_dict:
-                source_dict[src_name] = {"total": 0, "active": 0, "lost": 0, "won": 0, "repeat": 0, "cost": 0.0}
+                source_dict[src_name] = {"total": 0, "active": 0, "lost": 0, "won": 0, "repeat": 0}
             d = source_dict[src_name]
             d["total"] += 1
-            d["cost"] += cost_for(lead.company_id.id)
             if is_active(lead):
                 d["active"] += 1
             elif is_lost(lead):
                 d["lost"] += 1
             elif is_won(lead):
                 d["won"] += 1
-            if lead.id in repeat_ids:
-                d["repeat"] += 1
+            if lead.id in lead_repeat_hits:
+                d["repeat"] += lead_repeat_hits[lead.id]
 
         source_data = sorted(
-            [{"source": k, **v, "cost": round(v["cost"], 0)} for k, v in source_dict.items()],
+            [{"source": k, **v} for k, v in source_dict.items()],
             key=lambda x: x["total"],
             reverse=True,
         )
@@ -1501,36 +1527,49 @@ class CrmLead(models.Model):
         company_dict = {}
         all_project_companies = self.env["res.company"].browse(company_ids)
         for comp in all_project_companies:
+            c_cost_per_lead = cost_for(comp.id)
+            c_rep_hits = company_repeat_hits.get(comp.id, 0)
+            c_rep_cost = round(c_rep_hits * c_cost_per_lead, 0)
             company_dict[comp.id] = {
                 "company": comp.name,
-                "total": 0, "active": 0, "lost": 0, "won": 0, "repeat": 0,
-                "cost_per_lead": cost_for(comp.id),
-                "cost": 0.0,
+                "total": 0, "active": 0, "lost": 0, "won": 0,
+                "repeat": c_rep_hits,
+                "repeat_leads": company_repeat_leads.get(comp.id, 0),
+                "cost_per_lead": c_cost_per_lead,
+                "fresh_cost": 0.0,
+                "repeat_cost": c_rep_cost,
+                "cost": c_rep_cost,
             }
 
         for lead in all_leads:
             cid = lead.company_id.id
             if cid not in company_dict:
+                c_cost_per_lead = cost_for(cid)
+                c_rep_hits = company_repeat_hits.get(cid, 0)
+                c_rep_cost = round(c_rep_hits * c_cost_per_lead, 0)
                 company_dict[cid] = {
                     "company": lead.company_id.name or f"Company {cid}",
-                    "total": 0, "active": 0, "lost": 0, "won": 0, "repeat": 0,
-                    "cost_per_lead": cost_for(cid),
-                    "cost": 0.0,
+                    "total": 0, "active": 0, "lost": 0, "won": 0,
+                    "repeat": c_rep_hits,
+                    "repeat_leads": company_repeat_leads.get(cid, 0),
+                    "cost_per_lead": c_cost_per_lead,
+                    "fresh_cost": 0.0,
+                    "repeat_cost": c_rep_cost,
+                    "cost": c_rep_cost,
                 }
             d = company_dict[cid]
             d["total"] += 1
-            d["cost"] += cost_for(cid)
+            d["fresh_cost"] += d["cost_per_lead"]
+            d["cost"] += d["cost_per_lead"]
             if is_active(lead):
                 d["active"] += 1
             elif is_lost(lead):
                 d["lost"] += 1
             elif is_won(lead):
                 d["won"] += 1
-            if lead.id in repeat_ids:
-                d["repeat"] += 1
 
         company_data = sorted(
-            [{"id": k, **{kk: vv for kk, vv in v.items()}, "cost": round(v["cost"], 0)}
+            [{"id": k, **{kk: vv for kk, vv in v.items()}, "cost": round(v["cost"], 0), "fresh_cost": round(v["fresh_cost"], 0)}
              for k, v in company_dict.items()],
             key=lambda x: x["total"],
             reverse=True,
@@ -1591,9 +1630,13 @@ class CrmLead(models.Model):
                 "active": active_count,
                 "lost": lost_count,
                 "won": won_count,
-                "repeat": repeat_count,
+                "repeat": total_repeat_hits,
+                "repeat_leads": len(repeat_lead_ids),
+                "fresh_cost": round(fresh_cost, 0),
+                "repeat_cost": round(repeat_cost, 0),
                 "total_cost": round(total_cost, 0),
                 "conversion_pct": conversion_pct,
+                "repeat_lead_ids": list(repeat_lead_ids)[:1000],
             },
             "source_data": source_data,
             "company_data": company_data,
