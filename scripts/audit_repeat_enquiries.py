@@ -1,101 +1,161 @@
 # -*- coding: utf-8 -*-
 """
 Diya CRM - Repeat Enquiry Audit via Logic 1 (crm.lead.whatsapp.message)
-Calculates exact repeat inbound enquiry hits and promotional cost impact.
+Zero-dependency script using direct PostgreSQL psql execution.
 """
 import sys
 import os
+import subprocess
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
-config_path = '/etc/odoo19.conf' if os.path.exists('/etc/odoo19.conf') else r'c:\xampp\htdocs\odoo-19\odoo.conf'
-db_name = 'diyacrm' if os.path.exists('/etc/odoo19.conf') else 'odoo19'
+SQL_AUDIT = """
+DO $$
+DECLARE
+    r RECORD;
+    v_total_leads INT;
+    v_total_inbound INT;
+    v_leads_with_repeats INT;
+    v_total_repeat_hits INT;
+    v_lead_cost NUMERIC;
+    v_repeat_cost NUMERIC;
+    v_total_cost NUMERIC;
+BEGIN
+    RAISE NOTICE '==================================================================';
+    RAISE NOTICE ' 📊 DIYA CRM - REPEAT ENQUIRY AUDIT (LOGIC 1: INBOUND HITS)';
+    RAISE NOTICE '==================================================================';
 
-if os.path.exists('/opt/odoo19/odoo'):
-    sys.path.insert(0, '/opt/odoo19/odoo')
-else:
-    sys.path.insert(0, r"c:\xampp\htdocs\odoo-19")
+    -- 1. Global Overview
+    SELECT count(*) INTO v_total_leads FROM crm_lead;
+    SELECT count(*) INTO v_total_inbound FROM crm_lead_whatsapp_message WHERE direction = 'inbound';
 
-import odoo
-from odoo import api, SUPERUSER_ID
-from odoo.orm.registry import Registry
-from odoo.tools import config
+    RAISE NOTICE '1. GLOBAL STATS:';
+    RAISE NOTICE '   • Total Leads in CRM: %', v_total_leads;
+    RAISE NOTICE '   • Total Inbound WhatsApp Messages: %', v_total_inbound;
 
-config.parse_config(['-c', config_path, '-d', db_name])
+    -- 2. Project / Company Wise Breakdown
+    RAISE NOTICE '';
+    RAISE NOTICE '2. COMPANY / PROJECT-WISE BREAKDOWN:';
+    RAISE NOTICE '%-30s | %-10s | %-12s | %-12s | %-12s | %-12s', 
+                 'Project / Company', 'Total Leads', 'Repeat Leads', 'Repeat Hits', 'Fresh Cost', 'Repeat Cost';
+    RAISE NOTICE '---------------------------------------------------------------------------------------------------------';
 
-def run_repeat_audit():
-    print("==================================================================")
-    print(" 📊 DIYA CRM - REPEAT ENQUIRY AUDIT (LOGIC 1: INBOUND HITS)")
-    print("==================================================================")
-
-    registry = Registry(db_name)
-    with registry.cursor() as cr:
-        env = api.Environment(cr, SUPERUSER_ID, {})
-
-        # Query 1: Total leads and inbound messages
-        cr.execute("SELECT count(*) FROM crm_lead WHERE active_test IS NOT FALSE")
-        total_leads = cr.fetchone()[0]
-
-        cr.execute("SELECT count(*) FROM crm_lead_whatsapp_message WHERE direction = 'inbound'")
-        total_inbound_msgs = cr.fetchone()[0]
-
-        print(f"\n1. Overview:")
-        print(f"   • Total Leads in CRM: {total_leads}")
-        print(f"   • Total Inbound WhatsApp Messages: {total_inbound_msgs}")
-
-        # Query 2: Repeat Enquiry Hits per Lead
-        # Defined as: Distinct days when inbound WhatsApp message arrived AFTER the lead's creation date
-        query = """
+    FOR r IN (
+        WITH repeat_stats AS (
             SELECT 
-                l.company_id,
-                c.name as company_name,
-                l.id as lead_id,
-                l.name as lead_name,
-                l.phone,
-                l.create_date::date as lead_created,
-                count(DISTINCT m.date::date) as repeat_days,
-                array_agg(DISTINCT m.date::date ORDER BY m.date::date) as repeat_dates
+                m.lead_id,
+                count(DISTINCT m.date::date) AS repeat_days
             FROM crm_lead_whatsapp_message m
             JOIN crm_lead l ON l.id = m.lead_id
-            JOIN res_company c ON c.id = l.company_id
             WHERE m.direction = 'inbound'
               AND m.date::date > l.create_date::date
-            GROUP BY l.company_id, c.name, l.id, l.name, l.phone, l.create_date::date
-            ORDER BY repeat_days DESC
-        """
-        cr.execute(query)
-        rows = cr.fetchall()
+            GROUP BY m.lead_id
+        ),
+        company_summary AS (
+            SELECT 
+                c.id AS company_id,
+                COALESCE(c.name, 'No Company') AS company_name,
+                count(l.id) AS total_leads,
+                count(rep.lead_id) AS leads_with_repeats,
+                COALESCE(sum(rep.repeat_days), 0) AS total_repeat_hits
+            FROM crm_lead l
+            JOIN res_company c ON c.id = l.company_id
+            LEFT JOIN repeat_stats rep ON rep.lead_id = l.id
+            GROUP BY c.id, c.name
+            ORDER BY total_leads DESC
+        )
+        SELECT * FROM company_summary
+    ) LOOP
+        RAISE NOTICE '%-30s | %-10s | %-12s | %-12s | ₹%-11s | ₹%-11s',
+                     r.company_name,
+                     r.total_leads,
+                     r.leads_with_repeats,
+                     r.total_repeat_hits,
+                     (r.total_leads * 70),
+                     (r.total_repeat_hits * 70);
+    END LOOP;
 
-        total_repeat_hits = sum(r[6] for r in rows)
-        leads_with_repeats = len(rows)
+    -- 3. Overall Totals
+    SELECT 
+        count(DISTINCT rep.lead_id),
+        COALESCE(sum(rep.repeat_days), 0)
+    INTO v_leads_with_repeats, v_total_repeat_hits
+    FROM (
+        SELECT 
+            m.lead_id,
+            count(DISTINCT m.date::date) AS repeat_days
+        FROM crm_lead_whatsapp_message m
+        JOIN crm_lead l ON l.id = m.lead_id
+        WHERE m.direction = 'inbound'
+          AND m.date::date > l.create_date::date
+        GROUP BY m.lead_id
+    ) rep;
 
-        print(f"\n2. Repeat Enquiry Findings (Logic 1):")
-        print(f"   • Unique Leads with Re-enquiries: {leads_with_repeats}")
-        print(f"   • Total Repeat Enquiry Hits (Paid Ad Clicks): {total_repeat_hits}")
+    v_lead_cost := v_total_leads * 70;
+    v_repeat_cost := v_total_repeat_hits * 70;
+    v_total_cost := v_lead_cost + v_repeat_cost;
 
-        # Cost Calculation
-        cost_per_lead = 70.0
-        fresh_cost = total_leads * cost_per_lead
-        repeat_cost = total_repeat_hits * cost_per_lead
-        actual_total_cost = fresh_cost + repeat_cost
+    RAISE NOTICE '---------------------------------------------------------------------------------------------------------';
+    RAISE NOTICE '3. TOTAL SUMMARY ACROSS CRM:';
+    RAISE NOTICE '   • Total Fresh Leads Created: % (Ad Cost @ ₹70 = ₹%)', v_total_leads, v_lead_cost;
+    RAISE NOTICE '   • Total Repeat Inbound Hits: % from % distinct leads (Extra Ad Cost @ ₹70 = ₹%)', 
+                 v_total_repeat_hits, v_leads_with_repeats, v_repeat_cost;
+    RAISE NOTICE '   • Grand Total Promotional Ad Cost: ₹% (Fresh ₹% + Repeat ₹%)',
+                 v_total_cost, v_lead_cost, v_repeat_cost;
+    RAISE NOTICE '==================================================================';
 
-        print(f"\n3. Cost Impact (@ ₹{cost_per_lead:.0f}/lead):")
-        print(f"   • Fresh Leads Cost ({total_leads} × ₹70) : ₹{fresh_cost:,.2f}")
-        print(f"   • Repeat Enquiry Cost ({total_repeat_hits} × ₹70) : ₹{repeat_cost:,.2f}")
-        print(f"   • 💰 ACTUAL TOTAL AD SPEND          : ₹{actual_total_cost:,.2f}")
+END $$;
 
-        # Top 5 Repeat Examples
-        print(f"\n4. Top 5 Sample Repeat Enquiry Leads:")
-        for r in rows[:5]:
-            comp_name, lead_id, lead_name, phone, created, rep_count, rep_dates = r[1], r[2], r[3], r[4], r[5], r[6], r[7]
-            dates_str = ", ".join(str(d) for d in rep_dates[:3])
-            if len(rep_dates) > 3:
-                dates_str += f" (+{len(rep_dates)-3} more)"
-            print(f"   • Lead #{lead_id} ({lead_name} | {phone} | {comp_name})")
-            print(f"     Created: {created} | Re-enquiries: {rep_count} times on [{dates_str}]")
+-- 4. Sample Top 10 Repeat Enquiries Details
+SELECT 
+    l.id AS lead_id,
+    LEFT(l.name, 25) AS lead_name,
+    COALESCE(l.phone, l.mobile, '-') AS contact,
+    c.name AS project,
+    l.create_date::date AS created_on,
+    rep.repeat_days AS repeat_hits,
+    rep.min_repeat_date AS first_repeat,
+    rep.max_repeat_date AS last_repeat
+FROM (
+    SELECT 
+        m.lead_id,
+        count(DISTINCT m.date::date) AS repeat_days,
+        min(m.date::date) AS min_repeat_date,
+        max(m.date::date) AS max_repeat_date
+    FROM crm_lead_whatsapp_message m
+    JOIN crm_lead l ON l.id = m.lead_id
+    WHERE m.direction = 'inbound'
+      AND m.date::date > l.create_date::date
+    GROUP BY m.lead_id
+    ORDER BY repeat_days DESC
+    LIMIT 10
+) rep
+JOIN crm_lead l ON l.id = rep.lead_id
+JOIN res_company c ON c.id = l.company_id
+ORDER BY rep.repeat_days DESC;
+"""
 
-        print("==================================================================")
+def run():
+    # If on Linux server
+    if os.name != 'nt':
+        cmd = ["sudo", "-u", "postgres", "psql", "-d", "diyacrm", "-c", SQL_AUDIT]
+    else:
+        # Local Windows fallback if psql is in PATH
+        cmd = ["psql", "-U", "postgres", "-d", "odoo19", "-c", SQL_AUDIT]
+    
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        print(res.stdout)
+        if res.stderr:
+            print(res.stderr)
+    except Exception as e:
+        # In case psql requires specific connection
+        print(f"Error running psql directly: {e}")
+        # Try alternate linux cmd
+        if os.name != 'nt':
+            alt_cmd = f"sudo -u postgres psql -d diyacrm << 'EOF'\n{SQL_AUDIT}\nEOF"
+            os.system(alt_cmd)
 
 if __name__ == '__main__':
-    run_repeat_audit()
+    run()
