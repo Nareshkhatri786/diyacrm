@@ -313,6 +313,8 @@ export class CrmLeadAnalyticsDashboard extends Component {
     onStageClick(stage) {
         if (stage.lead_ids && stage.lead_ids.length > 0) {
             this.openLeads([["id", "in", stage.lead_ids]]);
+        } else if (stage.is_lost_sv) {
+            this.openLeads([["active", "=", false], ["stage_id.name", "ilike", "Visit Done"]]);
         } else {
             this.openLeads([["stage_id.name", "=", stage.stage]]);
         }

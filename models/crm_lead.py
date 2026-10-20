@@ -1468,7 +1468,7 @@ class CrmLead(models.Model):
                   AND m.date::date > l.create_date::date
                   AND l.company_id IN %s
             """
-            params = [tuple(company_ids)]
+            params = [tuple(list(company_ids) + [-1])]
             if start_utc:
                 repeat_query += " AND m.date >= %s"
                 params.append(start_utc)
@@ -1577,40 +1577,7 @@ class CrmLead(models.Model):
 
         # ── Stage funnel ─────────────────────────────────────────────────────
         # Active and won leads grouped by stage
-        # Requirement: From lost leads, ONLY include leads where Site Visit was Done!
-        all_lead_ids = all_leads.ids
-        sv_lead_ids = set()
-        if all_lead_ids:
-            try:
-                self.env.cr.execute("""
-                    SELECT DISTINCT res_id 
-                    FROM mail_message 
-                    WHERE model = 'crm.lead' 
-                      AND res_id IN %s 
-                      AND (
-                          body ILIKE '%%Site Visit Done%%' 
-                          OR body ILIKE '%%thank you for visiting%%'
-                          OR body ILIKE '%%Sample House%%'
-                      )
-                """, [tuple(all_lead_ids)])
-                sv_lead_ids |= {r[0] for r in self.env.cr.fetchall()}
-            except Exception:
-                pass
-
-            try:
-                self.env.cr.execute("""
-                    SELECT DISTINCT res_id 
-                    FROM mail_activity 
-                    WHERE res_model = 'crm.lead' 
-                      AND res_id IN %s 
-                      AND activity_type_id IN (
-                          SELECT id FROM mail_activity_type WHERE name ILIKE '%%site%%'
-                      )
-                """, [tuple(all_lead_ids)])
-                sv_lead_ids |= {r[0] for r in self.env.cr.fetchall()}
-            except Exception:
-                pass
-
+        # Plus: Lost leads where stage is Site Visit Done (per user rule)
         stage_dict = {}
         lost_sv_lead_ids = []
 
@@ -1630,17 +1597,13 @@ class CrmLead(models.Model):
                 stage_dict[stage_name]["count"] += 1
                 stage_dict[stage_name]["lead_ids"].append(lead.id)
             else:
-                # Check if Site Visit was completed on this lost lead
-                was_visited = (
-                    (lead.id in sv_lead_ids) or
-                    (lead.stage_id and any(w in (lead.stage_id.name or "").lower() for w in ["visit done", "5."]))
-                )
-                if was_visited:
+                # User rule: Lost leads where stage was Site Visit Done
+                if lead.stage_id and any(w in (lead.stage_id.name or "").lower() for w in ["visit done", "5."]):
                     lost_sv_lead_ids.append(lead.id)
 
         stage_funnel = sorted(stage_dict.values(), key=lambda x: x["seq"])
 
-        # Add "Lost (Site Visit Done)" entry right after Site Visit Done stage
+        # Add "Site Visit Done (Lost)" entry right after Site Visit Done stage
         if lost_sv_lead_ids:
             sv_seq = 6.0
             for s in stage_funnel:
@@ -1649,7 +1612,7 @@ class CrmLead(models.Model):
                     break
 
             stage_funnel.append({
-                "stage": "Lost (Site Visit Done)",
+                "stage": "Site Visit Done (Lost)",
                 "count": len(lost_sv_lead_ids),
                 "seq": sv_seq,
                 "lead_ids": lost_sv_lead_ids[:1000],
