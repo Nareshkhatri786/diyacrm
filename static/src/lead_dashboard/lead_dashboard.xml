@@ -146,7 +146,7 @@
                                         </thead>
                                         <tbody>
                                             <t t-foreach="state.company_data" t-as="c" t-key="c.id">
-                                                <tr t-on-click="() => this.openLeadsByCompany(c.id)" class="cursor-pointer" title="Click to view leads for this project">
+                                                <tr>
                                                     <td class="fw-semibold text-truncate" style="max-width:140px;" t-att-title="c.company"><t t-esc="c.company"/></td>
                                                     <td class="text-center fw-bold"><t t-esc="c.total"/></td>
                                                     <td class="text-center text-success"><t t-esc="c.active"/></td>
@@ -176,7 +176,7 @@
                             <div class="card-body py-2">
                                 <t t-set="max_count" t-value="Math.max(...state.stage_funnel.map(s => s.count), 1)"/>
                                 <t t-foreach="state.stage_funnel" t-as="stage" t-key="stage.stage">
-                                    <div class="mb-2 cursor-pointer p-1 rounded" t-on-click="() => this.openLeadsByStage(stage.stage)" title="Click to view leads in this stage">
+                                    <div class="mb-2">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <span class="small fw-semibold text-truncate" style="max-width:70%;"><t t-esc="stage.stage"/></span>
                                             <span class="badge bg-primary ms-2"><t t-esc="stage.count"/></span>
@@ -218,7 +218,7 @@
                                         </thead>
                                         <tbody>
                                             <t t-foreach="state.source_data" t-as="src" t-key="src.source">
-                                                <tr t-on-click="() => this.openLeadsBySource(src.source)" class="cursor-pointer" title="Click to view leads from this source">
+                                                <tr>
                                                     <td class="fw-semibold text-truncate" style="max-width:150px;"><t t-esc="src.source"/></td>
                                                     <td class="text-center fw-bold"><t t-esc="src.total"/></td>
                                                     <td class="text-center text-success"><t t-esc="src.active"/></td>

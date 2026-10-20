@@ -289,26 +289,6 @@ export class CrmLeadAnalyticsDashboard extends Component {
         else if (type === "won") this.openLeads([["active", "=", true], ["probability", "=", 100]]);
         else this.openLeads([]);
     }
-
-    openLeadsByCompany(companyId) {
-        this.openLeads([["company_id", "=", companyId]]);
-    }
-
-    openLeadsBySource(sourceName) {
-        if (sourceName === "Unknown / Direct") {
-            this.openLeads([["source_id", "=", false]]);
-        } else {
-            this.openLeads([["source_id.name", "=", sourceName]]);
-        }
-    }
-
-    openLeadsByStage(stageName) {
-        if (stageName === "No Stage") {
-            this.openLeads([["stage_id", "=", false], ["active", "=", true]]);
-        } else {
-            this.openLeads([["stage_id.name", "=", stageName], ["active", "=", true]]);
-        }
-    }
 }
 
 registry.category("actions").add("crm_lead_analytics_dashboard", CrmLeadAnalyticsDashboard);
