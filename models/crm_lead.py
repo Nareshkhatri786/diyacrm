@@ -1374,3 +1374,233 @@ class CrmLead(models.Model):
         except Exception as e:
             _logger.exception("Exception sending Campaign WhatsApp for lead #%s: %s", self.id, e)
             return False
+
+
+    # ───────────────────────────────────────────────────────────────────────
+    # LEAD ANALYTICS DASHBOARD
+    # ───────────────────────────────────────────────────────────────────────
+
+    @api.model
+    def get_lead_dashboard_data(self, date_from=None, date_to=None, company_id="all"):
+        """
+        Returns comprehensive lead analytics data for the Lead Analytics Dashboard.
+        All costs are taken from crm.project.cost (per-project configurable).
+        """
+        import re as _re
+        user_tz = pytz.timezone(self.env.user.tz or "Asia/Kolkata")
+        now_dt = datetime.datetime.now(user_tz)
+
+        # ── Date range ──────────────────────────────────────────────────────
+        if date_from:
+            try:
+                start_utc = datetime.datetime.strptime(date_from, "%Y-%m-%d").strftime("%Y-%m-%d 00:00:00")
+            except Exception:
+                start_utc = None
+        else:
+            start_utc = None
+
+        if date_to:
+            try:
+                end_utc = datetime.datetime.strptime(date_to, "%Y-%m-%d").strftime("%Y-%m-%d 23:59:59")
+            except Exception:
+                end_utc = None
+        else:
+            end_utc = None
+
+        # ── Company filter ───────────────────────────────────────────────────
+        allowed_companies = self.env.companies
+        if company_id != "all" and company_id:
+            try:
+                cid = int(company_id)
+                comp = allowed_companies.filtered(lambda c: c.id == cid)
+                active_companies = comp if comp else self.env["res.company"].browse([cid])
+            except Exception:
+                active_companies = allowed_companies
+        else:
+            active_companies = allowed_companies
+
+        company_ids = active_companies.ids
+
+        # ── Cost map ─────────────────────────────────────────────────────────
+        cost_map = self.env["crm.project.cost"].sudo().get_cost_map()
+        DEFAULT_COST = 70.0
+
+        def cost_for(cid):
+            return cost_map.get(cid, DEFAULT_COST)
+
+        # ── Load ALL leads (including lost/archived) ─────────────────────────
+        base_domain = [("company_id", "in", company_ids)]
+        if start_utc:
+            base_domain.append(("create_date", ">=", start_utc))
+        if end_utc:
+            base_domain.append(("create_date", "<=", end_utc))
+
+        all_leads = self.with_context(active_test=False).search(base_domain, order="create_date asc")
+
+        # ── Categorise leads ─────────────────────────────────────────────────
+        def is_lost(lead):
+            return not lead.active and (lead.lost_reason_id or lead.probability == 0)
+
+        def is_won(lead):
+            return lead.active and lead.probability == 100
+
+        def is_active(lead):
+            return lead.active and not is_won(lead) and not is_lost(lead)
+
+        # Repeat: phone already seen before this lead (within same company scope)
+        # We detect repeat by counting leads where phone appears more than once
+        phone_company_map = {}
+        repeat_ids = set()
+        for lead in all_leads:
+            raw = lead.phone or ""
+            digits = _re.sub(r"\D", "", raw)
+            phone_10 = digits[-10:] if len(digits) >= 10 else digits
+            if not phone_10:
+                continue
+            key = (lead.company_id.id, phone_10)
+            if key in phone_company_map:
+                # second+ occurrence
+                repeat_ids.add(lead.id)
+            else:
+                phone_company_map[key] = lead.id
+
+        total_count = len(all_leads)
+        active_count = sum(1 for l in all_leads if is_active(l))
+        lost_count = sum(1 for l in all_leads if is_lost(l))
+        won_count = sum(1 for l in all_leads if is_won(l))
+        repeat_count = len(repeat_ids)
+
+        total_cost = sum(cost_for(l.company_id.id) for l in all_leads)
+        conversion_pct = round((won_count / total_count * 100), 1) if total_count > 0 else 0
+
+        # ── Source breakdown ─────────────────────────────────────────────────
+        source_dict = {}
+        for lead in all_leads:
+            src_name = (lead.source_id.name if lead.source_id else "Unknown / Direct")
+            if src_name not in source_dict:
+                source_dict[src_name] = {"total": 0, "active": 0, "lost": 0, "won": 0, "repeat": 0, "cost": 0.0}
+            d = source_dict[src_name]
+            d["total"] += 1
+            d["cost"] += cost_for(lead.company_id.id)
+            if is_active(lead):
+                d["active"] += 1
+            elif is_lost(lead):
+                d["lost"] += 1
+            elif is_won(lead):
+                d["won"] += 1
+            if lead.id in repeat_ids:
+                d["repeat"] += 1
+
+        source_data = sorted(
+            [{"source": k, **v, "cost": round(v["cost"], 0)} for k, v in source_dict.items()],
+            key=lambda x: x["total"],
+            reverse=True,
+        )
+
+        # ── Company/Project breakdown ─────────────────────────────────────────
+        company_dict = {}
+        all_project_companies = self.env["res.company"].browse(company_ids)
+        for comp in all_project_companies:
+            company_dict[comp.id] = {
+                "company": comp.name,
+                "total": 0, "active": 0, "lost": 0, "won": 0, "repeat": 0,
+                "cost_per_lead": cost_for(comp.id),
+                "cost": 0.0,
+            }
+
+        for lead in all_leads:
+            cid = lead.company_id.id
+            if cid not in company_dict:
+                company_dict[cid] = {
+                    "company": lead.company_id.name or f"Company {cid}",
+                    "total": 0, "active": 0, "lost": 0, "won": 0, "repeat": 0,
+                    "cost_per_lead": cost_for(cid),
+                    "cost": 0.0,
+                }
+            d = company_dict[cid]
+            d["total"] += 1
+            d["cost"] += cost_for(cid)
+            if is_active(lead):
+                d["active"] += 1
+            elif is_lost(lead):
+                d["lost"] += 1
+            elif is_won(lead):
+                d["won"] += 1
+            if lead.id in repeat_ids:
+                d["repeat"] += 1
+
+        company_data = sorted(
+            [{"id": k, **{kk: vv for kk, vv in v.items()}, "cost": round(v["cost"], 0)}
+             for k, v in company_dict.items()],
+            key=lambda x: x["total"],
+            reverse=True,
+        )
+
+        # ── Stage funnel ─────────────────────────────────────────────────────
+        stage_dict = {}
+        for lead in all_leads:
+            if not is_lost(lead):  # exclude lost from funnel
+                stage_name = lead.stage_id.name if lead.stage_id else "No Stage"
+                seq = lead.stage_id.sequence if lead.stage_id else 999
+                if stage_name not in stage_dict:
+                    stage_dict[stage_name] = {"stage": stage_name, "count": 0, "seq": seq}
+                stage_dict[stage_name]["count"] += 1
+
+        stage_funnel = sorted(stage_dict.values(), key=lambda x: x["seq"])
+
+        # ── Daily trend (last 60 days or filtered range) ─────────────────────
+        daily_dict = {}
+        for lead in all_leads:
+            if lead.create_date:
+                day_str = fields.Datetime.context_timestamp(
+                    self.with_context(tz=str(user_tz)), lead.create_date
+                ).strftime("%Y-%m-%d")
+                daily_dict[day_str] = daily_dict.get(day_str, 0) + 1
+
+        daily_trend = sorted(
+            [{"date": d, "count": c} for d, c in daily_dict.items()],
+            key=lambda x: x["date"],
+        )
+
+        # ── Monthly trend ─────────────────────────────────────────────────────
+        monthly_dict = {}
+        for lead in all_leads:
+            if lead.create_date:
+                month_str = fields.Datetime.context_timestamp(
+                    self.with_context(tz=str(user_tz)), lead.create_date
+                ).strftime("%Y-%m")
+                month_label = fields.Datetime.context_timestamp(
+                    self.with_context(tz=str(user_tz)), lead.create_date
+                ).strftime("%b %Y")
+                if month_str not in monthly_dict:
+                    monthly_dict[month_str] = {"month": month_str, "label": month_label, "count": 0}
+                monthly_dict[month_str]["count"] += 1
+
+        monthly_trend = sorted(
+            list(monthly_dict.values()),
+            key=lambda x: x["month"],
+        )
+
+        # ── Available companies for filter dropdown ───────────────────────────
+        all_companies = self.env.companies
+        company_filter_list = [{"id": c.id, "name": c.name} for c in all_companies]
+
+        return {
+            "kpi": {
+                "total": total_count,
+                "active": active_count,
+                "lost": lost_count,
+                "won": won_count,
+                "repeat": repeat_count,
+                "total_cost": round(total_cost, 0),
+                "conversion_pct": conversion_pct,
+            },
+            "source_data": source_data,
+            "company_data": company_data,
+            "stage_funnel": stage_funnel,
+            "daily_trend": daily_trend,
+            "monthly_trend": monthly_trend,
+            "companies": company_filter_list,
+            "date_from": date_from or "",
+            "date_to": date_to or "",
+        }

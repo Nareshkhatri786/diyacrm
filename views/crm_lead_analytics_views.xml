@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         1. crm.project.cost — Admin Form & List Views
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <record id="view_crm_project_cost_list" model="ir.ui.view">
+        <field name="name">crm.project.cost.list</field>
+        <field name="model">crm.project.cost</field>
+        <field name="arch" type="xml">
+            <list string="Lead Acquisition Cost per Project" editable="bottom">
+                <field name="company_id" options="{'no_create': True}"/>
+                <field name="cost_per_lead" string="Cost Per Lead (₹)"/>
+                <field name="notes" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_crm_project_cost_form" model="ir.ui.view">
+        <field name="name">crm.project.cost.form</field>
+        <field name="model">crm.project.cost</field>
+        <field name="arch" type="xml">
+            <form string="Lead Acquisition Cost">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="company_id" options="{'no_create': True}"/></h1>
+                    </div>
+                    <group>
+                        <field name="cost_per_lead" string="Cost Per Lead (₹)"
+                               help="How much does it cost (in ₹) to acquire one lead for this project?"/>
+                        <field name="notes" string="Remarks"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_crm_project_cost" model="ir.actions.act_window">
+        <field name="name">📋 Lead Cost per Project</field>
+        <field name="res_model">crm.project.cost</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Configure lead acquisition cost for each project!
+            </p>
+            <p>
+                Set the cost (in ₹) per enquiry/lead for each company/project.
+                Default is ₹70 if not configured.
+            </p>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         2. Lead Analytics Dashboard — Client Action
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <record id="action_crm_lead_analytics_dashboard" model="ir.actions.client">
+        <field name="name">📊 Lead Analytics Dashboard</field>
+        <field name="tag">crm_lead_analytics_dashboard</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         3. Menu Items (Reporting section — Admin only)
+         ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Analytics Dashboard under CRM > Reporting -->
+    <menuitem id="menu_crm_lead_analytics_dashboard"
+              name="📊 Lead Analytics Dashboard"
+              parent="crm.crm_menu_report"
+              action="action_crm_lead_analytics_dashboard"
+              groups="base.group_system"
+              sequence="5"/>
+
+    <!-- Cost configuration under CRM > Configuration (admin only) -->
+    <menuitem id="menu_crm_project_cost_config"
+              name="💰 Lead Cost per Project"
+              parent="crm.crm_menu_config"
+              action="action_crm_project_cost"
+              groups="base.group_system"
+              sequence="50"/>
+
+</odoo>

@@ -5,3 +5,5 @@ access_crm_unit_booking_wizard,crm.unit.booking.wizard,model_crm_unit_booking_wi
 access_crm_lead_whatsapp_message,crm.lead.whatsapp.message,model_crm_lead_whatsapp_message,base.group_user,1,1,1,1
 access_crm_lead_whatsapp_wizard,crm.lead.whatsapp.wizard,model_crm_lead_whatsapp_wizard,base.group_user,1,1,1,1
 access_crm_lead_bulk_whatsapp_wizard,crm.lead.bulk.whatsapp.wizard,model_crm_lead_bulk_whatsapp_wizard,base.group_system,1,1,1,1
+access_crm_project_cost_admin,crm.project.cost,model_crm_project_cost,base.group_system,1,1,1,1
+access_crm_project_cost_user,crm.project.cost (read),model_crm_project_cost,base.group_user,1,0,0,0
