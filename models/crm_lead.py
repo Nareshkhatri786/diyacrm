@@ -1408,12 +1408,16 @@ class CrmLead(models.Model):
             end_utc = None
 
         # ── Company filter ───────────────────────────────────────────────────
-        allowed_companies = self.env.companies
+        if self.env.is_admin():
+            allowed_companies = self.env["res.company"].sudo().search([])
+        else:
+            allowed_companies = self.env.user.company_ids
+
         if company_id != "all" and company_id:
             try:
                 cid = int(company_id)
                 comp = allowed_companies.filtered(lambda c: c.id == cid)
-                active_companies = comp if comp else self.env["res.company"].browse([cid])
+                active_companies = comp if comp else self.env["res.company"].sudo().browse([cid])
             except Exception:
                 active_companies = allowed_companies
         else:
@@ -1447,22 +1451,43 @@ class CrmLead(models.Model):
         def is_active(lead):
             return lead.active and not is_won(lead) and not is_lost(lead)
 
-        # Repeat: phone already seen before this lead (within same company scope)
-        # We detect repeat by counting leads where phone appears more than once
-        phone_company_map = {}
-        repeat_ids = set()
+        # Repeat: checks both phone and mobile
+        lead_phone_map = {}
         for lead in all_leads:
-            raw = lead.phone or ""
+            raw = lead.phone or lead.mobile or ""
             digits = _re.sub(r"\D", "", raw)
             phone_10 = digits[-10:] if len(digits) >= 10 else digits
-            if not phone_10:
+            if phone_10:
+                lead_phone_map[lead.id] = (lead.company_id.id, phone_10)
+
+        seen_in_batch = {}
+        repeat_ids = set()
+        for lead in all_leads:
+            key = lead_phone_map.get(lead.id)
+            if not key:
                 continue
-            key = (lead.company_id.id, phone_10)
-            if key in phone_company_map:
-                # second+ occurrence
+            if key in seen_in_batch:
                 repeat_ids.add(lead.id)
             else:
-                phone_company_map[key] = lead.id
+                seen_in_batch[key] = lead.id
+
+        # If date filters are active, also check if phone had an earlier lead prior to start_utc
+        if start_utc and all_leads:
+            phones_to_check = {key[1] for key in lead_phone_map.values()}
+            if phones_to_check:
+                self._cr.execute("""
+                    SELECT company_id, RIGHT(regexp_replace(COALESCE(phone, mobile, ''), '\\D', '', 'g'), 10) as p10
+                    FROM crm_lead
+                    WHERE company_id IN %s
+                      AND create_date < %s
+                      AND RIGHT(regexp_replace(COALESCE(phone, mobile, ''), '\\D', '', 'g'), 10) IN %s
+                    GROUP BY company_id, RIGHT(regexp_replace(COALESCE(phone, mobile, ''), '\\D', '', 'g'), 10)
+                """, (tuple(company_ids), start_utc, tuple(phones_to_check)))
+                for row in self._cr.fetchall():
+                    hist_key = (row[0], row[1])
+                    for lead in all_leads:
+                        if lead_phone_map.get(lead.id) == hist_key:
+                            repeat_ids.add(lead.id)
 
         total_count = len(all_leads)
         active_count = sum(1 for l in all_leads if is_active(l))
@@ -1582,8 +1607,7 @@ class CrmLead(models.Model):
         )
 
         # ── Available companies for filter dropdown ───────────────────────────
-        all_companies = self.env.companies
-        company_filter_list = [{"id": c.id, "name": c.name} for c in all_companies]
+        company_filter_list = [{"id": c.id, "name": c.name} for c in allowed_companies]
 
         return {
             "kpi": {
