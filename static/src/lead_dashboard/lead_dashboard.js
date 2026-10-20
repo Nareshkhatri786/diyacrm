@@ -37,7 +37,13 @@ export class CrmLeadAnalyticsDashboard extends Component {
         });
 
         onWillStart(async () => {
-            await loadJS("https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js");
+            try {
+                if (typeof window.Chart === "undefined") {
+                    await loadJS("https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js");
+                }
+            } catch (e) {
+                console.warn("Chart.js load warning:", e);
+            }
             await this.loadData();
         });
 
@@ -132,11 +138,11 @@ export class CrmLeadAnalyticsDashboard extends Component {
 
     renderDailyChart() {
         const canvas = this.dailyChartRef.el;
-        if (!canvas) return;
+        if (!canvas || typeof window.Chart === "undefined") return;
         if (this.dailyChartInstance) { this.dailyChartInstance.destroy(); }
 
         const data = this.state.daily_trend.slice(-60); // last 60 days
-        this.dailyChartInstance = new Chart(canvas, {
+        this.dailyChartInstance = new window.Chart(canvas, {
             type: "line",
             data: {
                 labels: data.map(d => d.date),
@@ -174,13 +180,13 @@ export class CrmLeadAnalyticsDashboard extends Component {
 
     renderMonthlyChart() {
         const canvas = this.monthlyChartRef.el;
-        if (!canvas) return;
+        if (!canvas || typeof window.Chart === "undefined") return;
         if (this.monthlyChartInstance) { this.monthlyChartInstance.destroy(); }
 
         const data = this.state.monthly_trend.slice(-18); // last 18 months
         const colors = data.map((_, i) => `hsl(${210 + i * 12}, 70%, 55%)`);
 
-        this.monthlyChartInstance = new Chart(canvas, {
+        this.monthlyChartInstance = new window.Chart(canvas, {
             type: "bar",
             data: {
                 labels: data.map(d => d.label),
@@ -208,7 +214,7 @@ export class CrmLeadAnalyticsDashboard extends Component {
 
     renderSourceChart() {
         const canvas = this.sourceChartRef.el;
-        if (!canvas) return;
+        if (!canvas || typeof window.Chart === "undefined") return;
         if (this.sourceChartInstance) { this.sourceChartInstance.destroy(); }
 
         const top = this.state.source_data.slice(0, 10);
@@ -217,7 +223,7 @@ export class CrmLeadAnalyticsDashboard extends Component {
             "#06d6a0","#ffd166","#ef476f","#118ab2","#073b4c"
         ];
 
-        this.sourceChartInstance = new Chart(canvas, {
+        this.sourceChartInstance = new window.Chart(canvas, {
             type: "doughnut",
             data: {
                 labels: top.map(s => s.source),

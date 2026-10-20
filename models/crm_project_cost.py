@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError
 
 
 class CrmProjectCost(models.Model):
@@ -22,9 +23,15 @@ class CrmProjectCost(models.Model):
     )
     notes = fields.Char(string="Notes / Remarks")
 
-    _sql_constraints = [
-        ("unique_company", "UNIQUE(company_id)", "A cost entry already exists for this project/company."),
-    ]
+    @api.constrains('company_id')
+    def _check_unique_company(self):
+        for rec in self:
+            domain = [
+                ('company_id', '=', rec.company_id.id),
+                ('id', '!=', rec.id),
+            ]
+            if self.search_count(domain):
+                raise ValidationError(_("A cost entry already exists for this project/company."))
 
     @api.model
     def get_cost_map(self):
