@@ -209,6 +209,7 @@
                                                 <t t-elif="unit.facing === 'temple_facing'"><i class="fa fa-bell text-warning me-1"/> Temple Facing</t>
                                                 <t t-elif="unit.facing === 'project_facing'"><i class="fa fa-building-o text-primary me-1"/> Project Facing</t>
                                                 <t t-elif="unit.facing === 'plot_facing'"><i class="fa fa-map-o text-secondary me-1"/> Plot Facing</t>
+                                                <t t-elif="unit.facing === 'main_entry'"><i class="fa fa-sign-in text-info me-1"/> Main Entry</t>
                                                 <t t-else=""><i class="fa fa-compass text-secondary me-1"/> <t t-esc="unit.facing_label || unit.facing"/></t>
                                             </div>
                                             <div t-if="unit.plc" class="text-warning fw-bold small mt-1">

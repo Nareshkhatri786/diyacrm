@@ -15,6 +15,10 @@ class CrmPropertyUnit(models.Model):
         ("B", "Block B"),
         ("C", "Block C"),
         ("D", "Block D"),
+        ("A2", "Block A2"),
+        ("B2", "Block B2"),
+        ("C2", "Block C2"),
+        ("D2", "Block D2"),
     ], string="Block", required=True, default="B", tracking=True)
     floor = fields.Selection([
         ("01", "1st Floor"),
@@ -51,6 +55,7 @@ class CrmPropertyUnit(models.Model):
         ("285", "285 Sq. Yards"),
         ("295", "295 Sq. Yards"),
         ("315", "315 Sq. Yards"),
+        ("320", "320 Sq. Yards"),
         ("380", "380 Sq. Yards"),
         ("400", "400 Sq. Yards"),
     ], string="Size (Sq. Yards)", required=True, tracking=True)
@@ -62,6 +67,7 @@ class CrmPropertyUnit(models.Model):
         ("project_facing", "Project Facing"),
         ("plot_facing", "Plot Facing"),
         ("road_facing", "Road Facing"),
+        ("main_entry", "Main Entry"),
     ], string="Facing", required=True, default="main_road", tracking=True)
     location_charge = fields.Boolean(string="Location Charge (PLC)", default=False, tracking=True)
     status = fields.Selection([
