@@ -18,7 +18,7 @@ import argparse
 from datetime import datetime, timezone, timedelta
 
 if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
 
 # Auto-switch to Odoo Virtual Environment if running under system python
 if sys.platform != 'win32' and not os.environ.get('ODOO_VENV_SWITCHED'):
@@ -45,7 +45,7 @@ if sys.platform != 'win32' and not os.environ.get('ODOO_VENV_SWITCHED'):
     for v_py in candidate_venvs:
         if os.path.isfile(v_py) and os.access(v_py, os.X_OK) and os.path.realpath(v_py) != os.path.realpath(sys.executable):
             os.environ['ODOO_VENV_SWITCHED'] = '1'
-            os.execv(v_py, [v_py] + sys.argv)
+            os.execv(v_py, [v_py, "-u"] + sys.argv)
 
 # Drop root privileges to odoo19/odoo user so PostgreSQL peer authentication matches
 if sys.platform != 'win32' and os.getuid() == 0:
