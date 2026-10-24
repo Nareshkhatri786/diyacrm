@@ -47,6 +47,21 @@ if sys.platform != 'win32' and not os.environ.get('ODOO_VENV_SWITCHED'):
             os.environ['ODOO_VENV_SWITCHED'] = '1'
             os.execv(v_py, [v_py] + sys.argv)
 
+# Drop root privileges to odoo19/odoo user so PostgreSQL peer authentication matches
+if sys.platform != 'win32' and os.getuid() == 0:
+    try:
+        import pwd
+        for u in ['odoo19', 'odoo']:
+            try:
+                pw = pwd.getpwnam(u)
+                os.setgid(pw.pw_gid)
+                os.setuid(pw.pw_uid)
+                break
+            except KeyError:
+                continue
+    except Exception:
+        pass
+
 config_path = '/etc/odoo19.conf' if os.path.exists('/etc/odoo19.conf') else r'c:\xampp\htdocs\odoo-19\odoo.conf'
 db_name = 'diyacrm' if os.path.exists('/etc/odoo19.conf') else 'odoo19'
 
