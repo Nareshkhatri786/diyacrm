@@ -78,10 +78,50 @@ from odoo.tools import config
 config.parse_config(['-c', config_path, '-d', db_name])
 
 TARGET_COMPANIES = [
-    {"name_kw": "devi", "display_name": "Devi Bungalows"},
     {"name_kw": "shreemad", "display_name": "Shreemad Family"},
     {"name_kw": "rudraksha", "display_name": "Royal Rudraksha"},
+    {"name_kw": "devi", "display_name": "Devi Bungalows"},
 ]
+
+def check_company_meta_credentials(ICP, comp_name):
+    """
+    Validates Meta Graph API token and phone number ID live before blasting leads.
+    """
+    c_lower = (comp_name or '').lower()
+    if 'shreemad' in c_lower:
+        phone_id = ICP.get_param('diyacrm.shreemad_family.phone_id', '1161115510429761')
+        token = ICP.get_param('diyacrm.shreemad_family.token', '')
+    elif any(k in c_lower for k in ['rudraksha', 'royal']):
+        phone_id = ICP.get_param('diyacrm.royal_rudraksha.phone_id', '1224814500716320')
+        token = ICP.get_param('diyacrm.royal_rudraksha.token', '')
+    elif 'devi' in c_lower:
+        phone_id = ICP.get_param('diyacrm.devi_bungalows.phone_id', '1265084363352795')
+        token = ICP.get_param('diyacrm.devi_bungalows.token', '')
+    else:
+        phone_id = ''
+        token = ''
+
+    if not token or not phone_id:
+        return False, "Token or Phone ID missing in ir_config_parameter"
+
+    import urllib.request
+    import json
+    url = f"https://graph.facebook.com/v19.0/{phone_id}?fields=id,verified_name,display_phone_number,quality_rating"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            return True, f"{data.get('verified_name')} ({data.get('display_phone_number')}) - Quality: {data.get('quality_rating')}"
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode('utf-8')
+        try:
+            err_json = json.loads(err_body)
+            msg = err_json.get('error', {}).get('message', err_body)
+            return False, f"Meta HTTP {e.code}: {msg}"
+        except Exception:
+            return False, f"Meta HTTP {e.code}: {err_body}"
+    except Exception as e:
+        return False, str(e)
 
 def map_stage_to_campaign(stage_name):
     """
@@ -152,6 +192,15 @@ def run_stage_campaigns():
             print(f"🏢 COMPANY: {comp.name} (ID: {comp.id})")
             print("------------------------------------------------------------------------------------------")
 
+            # Validate Meta WhatsApp credentials live before blasting leads
+            token_ok, token_msg = check_company_meta_credentials(env['ir.config_parameter'].sudo(), comp.name)
+            if not token_ok:
+                print(f"   ❌ META API CREDENTIAL FAILED: {token_msg}")
+                print(f"   ⚠️ SKIPPING '{comp.name}' - Meta token is invalid or expired. Fix token before blasting!\n")
+                continue
+            else:
+                print(f"   ✅ Meta WhatsApp API Active: {token_msg}")
+
             # Search all active leads for this company
             leads = env['crm.lead'].search([
                 ('company_id', '=', comp.id),
@@ -220,7 +269,13 @@ def run_stage_campaigns():
                                 time.sleep(0.8)
                             else:
                                 stg_failed += 1
-                                print(f"      [{idx}/{len(valid_leads)}] ❌ Failed:    {lead_display_name} ({phone_display})")
+                                last_msg = env['mail.message'].search([('model', '=', 'crm.lead'), ('res_id', '=', lead.id)], order='id desc', limit=1)
+                                err_info = ""
+                                if last_msg and 'Error' in (last_msg.body or ''):
+                                    import re
+                                    clean_txt = re.sub('<[^<]+?>', '', last_msg.body or '').strip()
+                                    err_info = f"➔ {clean_txt[:140]}"
+                                print(f"      [{idx}/{len(valid_leads)}] ❌ Failed:    {lead_display_name} ({phone_display}) {err_info}")
                                 cr.commit()
                         except Exception as e:
                             stg_failed += 1

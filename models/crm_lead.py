@@ -1402,7 +1402,7 @@ class CrmLead(models.Model):
                     subtype_xmlid='mail.mt_note'
                 )
                 _logger.error("Meta API error on lead #%s campaign: %s", self.id, err_text)
-                return err_text  # Return error text instead of False so caller can log it
+                return False
         except Exception as e:
             _logger.exception("Exception sending Campaign WhatsApp for lead #%s: %s", self.id, e)
             return False
