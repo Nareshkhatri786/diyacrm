@@ -12,7 +12,8 @@ Headers:
 import json
 import logging
 import re
-from odoo import http, fields, SUPERUSER_ID
+import odoo
+from odoo import http, fields, api, SUPERUSER_ID
 from odoo.http import request, Response
 from odoo.orm.registry import Registry
 
@@ -138,7 +139,7 @@ class WhatsAppLeadsApiController(http.Controller):
             registry = Registry(db_name)
 
             with registry.cursor() as cr:
-                env = odoo.api.Environment(cr, SUPERUSER_ID, {})
+                env = api.Environment(cr, SUPERUSER_ID, {})
 
                 # 4. Resolve Company Record
                 target_company = None
