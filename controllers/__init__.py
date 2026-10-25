@@ -5,3 +5,4 @@ from . import attendance_controller
 from . import call_tracker_controller
 from . import home_controller
 from . import webmanifest
+from . import whatsapp_leads_api
