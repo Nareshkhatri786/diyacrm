@@ -73,10 +73,14 @@ def run_test():
 
         for p_name, p_id in test_projects:
             print(f"\n🏢 Project: {p_name} (Phone ID: {p_id})")
-            comp = env['res.company'].search([
-                '|', ('name', 'ilike', p_name.split()[0]),
-                ('name', 'ilike', p_name.split()[-1])
-            ], limit=1)
+            comp = None
+            for kw in [p_name, "1st", "radhe", "residency", "shreemad", "rudraksha", "devi", "signature"]:
+                comp = env['res.company'].search([('name', 'ilike', kw)], limit=1)
+                if comp and any(k in comp.name.lower() for k in p_name.lower().split()):
+                    break
+
+            if not comp:
+                comp = env['res.company'].search([('name', 'ilike', p_name.split()[-1])], limit=1)
 
             if not comp:
                 print(f"   ❌ Company not found in res_company!")
@@ -108,6 +112,41 @@ def run_test():
                     stage_summary[s.name] = cnt
             stage_summary["Lost / Dropped"] = lost_leads_count
             print(f"   • Stage Summary:    {json.dumps(stage_summary, ensure_ascii=False)}")
+
+    print("\n==================================================================")
+    print(" 🌐 TESTING LIVE HTTP ENDPOINT (/api/whatsapp/leads)")
+    print("==================================================================")
+
+    import urllib.request
+    import urllib.error
+
+    test_urls = [
+        "http://127.0.0.1:8069/api/whatsapp/leads?phone_number_id=1161115510429761&limit=2",
+        "https://crm.sigprop.in/api/whatsapp/leads?phone_number_id=1161115510429761&limit=2",
+    ]
+
+    for url in test_urls:
+        req = urllib.request.Request(url, headers={
+            "Authorization": "Bearer diyacrm_secret_token",
+            "User-Agent": "DiyaCRM-Tester/1.0",
+        })
+        try:
+            print(f"\n👉 Testing: {url}")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                print(f"   HTTP Status: {resp.status} OK! 🎉")
+                data = json.loads(resp.read().decode('utf-8'))
+                print(f"   • Company Name: {data.get('company_name')}")
+                print(f"   • Total Leads:  {data.get('total_leads')}")
+                print(f"   • Summary:      {json.dumps(data.get('stage_summary', {}), ensure_ascii=False)}")
+                sample_leads = data.get('leads', [])
+                if sample_leads:
+                    print(f"   • Sample Lead:  {json.dumps(sample_leads[0], ensure_ascii=False)}")
+                break
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode('utf-8')
+            print(f"   ❌ HTTP {e.code} Error: {err_body[:200]}")
+        except Exception as e:
+            print(f"   ℹ️ Connection notice ({url}): {e}")
 
     print("\n==================================================================")
     print(" ✅ Verification Finished!")
