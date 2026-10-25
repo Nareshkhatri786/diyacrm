@@ -80,8 +80,6 @@ export class CrmExecutiveDashboard extends Component {
                 call_missed_sent: 0,
                 direct_sent: 0,
                 response_rate_pct: 0,
-                company_campaign_breakdown: [],
-                stage_campaign_breakdown: [],
             },
             conversion_rates: {
                 call_to_visit_pct: 0,

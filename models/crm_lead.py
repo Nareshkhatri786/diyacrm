@@ -560,36 +560,6 @@ class CrmLead(models.Model):
         ))
         direct_wa_count = max(0, total_wa_sent - (campaign_wa_count + call_connected_wa_count + call_missed_wa_count))
 
-        # Campaign breakdown: company-wise + stage-wise
-        campaign_msgs = outbound_wa.filtered(
-            lambda m: "re-engagement campaign" in (m.body or "").lower()
-        )
-
-        # Company-wise campaign counts
-        company_campaign_map = {}
-        stage_campaign_map = {}
-        for msg in campaign_msgs:
-            lead = msg.lead_id
-            comp_name = (lead.company_id.name or "Unknown") if lead else "Unknown"
-            company_campaign_map[comp_name] = company_campaign_map.get(comp_name, 0) + 1
-            # Parse stage from body e.g. "Re-Engagement Campaign (Stage 2: Contacted..."
-            body = msg.body or ""
-            stage_label = "Other"
-            if "stage 1" in body.lower() or "new lead" in body.lower():
-                stage_label = "Stage 1: New Lead"
-            elif "stage 2" in body.lower() or "contacted" in body.lower():
-                stage_label = "Stage 2: Contacted"
-            elif "stage 4" in body.lower() or "site visit scheduled" in body.lower():
-                stage_label = "Stage 4: Site Visit Scheduled"
-            elif "stage 5" in body.lower() or "site visit done" in body.lower():
-                stage_label = "Stage 5: Site Visit Done"
-            elif "stage 6" in body.lower() or "negotiation" in body.lower() or "token" in body.lower():
-                stage_label = "Stage 6: Negotiation"
-            stage_campaign_map[stage_label] = stage_campaign_map.get(stage_label, 0) + 1
-
-        company_campaign_list = [{"name": k, "count": v} for k, v in sorted(company_campaign_map.items(), key=lambda x: -x[1])]
-        stage_campaign_list = [{"stage": k, "count": v} for k, v in sorted(stage_campaign_map.items(), key=lambda x: x[0])]
-
         whatsapp_analytics = {
             "total_sent": total_wa_sent,
             "total_received": total_wa_received,
@@ -598,8 +568,6 @@ class CrmLead(models.Model):
             "call_missed_sent": call_missed_wa_count,
             "direct_sent": direct_wa_count,
             "response_rate_pct": calc_pct(total_wa_received, total_wa_sent),
-            "company_campaign_breakdown": company_campaign_list,
-            "stage_campaign_breakdown": stage_campaign_list,
         }
 
         # 6. Stages Funnel
