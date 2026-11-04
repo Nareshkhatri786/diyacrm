@@ -21,7 +21,6 @@ def psql(sql):
 
 now_ist = datetime.now(timezone(timedelta(hours=5, minutes=30)))
 since_ist = now_ist - timedelta(minutes=20)
-# Format for SQL
 since_str = since_ist.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
 print(f"\n{'='*80}")
@@ -29,83 +28,95 @@ print(f" 📡 LIVE WhatsApp Blast Monitor")
 print(f" Period: {since_ist.strftime('%H:%M:%S IST')}  →  {now_ist.strftime('%H:%M:%S IST')}")
 print(f"{'='*80}")
 
-# ── 1. Total count + per-minute burst ───────────────────────────────────────
-sql_summary = f"""
+# ── 1. Total count ───────────────────────────────────────────────────────────
+sql_total = f"""
+SELECT COUNT(*) AS total_messages_sent
+FROM crm_lead_whatsapp_message m
+WHERE m.direction = 'outbound'
+  AND m.date >= '{since_str}';
+"""
+out, err = psql(sql_total)
+print("\n📊 TOTAL MESSAGES SENT (Last 20 min):")
+print(out)
+if err and "ERROR" in err:
+    print("STDERR:", err)
+
+# ── 2. Per-minute burst detection ────────────────────────────────────────────
+sql_burst = f"""
 SELECT
     to_char(m.date AT TIME ZONE 'Asia/Kolkata', 'HH24:MI') AS minute_ist,
     COUNT(*) AS msg_count
-FROM mail_message m
-WHERE m.message_type = 'whatsapp'
+FROM crm_lead_whatsapp_message m
+WHERE m.direction = 'outbound'
   AND m.date >= '{since_str}'
-  AND m.phone_number IS NOT NULL
 GROUP BY 1
 ORDER BY 1 DESC;
 """
-out, err = psql(sql_summary)
-print("\n⚡ BURST DETECTION (messages per minute):")
+out, err = psql(sql_burst)
+print("⚡ BURST DETECTION (messages per minute):")
 print(out)
+if err and "ERROR" in err:
+    print("STDERR:", err)
 
-# ── 2. Company-wise breakdown ────────────────────────────────────────────────
+# ── 3. Company-wise breakdown ─────────────────────────────────────────────────
 sql_company = f"""
 SELECT
     COALESCE(c.name, 'Unknown') AS company,
     COUNT(*) AS messages,
-    COUNT(DISTINCT m.phone_number) AS unique_phones
-FROM mail_message m
-LEFT JOIN crm_lead l ON l.id = m.res_id AND m.model = 'crm.lead'
+    COUNT(DISTINCT m.phone) AS unique_phones
+FROM crm_lead_whatsapp_message m
+LEFT JOIN crm_lead l ON l.id = m.lead_id
 LEFT JOIN res_company c ON c.id = l.company_id
-WHERE m.message_type = 'whatsapp'
+WHERE m.direction = 'outbound'
   AND m.date >= '{since_str}'
-  AND m.phone_number IS NOT NULL
 GROUP BY c.name
 ORDER BY messages DESC;
 """
 out, err = psql(sql_company)
-print("📊 COMPANY-WISE BREAKDOWN:")
+print("🏢 COMPANY-WISE BREAKDOWN:")
 print(out)
+if err and "ERROR" in err:
+    print("STDERR:", err)
 
-# ── 3. Sender-wise breakdown ─────────────────────────────────────────────────
+# ── 4. Sender-wise breakdown ──────────────────────────────────────────────────
 sql_sender = f"""
 SELECT
-    COALESCE(p.name, 'System/Unknown') AS sender,
+    COALESCE(m.author_name, 'System/Unknown') AS sender,
     COUNT(*) AS messages
-FROM mail_message m
-LEFT JOIN res_partner p ON p.id = m.author_id
-WHERE m.message_type = 'whatsapp'
+FROM crm_lead_whatsapp_message m
+WHERE m.direction = 'outbound'
   AND m.date >= '{since_str}'
-  AND m.phone_number IS NOT NULL
-GROUP BY p.name
+GROUP BY m.author_name
 ORDER BY messages DESC;
 """
 out, err = psql(sql_sender)
 print("👤 SENDER-WISE BREAKDOWN:")
 print(out)
+if err and "ERROR" in err:
+    print("STDERR:", err)
 
-# ── 4. Full detail log ───────────────────────────────────────────────────────
+# ── 5. Full detail log ────────────────────────────────────────────────────────
 sql_detail = f"""
 SELECT
     to_char(m.date AT TIME ZONE 'Asia/Kolkata', 'HH24:MI:SS') AS "Time(IST)",
     m.id AS msg_id,
-    l.id AS lead_id,
-    LEFT(COALESCE(l.partner_name, '?'), 20) AS lead_name,
-    m.phone_number AS phone,
+    m.lead_id,
+    LEFT(COALESCE(l.partner_name, l.name, '?'), 20) AS lead_name,
+    m.phone,
     LEFT(COALESCE(c.name, '?'), 18) AS company,
-    LEFT(COALESCE(p.name, '?'), 16) AS sender,
-    LEFT(REPLACE(m.body, E'\\n', ' '), 50) AS body_preview
-FROM mail_message m
-LEFT JOIN res_partner p ON p.id = m.author_id
-LEFT JOIN crm_lead l ON l.id = m.res_id AND m.model = 'crm.lead'
+    LEFT(COALESCE(m.author_name, '?'), 16) AS sender,
+    LEFT(REPLACE(m.body, E'\\n', ' '), 55) AS body_preview
+FROM crm_lead_whatsapp_message m
+LEFT JOIN crm_lead l ON l.id = m.lead_id
 LEFT JOIN res_company c ON c.id = l.company_id
-WHERE m.message_type = 'whatsapp'
+WHERE m.direction = 'outbound'
   AND m.date >= '{since_str}'
-  AND m.phone_number IS NOT NULL
 ORDER BY m.date DESC
 LIMIT 200;
 """
 out, err = psql(sql_detail)
 print("📋 DETAILED MESSAGE LOG (Most Recent First):")
 print(out)
-
 if err and "ERROR" in err:
     print("STDERR:", err)
 
