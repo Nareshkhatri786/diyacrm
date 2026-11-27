@@ -3,7 +3,7 @@
 Diya CRM — Lead Assignment Rules
 Frontend se company-wise Fixed ya Round Robin assignment configure karo.
 """
-from odoo import models, fields, api, _
+from odoo import models, fields, api, _, tools
 from odoo.exceptions import ValidationError
 import logging
 
@@ -92,9 +92,11 @@ class DiyaCrmAssignmentRule(models.Model):
             ])
 
     # ── Constraints ───────────────────────────────────────────────────────────
-    _sql_constraints = [
-        ("unique_company_rule", "UNIQUE(company_id)",
-         "Ek company ke liye sirf ek hi assignment rule ho sakta hai!")
+    _constraints = [
+        models.Constraint(
+            "UNIQUE(company_id)",
+            "Ek company ke liye sirf ek hi assignment rule ho sakta hai!"
+        )
     ]
 
     @api.constrains("assignment_type", "fixed_user_id", "round_robin_user_ids")

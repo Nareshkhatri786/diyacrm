@@ -19,10 +19,10 @@
                        decoration-success="assignment_type == 'fixed'"/>
                 <field name="fixed_user_id"
                        optional="show"
-                       attrs="{'invisible': [('assignment_type', '!=', 'fixed')]}"/>
+                       column_invisible="assignment_type != 'fixed'"/>
                 <field name="round_robin_user_ids" widget="many2many_tags"
                        optional="show"
-                       attrs="{'invisible': [('assignment_type', '!=', 'round_robin')]}"/>
+                       column_invisible="assignment_type != 'round_robin'"/>
                 <field name="last_assigned_user_id" optional="show" readonly="1"/>
                 <field name="apply_on_whatsapp" optional="show"/>
                 <field name="apply_on_manual" optional="show"/>
@@ -30,7 +30,7 @@
                 <button name="action_reset_round_robin" type="object"
                         string="Reset RR" icon="fa-refresh"
                         title="Round Robin Reset karo"
-                        attrs="{'invisible': [('assignment_type', '!=', 'round_robin')]}"/>
+                        invisible="assignment_type != 'round_robin'"/>
                 <button name="action_view_leads" type="object"
                         string="Leads" icon="fa-users"
                         title="Is company ke leads dekho"/>
@@ -55,7 +55,7 @@
                     </div>
 
                     <widget name="web_ribbon" title="Inactive" bg_color="bg-danger"
-                            attrs="{'invisible': [('active', '=', True)]}"/>
+                            invisible="active == True"/>
                     <field name="active" invisible="1"/>
 
                     <div class="oe_title">
@@ -79,12 +79,12 @@
 
                     <!-- Fixed Assignment Section -->
                     <group string="Fixed Assignment" name="fixed_section"
-                           attrs="{'invisible': [('assignment_type', '!=', 'fixed')]}">
+                           invisible="assignment_type != 'fixed'">
                         <group>
                             <field name="fixed_user_id"
                                    options="{'no_create': True}"
                                    domain="[('share', '=', False)]"
-                                   attrs="{'required': [('assignment_type', '=', 'fixed')]}"/>
+                                   required="assignment_type == 'fixed'"/>
                         </group>
                         <group>
                             <div class="alert alert-info" role="alert" style="margin:8px 0;">
@@ -97,12 +97,12 @@
 
                     <!-- Round Robin Section -->
                     <group string="Round Robin Configuration" name="rr_section"
-                           attrs="{'invisible': [('assignment_type', '!=', 'round_robin')]}">
+                           invisible="assignment_type != 'round_robin'">
                         <group>
                             <field name="round_robin_user_ids"
                                    widget="many2many_tags"
                                    domain="[('share', '=', False)]"
-                                   attrs="{'required': [('assignment_type', '=', 'round_robin')]}"/>
+                                   required="assignment_type == 'round_robin'"/>
                             <field name="last_assigned_user_id" readonly="1"
                                    string="Last Assigned (Auto)"/>
                         </group>
@@ -116,7 +116,7 @@
                                     string="🔄 Round Robin Reset Karo"
                                     class="btn btn-warning"
                                     confirm="Round Robin reset hoga — agla lead pehle person se start hoga. Confirm?"
-                                    attrs="{'invisible': [('assignment_type', '!=', 'round_robin')]}"/>
+                                    invisible="assignment_type != 'round_robin'"/>
                         </group>
                     </group>
                 </sheet>
@@ -158,3 +158,4 @@
         groups="sales_team.group_sale_manager"/>
 
 </odoo>
+
