@@ -112,22 +112,29 @@ class CrmLead(models.Model):
             return "3bhk"
         return False
 
+    def _get_assignment_rule_user(self, company, source="manual"):
+        """
+        Diya CRM Assignment Rule se next user fetch karo.
+        Fallback: purana hardcoded logic (backward compat).
+        """
+        try:
+            Rule = self.env["diyacrm.assignment.rule"].sudo()
+            assigned = Rule.get_assigned_user_for_company(company, source=source)
+            if assigned:
+                return assigned
+        except Exception as e:
+            _logger.warning("Assignment rule lookup failed (using fallback): %s", e)
+        return False
+
     @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
         company_id = res.get("company_id") or self.env.company.id
         if company_id:
             company = self.env["res.company"].browse(company_id)
-            comp_name = str(company.name or "").lower()
-            if any(k in comp_name for k in ['1st', 'first', 'radhe']):
-                nikita = self.env["res.users"].sudo().search([
-                    ("share", "=", False),
-                    "|",
-                    ("name", "ilike", "nikita"),
-                    ("login", "ilike", "nikita")
-                ], limit=1)
-                if nikita:
-                    res["user_id"] = nikita.id
+            assigned = self._get_assignment_rule_user(company, source="manual")
+            if assigned:
+                res["user_id"] = assigned.id
         return res
 
     @api.onchange("company_id")
@@ -136,16 +143,9 @@ class CrmLead(models.Model):
             default_ut = self._default_unit_type_for_company(self.company_id.name)
             if default_ut:
                 self.unit_type = default_ut
-            comp_name = str(self.company_id.name or "").lower()
-            if any(k in comp_name for k in ['1st', 'first', 'radhe']):
-                nikita = self.env["res.users"].sudo().search([
-                    ("share", "=", False),
-                    "|",
-                    ("name", "ilike", "nikita"),
-                    ("login", "ilike", "nikita")
-                ], limit=1)
-                if nikita:
-                    self.user_id = nikita.id
+            assigned = self._get_assignment_rule_user(self.company_id, source="manual")
+            if assigned:
+                self.user_id = assigned.id
 
     @api.depends("activity_ids.activity_type_id")
     def _compute_meeting_display(self):
@@ -252,26 +252,19 @@ class CrmLead(models.Model):
                         company = the1st_comp
                         comp_name = str(company.name or "").lower()
 
-            # The 1st Residency: default salesperson is always Nikita
-            if any(k in comp_name for k in ['1st', 'first', 'radhe']):
-                nikita = self.env["res.users"].sudo().search([
-                    ("share", "=", False),
-                    "|",
-                    ("name", "ilike", "nikita"),
-                    ("login", "ilike", "nikita")
-                ], limit=1)
-                if nikita:
-                    if company and company not in nikita.company_ids:
-                        nikita.sudo().write({"company_ids": [(4, company.id)]})
-                    curr_user_id = vals.get("user_id")
-                    heer = self.env["res.users"].sudo().search([
-                        ("share", "=", False),
-                        "|",
-                        ("name", "ilike", "heer"),
-                        ("login", "ilike", "heer")
-                    ], limit=1)
-                    if not curr_user_id or (heer and curr_user_id == heer.id) or curr_user_id in [SUPERUSER_ID, 1]:
-                        vals["user_id"] = nikita.id
+            # ── Assignment Rule lookup (DB-driven, frontend configurable) ──────
+            assigned_user = self._get_assignment_rule_user(company, source="manual")
+            if assigned_user:
+                curr_user_id = vals.get("user_id")
+                # Only override if not explicitly set by a human action
+                if not curr_user_id or curr_user_id in [SUPERUSER_ID, 1]:
+                    if assigned_user.id not in (assigned_user.company_ids.ids or []):
+                        assigned_user.sudo().write({"company_ids": [(4, company.id)]})
+                    vals["user_id"] = assigned_user.id
+                    _logger.info(
+                        "Assignment Rule: Lead for '%s' → assigned to %s",
+                        company.name, assigned_user.name
+                    )
 
             if not vals.get("unit_type"):
                 default_ut = self._default_unit_type_for_company(company.name)

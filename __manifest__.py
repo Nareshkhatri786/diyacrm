@@ -16,6 +16,7 @@
         "data/crm_tag_data.xml",
         "views/crm_lead_views.xml",
         "views/crm_property_unit_views.xml",
+        "views/diyacrm_assignment_rule_views.xml",
         "wizard/crm_unit_booking_wizard_view.xml",
         "wizard/crm_lead_whatsapp_wizard_view.xml",
         "wizard/crm_lead_bulk_whatsapp_wizard_view.xml",

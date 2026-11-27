@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         LIST VIEW
+    ═══════════════════════════════════════════════════════════════════ -->
+    <record id="view_diyacrm_assignment_rule_list" model="ir.ui.view">
+        <field name="name">diyacrm.assignment.rule.list</field>
+        <field name="model">diyacrm.assignment.rule</field>
+        <field name="arch" type="xml">
+            <list string="Lead Assignment Rules" editable="top"
+                  decoration-success="active == True"
+                  decoration-muted="active == False">
+                <field name="sequence" widget="handle"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="company_id" options="{'no_create': True}"/>
+                <field name="assignment_type" widget="badge"
+                       decoration-info="assignment_type == 'round_robin'"
+                       decoration-success="assignment_type == 'fixed'"/>
+                <field name="fixed_user_id"
+                       optional="show"
+                       attrs="{'invisible': [('assignment_type', '!=', 'fixed')]}"/>
+                <field name="round_robin_user_ids" widget="many2many_tags"
+                       optional="show"
+                       attrs="{'invisible': [('assignment_type', '!=', 'round_robin')]}"/>
+                <field name="last_assigned_user_id" optional="show" readonly="1"/>
+                <field name="apply_on_whatsapp" optional="show"/>
+                <field name="apply_on_manual" optional="show"/>
+                <field name="lead_count" string="Total Leads" optional="show"/>
+                <button name="action_reset_round_robin" type="object"
+                        string="Reset RR" icon="fa-refresh"
+                        title="Round Robin Reset karo"
+                        attrs="{'invisible': [('assignment_type', '!=', 'round_robin')]}"/>
+                <button name="action_view_leads" type="object"
+                        string="Leads" icon="fa-users"
+                        title="Is company ke leads dekho"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         FORM VIEW
+    ═══════════════════════════════════════════════════════════════════ -->
+    <record id="view_diyacrm_assignment_rule_form" model="ir.ui.view">
+        <field name="name">diyacrm.assignment.rule.form</field>
+        <field name="model">diyacrm.assignment.rule</field>
+        <field name="arch" type="xml">
+            <form string="Lead Assignment Rule">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_leads" type="object"
+                                class="oe_stat_button" icon="fa-users">
+                            <field name="lead_count" widget="statinfo" string="Leads"/>
+                        </button>
+                    </div>
+
+                    <widget name="web_ribbon" title="Inactive" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+                    <field name="active" invisible="1"/>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="company_id" placeholder="Company / Project select karo..."
+                                   options="{'no_create': True}" style="width:100%"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="Assignment Configuration">
+                            <field name="sequence"/>
+                            <field name="assignment_type" widget="radio"/>
+                        </group>
+                        <group string="Apply On (Lead Sources)">
+                            <field name="apply_on_whatsapp"/>
+                            <field name="apply_on_manual"/>
+                            <field name="apply_on_dialer"/>
+                        </group>
+                    </group>
+
+                    <!-- Fixed Assignment Section -->
+                    <group string="Fixed Assignment" name="fixed_section"
+                           attrs="{'invisible': [('assignment_type', '!=', 'fixed')]}">
+                        <group>
+                            <field name="fixed_user_id"
+                                   options="{'no_create': True}"
+                                   domain="[('share', '=', False)]"
+                                   attrs="{'required': [('assignment_type', '=', 'fixed')]}"/>
+                        </group>
+                        <group>
+                            <div class="alert alert-info" role="alert" style="margin:8px 0;">
+                                <strong>Fixed Assignment:</strong> Is company ke har naye lead ko
+                                hamesha ek hi salesperson ko assign kiya jayega.
+                                Koi bhi source (WhatsApp, Manual, Dialer) se aaye — same person.
+                            </div>
+                        </group>
+                    </group>
+
+                    <!-- Round Robin Section -->
+                    <group string="Round Robin Configuration" name="rr_section"
+                           attrs="{'invisible': [('assignment_type', '!=', 'round_robin')]}">
+                        <group>
+                            <field name="round_robin_user_ids"
+                                   widget="many2many_tags"
+                                   domain="[('share', '=', False)]"
+                                   attrs="{'required': [('assignment_type', '=', 'round_robin')]}"/>
+                            <field name="last_assigned_user_id" readonly="1"
+                                   string="Last Assigned (Auto)"/>
+                        </group>
+                        <group>
+                            <div class="alert alert-info" role="alert" style="margin:8px 0;">
+                                <strong>Round Robin:</strong> Leads baari baari alag-alag
+                                salespersons ko milenge.
+                                <br/>Example: Lead 1 → Vidhi ben, Lead 2 → Megha, Lead 3 → Vidhi ben...
+                            </div>
+                            <button name="action_reset_round_robin" type="object"
+                                    string="🔄 Round Robin Reset Karo"
+                                    class="btn btn-warning"
+                                    confirm="Round Robin reset hoga — agla lead pehle person se start hoga. Confirm?"
+                                    attrs="{'invisible': [('assignment_type', '!=', 'round_robin')]}"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         ACTION
+    ═══════════════════════════════════════════════════════════════════ -->
+    <record id="action_diyacrm_assignment_rule" model="ir.actions.act_window">
+        <field name="name">Lead Assignment Rules</field>
+        <field name="res_model">diyacrm.assignment.rule</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Pehla Assignment Rule Banao!
+            </p>
+            <p>
+                Yahan se aap har company ke liye decide kar sakte hain ki naye leads
+                kis salesperson ko milenge —
+                <strong>Fixed</strong> (ek hi person) ya
+                <strong>Round Robin</strong> (baari baari).
+                <br/>
+                Code change ki koi zaroorat nahi — sirf yahan se manage karo!
+            </p>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         MENU — CRM > Configuration > Lead Assignment Rules
+    ═══════════════════════════════════════════════════════════════════ -->
+    <menuitem
+        id="menu_diyacrm_assignment_rule"
+        name="Lead Assignment Rules"
+        parent="crm.crm_menu_config"
+        action="action_diyacrm_assignment_rule"
+        sequence="25"
+        groups="sales_team.group_sale_manager"/>
+
+</odoo>

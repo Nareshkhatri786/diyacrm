@@ -320,10 +320,20 @@ class WhatsAppWebhookController(http.Controller):
         if not name:
             name = f"WhatsApp Lead ({clean_mobile_10})" if clean_mobile_10 else "New WhatsApp Lead"
 
-        # For The 1st Residency, salesperson is ALWAYS Nikita
-        if matched_key == 'the1st' or any(kw in str(company.name or '').lower() for kw in ['1st', 'first', 'radhe']):
-            assigned_user = self._get_or_create_salesperson(env, company, COMPANY_RULES['the1st'])
+        # ── Assignment Rule lookup (DB-driven, frontend configurable) ────────
+        # First try the frontend-configured Assignment Rules
+        try:
+            Rule = env['diyacrm.assignment.rule'].sudo()
+            rule_user = Rule.get_assigned_user_for_company(company, source='whatsapp')
+        except Exception as _re:
+            _logger.warning("Assignment rule lookup failed in webhook: %s", _re)
+            rule_user = False
+
+        if rule_user:
+            assigned_user = rule_user
+            _logger.info("Webhook Assignment Rule: %s → %s", company.name, rule_user.name)
         else:
+            # Fallback: use hardcoded COMPANY_RULES (backward compat)
             salesperson_param = data.get('salesperson') or data.get('user') or data.get('assigned_to')
             assigned_user = self._get_or_create_salesperson(env, company, rule, salesperson_param)
 

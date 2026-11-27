@@ -11,3 +11,4 @@ from . import ir_ui_menu
 from . import ir_http
 from . import crm_lead_whatsapp_message
 from . import crm_project_cost
+from . import diyacrm_assignment_rule
