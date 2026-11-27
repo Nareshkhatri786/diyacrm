@@ -18,11 +18,9 @@
                        decoration-info="assignment_type == 'round_robin'"
                        decoration-success="assignment_type == 'fixed'"/>
                 <field name="fixed_user_id"
-                       optional="show"
-                       column_invisible="assignment_type != 'fixed'"/>
+                       optional="show"/>
                 <field name="round_robin_user_ids" widget="many2many_tags"
-                       optional="show"
-                       column_invisible="assignment_type != 'round_robin'"/>
+                       optional="show"/>
                 <field name="last_assigned_user_id" optional="show" readonly="1"/>
                 <field name="apply_on_whatsapp" optional="show"/>
                 <field name="apply_on_manual" optional="show"/>
